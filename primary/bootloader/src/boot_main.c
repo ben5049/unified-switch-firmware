@@ -9,7 +9,7 @@
 #include "stdbool.h"
 #include "gpio.h"
 // #include "gpdma.h"
-// #include "flash.h"
+#include "flash.h"
 // #include "sau.h"
 #include "ramcfg.h"
 #include "spi.h"
@@ -59,7 +59,7 @@ void boot_main() {
     /* Initialise peripherals */
     // MX_GPIO_Init();
     // MX_GPDMA1_Init();
-    // MX_FLASH_Init();
+    MX_FLASH_Init();
     MX_RAMCFG_Init();
     MX_SPI1_Init();
     MX_RNG_Init();
