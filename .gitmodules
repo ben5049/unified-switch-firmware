@@ -1,20 +1,20 @@
 [submodule "primary/primary/Libraries/sja1105"]
-	path = primary/Libraries/sja1105
+	path = primary/libraries/sja1105
 	url = https://github.com/ben5049/sja1105
     branch = main
 [submodule "primary/primary/Libraries/zenoh-pico"]
-	path = primary/Libraries/zenoh-pico
+	path = primary/libraries/zenoh-pico
 	url = https://github.com/eclipse-zenoh/zenoh-pico
     branch = main
 [submodule "primary/primary/Libraries/phy-drivers"]
-	path = primary/Libraries/phy-drivers
+	path = primary/libraries/phy-drivers
 	url = https://github.com/ben5049/phy-drivers
     branch = main
 [submodule "primary/primary/Libraries/nanopb"]
-	path = primary/Libraries/nanopb
+	path = primary/libraries/nanopb
 	url = https://github.com/nanopb/nanopb
     branch = master
 [submodule "primary/primary/Libraries/fram"]
-	path = primary/Libraries/fram
+	path = primary/libraries/fram
 	url = https://github.com/ben5049/fram
     branch = main
