@@ -51,11 +51,32 @@ void HardFault_Handler(void);
 void MemManage_Handler(void);
 void BusFault_Handler(void);
 void UsageFault_Handler(void);
-void SVC_Handler(void);
 void DebugMon_Handler(void);
-void PendSV_Handler(void);
-void SysTick_Handler(void);
+void RAMCFG_IRQHandler(void);
+void FLASH_IRQHandler(void);
+void RCC_IRQHandler(void);
+void EXTI1_IRQHandler(void);
+void EXTI2_IRQHandler(void);
+void EXTI3_IRQHandler(void);
+void EXTI4_IRQHandler(void);
+void EXTI7_IRQHandler(void);
+void EXTI10_IRQHandler(void);
+void EXTI15_IRQHandler(void);
+void SAES_IRQHandler(void);
 void TIM6_IRQHandler(void);
+void SPI1_IRQHandler(void);
+void SPI2_IRQHandler(void);
+void UART4_IRQHandler(void);
+void ADC2_IRQHandler(void);
+void FPU_IRQHandler(void);
+void ICACHE_IRQHandler(void);
+void ETH_IRQHandler(void);
+void ETH_WKUP_IRQHandler(void);
+void DTS_IRQHandler(void);
+void RNG_IRQHandler(void);
+void AES_IRQHandler(void);
+void HASH_IRQHandler(void);
+void PKA_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */

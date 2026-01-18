@@ -69,6 +69,36 @@ void HAL_MspInit(void)
 
   /* System interrupt init*/
 
+  /* Peripheral interrupt init */
+  /* FLASH_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(FLASH_IRQn);
+  /* RCC_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(RCC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(RCC_IRQn);
+  /* FPU_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(FPU_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(FPU_IRQn);
+  /* ICACHE_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(ICACHE_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(ICACHE_IRQn);
+
+  /** Enable the VREF clock
+  */
+  __HAL_RCC_VREF_CLK_ENABLE();
+
+  /** Configure the internal voltage reference buffer voltage scale
+  */
+  HAL_SYSCFG_VREFBUF_VoltageScalingConfig(SYSCFG_VREFBUF_VOLTAGE_SCALE0);
+
+  /** Enable the Internal Voltage Reference buffer
+  */
+  HAL_SYSCFG_EnableVREFBUF();
+
+  /** Configure the internal voltage reference buffer high impedance mode
+  */
+  HAL_SYSCFG_VREFBUF_HighImpedanceConfig(SYSCFG_VREFBUF_HIGH_IMPEDANCE_DISABLE);
+
   /* USER CODE BEGIN MspInit 1 */
 
   /* USER CODE END MspInit 1 */
