@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.22)
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 # STM32CubeMX generated symbols (macros)
-set(MX_Defines_Syms 
-	NX_INCLUDE_USER_DEFINE_FILE 
-	TX_INCLUDE_USER_DEFINE_FILE 
-	TX_SINGLE_MODE_NON_SECURE=1 
-	TX_PORT_USE_BASEPRI 
-	TX_PORT_BASEPRI=16 
-	USE_HAL_DRIVER 
+set(MX_Defines_Syms
+	NX_INCLUDE_USER_DEFINE_FILE
+	TX_INCLUDE_USER_DEFINE_FILE
+	TX_SINGLE_MODE_NON_SECURE=1
+	TX_PORT_USE_BASEPRI
+	TX_PORT_BASEPRI=16
+	USE_HAL_DRIVER
 	STM32H573xx
     $<$<CONFIG:Debug>:DEBUG>
 )
@@ -790,10 +790,12 @@ set(MX_LINK_DIRS
 
 )
 # Project static libraries
-set(MX_LINK_LIBS 
+set(MX_LINK_LIBS
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    ThreadX	NetXDuo	
+    ThreadX
+	NetXDuo
+
 )
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)
