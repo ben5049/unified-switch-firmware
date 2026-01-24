@@ -1,0 +1,5 @@
+/home/ben/Documents/projects/GbE-TSN-Switch/Firmware/unified-switch-firmware/test/primary/CMakeFiles/primary_S.dir
+/home/ben/Documents/projects/GbE-TSN-Switch/Firmware/unified-switch-firmware/test/primary/CMakeFiles/STM32_Drivers.dir
+/home/ben/Documents/projects/GbE-TSN-Switch/Firmware/unified-switch-firmware/test/primary/CMakeFiles/ThreadX.dir
+/home/ben/Documents/projects/GbE-TSN-Switch/Firmware/unified-switch-firmware/test/primary/CMakeFiles/edit_cache.dir
+/home/ben/Documents/projects/GbE-TSN-Switch/Firmware/unified-switch-firmware/test/primary/CMakeFiles/rebuild_cache.dir

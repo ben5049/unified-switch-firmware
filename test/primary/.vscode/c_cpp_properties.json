@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "STM32_compile_commands.json",
+            "compileCommands": "${workspaceFolder}/compile_commands.json"
+        },
+        {
+            "name": "STM32_Secure",
+            "compileCommands": "${workspaceFolder}/Secure/build/compile_commands.json"
+        },
+        {
+            "name": "STM32_NonSecure",
+            "compileCommands": "${workspaceFolder}/NonSecure/build/compile_commands.json"
+        }
+    ]
+}

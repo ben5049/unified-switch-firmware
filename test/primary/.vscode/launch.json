@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "stlinkgdbtarget",
+            "request": "launch",
+            "name": "Debug TrustZone (Secure + Non-Secure)",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build", // From tasks.json
+            "imagesAndSymbols": [
+                {
+                    // Secure firmware (must be first)
+                    "imageFileName": "${workspaceFolder}/Secure/build/primary_S.elf",
+                    "loadSymbols": true,
+                    "loadFormat": "elf"
+                },
+                {
+                    // Non secure firmware (must be second)
+                    "imageFileName": "${workspaceFolder}/NonSecure/build/primary_NS.elf",
+                    "loadSymbols": true,
+                    "loadFormat": "elf"
+                }
+            ],
+            "runEntry": "main"
+        }
+    ]
+}
