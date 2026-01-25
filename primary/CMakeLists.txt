@@ -81,6 +81,7 @@ target_include_directories(stm32cubemx INTERFACE
 add_subdirectory(cmake/nanopb)
 add_subdirectory(libraries/phy-drivers)
 add_subdirectory(libraries/sja1105)
+add_subdirectory(libraries/logging)
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -203,4 +204,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     nanopb
     sja1105
     phy_drivers
+    logging
 )

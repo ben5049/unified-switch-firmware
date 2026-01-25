@@ -29,12 +29,20 @@
 #include "error.h"
 #include "rtc.h"
 
+
+// TODO: Move to config or generate from linker (preferred)
+#define LOG_BUFFER_SIZE (128 * 1024)
+
+
 uint8_t __attribute__((section(".LOG"))) log_buffer[LOG_BUFFER_SIZE];
 
 __ALIGN_BEGIN static uint8_t current_secure_firmware_hash[SHA256_SIZE] __ALIGN_END;
 __ALIGN_BEGIN static uint8_t other_secure_firmware_hash[SHA256_SIZE] __ALIGN_END;
 __ALIGN_BEGIN static uint8_t current_non_secure_firmware_hash[SHA256_SIZE] __ALIGN_END;
 __ALIGN_BEGIN static uint8_t other_non_secure_firmware_hash[SHA256_SIZE] __ALIGN_END;
+
+static log_handle_t hlog;
+
 
 void boot_main() {
 
@@ -75,7 +83,7 @@ void boot_main() {
     /* Enable logging */
     status = log_init(&hlog, log_buffer, LOG_BUFFER_SIZE);
     CHECK_STATUS_LOG(status);
-    LOG_INFO("Starting secure firmware\n");
+    LOG_INFO(&hlog, "Starting secure firmware\n");
 
 #ifdef DEBUG // TODO: remove?
     crash_recovery    = false;
