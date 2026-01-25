@@ -3,13 +3,36 @@
     "tasks": [
         {
             "label": "build",
-            "type": "shell",
+            "type": "cmake",
+            "command": "build",
+            "targets": [
+                "all"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "command": "cmake --build ${workspaceFolder}/build/Debug",
             "problemMatcher": "$gcc"
+        },
+        {
+            "label": "upload",
+            "type": "shell",
+            "group": "test",
+            "command": "STM32_Programmer_CLI",
+            "args": [
+                "-c",
+                "port=SWD",
+                "-w",
+                "${workspaceFolder}/Secure/build/primary_S.elf",
+                "-w",
+                "${workspaceFolder}/NonSecure/build/primary_NS.elf",
+                "-v",
+                "-rst"
+            ],
+            "problemMatcher": [],
+            "dependsOn": [
+                "build"
+            ]
         }
     ]
 }

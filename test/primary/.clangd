@@ -18,22 +18,6 @@ CompileFlags:
   Add:
   - '-ferror-limit=0'
   - '-Wno-implicit-int'
-  CompilationDatabase: Secure/build
-Diagnostics:
-  Suppress:
-  - unused-includes
-  - unknown_typename
-  - unknown_typename_suggest
-  - typename_requires_specqual
-If:
-  PathMatch: Secure/.*
-
----
-
-CompileFlags:
-  Add:
-  - '-ferror-limit=0'
-  - '-Wno-implicit-int'
   CompilationDatabase: NonSecure/build
 Diagnostics:
   Suppress:
@@ -43,3 +27,19 @@ Diagnostics:
   - typename_requires_specqual
 If:
   PathMatch: NonSecure/.*
+
+---
+
+CompileFlags:
+  Add:
+  - '-ferror-limit=0'
+  - '-Wno-implicit-int'
+  CompilationDatabase: Secure/build
+Diagnostics:
+  Suppress:
+  - unused-includes
+  - unknown_typename
+  - unknown_typename_suggest
+  - typename_requires_specqual
+If:
+  PathMatch: Secure/.*

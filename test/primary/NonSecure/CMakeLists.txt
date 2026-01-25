@@ -39,9 +39,44 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Include mx-generated
 include("mx-generated.cmake")
 
-
 # In order to use CMake for cross-compiling
 set(CMAKE_CXX_COMPILER_FORCED "true")
+
+
+# Turn the environment variable to a cmake variable
+if(DEFINED ENV{HW_VERSION})
+    set(HW_VERSION "$ENV{HW_VERSION}" CACHE STRING "Hardware Revision" FORCE)
+endif()
+
+# Default to v4 if not specified
+if(NOT HW_VERSION)
+    set(HW_VERSION "4" CACHE STRING "Hardware Revision: 4 or 5")
+endif()
+
+message(STATUS "Configuring for switch hardware version: v${HW_VERSION}")
+
+if(HW_VERSION STREQUAL "4")
+    # Set the macro for code: #ifdef HW_V4
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_V4)
+
+    # # Add v4 specific files if needed
+    # target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    #     src/hardware_v4_init.c
+    # )
+
+elseif(HW_VERSION STREQUAL "5")
+    # Set the macro for code: #ifdef HW_V5
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_V5)
+
+    # # Add v5 specific files if needed
+    # target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    #     src/hardware_v5_init.c
+    # )
+else()
+    message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
+endif()
+
+
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
@@ -78,5 +113,3 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 if((CMAKE_C_STANDARD EQUAL 90) OR (CMAKE_C_STANDARD EQUAL 99))
     message(ERROR "Generated code requires C11 or higher")
 endif()
-
-cmake_minimum_required(VERSION 3.22)

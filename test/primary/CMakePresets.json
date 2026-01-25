@@ -6,12 +6,14 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/${presetName}",
-		    "toolchainFile": "${sourceDir}/gcc-arm-none-eabi.cmake",
+            "toolchainFile": "${sourceDir}/gcc-arm-none-eabi.cmake",
             "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
             }
         },
         {
             "name": "Debug",
+            "hidden": true,
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
@@ -19,20 +21,43 @@
         },
         {
             "name": "Release",
+            "hidden": true,
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "switch-v4-debug",
+            "description": "Build for switch v4 hardware with debug symbols",
+            "displayName": "switch-v4-debug",
+            "inherits": [
+                "Debug"
+            ],
+            "environment": {
+                "HW_VERSION": "4"
+            }
+        },
+        {
+            "name": "switch-v5-debug",
+            "description": "Build for switch v5 hardware with debug symbols",
+            "displayName": "switch-v5-debug",
+            "inherits": [
+                "Debug"
+            ],
+            "environment": {
+                "HW_VERSION": "5"
             }
         }
     ],
     "buildPresets": [
         {
-            "name": "Debug",
-            "configurePreset": "Debug"
+            "name": "switch-v4-debug",
+            "configurePreset": "switch-v4-debug"
         },
         {
-            "name": "Release",
-            "configurePreset": "Release"
+            "name": "switch-v5-debug",
+            "configurePreset": "switch-v5-debug"
         }
     ]
 }
