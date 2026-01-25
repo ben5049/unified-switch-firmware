@@ -1,7 +1,0 @@
-{
-  "device": "STM32H573IIK3Q",
-  "core": "Cortex-M33",
-  "order": 0,
-  "tz": "Secure",
-  "toolchain": "GCC"
-}

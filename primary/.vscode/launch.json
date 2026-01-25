@@ -1,22 +1,28 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
             "type": "stlinkgdbtarget",
             "request": "launch",
-            "name": "STM32Cube: STM32 Launch ST-Link GDB Server",
-            "origin": "snippet",
+            "name": "Debug TrustZone (Secure + Non-Secure)",
             "cwd": "${workspaceFolder}",
-            "preBuild": "${command:st-stm32-ide-debug-launch.build}",
-            "runEntry": "main",
+            "deviceCore": "Cortex-M33",
+            "preLaunchTask": "build", // From tasks.json
             "imagesAndSymbols": [
                 {
-                    "imageFileName": "${command:st-stm32-ide-debug-launch.get-projects-binary-from-context1}"
+                    // Secure firmware (must be first)
+                    "imageFileName": "${workspaceFolder}/Secure/build/primary_S.elf",
+                    "loadSymbols": true,
+                    "loadFormat": "elf"
+                },
+                {
+                    // Non secure firmware (must be second)
+                    "imageFileName": "${workspaceFolder}/NonSecure/build/primary_NS.elf",
+                    "loadSymbols": true,
+                    "loadFormat": "elf"
                 }
-            ]
+            ],
+            "runEntry": "main"
         }
     ]
 }
