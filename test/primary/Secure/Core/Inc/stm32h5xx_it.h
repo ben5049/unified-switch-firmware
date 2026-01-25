@@ -60,7 +60,6 @@ void RAMCFG_IRQHandler(void);
 void FLASH_S_IRQHandler(void);
 void GTZC_IRQHandler(void);
 void RCC_S_IRQHandler(void);
-void GPDMA1_Channel0_IRQHandler(void);
 void SAES_IRQHandler(void);
 void TIM2_IRQHandler(void);
 void SPI1_IRQHandler(void);

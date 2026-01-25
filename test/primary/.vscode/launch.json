@@ -6,6 +6,7 @@
             "request": "launch",
             "name": "Debug TrustZone (Secure + Non-Secure)",
             "cwd": "${workspaceFolder}",
+            "deviceCore": "Cortex-M33",
             "preLaunchTask": "build", // From tasks.json
             "imagesAndSymbols": [
                 {

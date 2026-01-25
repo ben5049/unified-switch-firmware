@@ -42,7 +42,6 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/crc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/dts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/eth.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/gpdma.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/gtzc_ns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/rtc.c

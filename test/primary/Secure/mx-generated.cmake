@@ -24,7 +24,6 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/gpio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/flash.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/gpdma.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/gtzc_s.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/hash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/pka.c
