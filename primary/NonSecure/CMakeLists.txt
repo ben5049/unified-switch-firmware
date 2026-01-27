@@ -1,3 +1,7 @@
+###############################################################
+#                        Project Setup                        #
+###############################################################
+
 cmake_minimum_required(VERSION 3.22)
 
 #
@@ -33,32 +37,61 @@ set(STM32_LINKER_OPTION  )
 set(CMAKE_PROJECT_NAME primary_NS)
 project(${CMAKE_PROJECT_NAME})
 
+# Enable CMake support for ASM and C languages
+enable_language(C ASM)
+
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
-
-# Include mx-generated
-include("mx-generated.cmake")
 
 # In order to use CMake for cross-compiling
 set(CMAKE_CXX_COMPILER_FORCED "true")
 
+# Include mx-generated
+include("mx-generated.cmake")
 
+###############################################################
+#                          Platform                           #
+###############################################################
 
-# Turn the environment variable to a cmake variable
+# Turn the PLATFORM environment variable into a cmake variable
+if(DEFINED ENV{PLATFORM})
+    set(PLATFORM "$ENV{PLATFORM}" CACHE STRING "Platform" FORCE)
+endif()
+if(NOT PLATFORM)
+    message(FATAL_ERROR "No PLATFORM found in environment")
+endif()
+
+# Include mx-generated.cmake
+if(NOT PLATFORM STREQUAL "switch")
+    message(FATAL_ERROR "Invalid PLATFORM: ${PLATFORM}")
+endif()
+
+# Pass it to the program
+string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    PLATFORM="${PLATFORM}"
+    PLATFORM_${PLATFORM_UPPER}
+)
+
+###############################################################
+#                      Hardware Revision                      #
+###############################################################
+
+# Turn the environment variable into a cmake variable
 if(DEFINED ENV{HW_VERSION})
     set(HW_VERSION "$ENV{HW_VERSION}" CACHE STRING "Hardware Revision" FORCE)
 endif()
-
-# Default to v4 if not specified
 if(NOT HW_VERSION)
-    set(HW_VERSION "4" CACHE STRING "Hardware Revision: 4 or 5")
+    message(FATAL_ERROR "No HW_VERSION found in environment")
 endif()
+message(STATUS "Configuring for hardware: ${PLATFORM} v${HW_VERSION}")
 
-message(STATUS "Configuring for switch hardware version: v${HW_VERSION}")
+# Convert the hardware version to an integer and pass it to the program
+math(EXPR HW_VERSION_INT "${HW_VERSION}")
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_VERSION=${HW_VERSION_INT})
 
+# Apply version specific settings
 if(HW_VERSION STREQUAL "4")
-    # Set the macro for code: #ifdef HW_V4
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_V4)
 
     # # Add v4 specific files if needed
     # target_sources(${CMAKE_PROJECT_NAME} PRIVATE
@@ -66,47 +99,104 @@ if(HW_VERSION STREQUAL "4")
     # )
 
 elseif(HW_VERSION STREQUAL "5")
-    # Set the macro for code: #ifdef HW_V5
-    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_V5)
 
     # # Add v5 specific files if needed
     # target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     #     src/hardware_v5_init.c
     # )
+
 else()
     message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
 endif()
 
+###############################################################
+#                   Library Subdirectories                    #
+###############################################################
 
-
-# Add project symbols (macros)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
-    TX_THREAD_SECURE_STACK_MAXIMUM=4096
-)
-
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
-
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
-)
-
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-)
+# Add library subdirectories
+add_subdirectory(ports/nanopb)
+add_subdirectory(libraries/phy-drivers)
+add_subdirectory(libraries/sja1105)
+add_subdirectory(libraries/logging)
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
-# Add linked libraries
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined libraries
+###############################################################
+#                           Sources                           #
+###############################################################
+
+# Add sources to executable
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user sources here
 )
+
+###############################################################
+#                           Includes                          #
+###############################################################
+
+# Add include paths
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user defined include paths
+
+    # Bootloader (needed for secure_nsc.h)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Secure
+
+    # Application
+    application/inc
+    application/inc/comms
+    application/inc/hal
+    application/inc/nx_app
+    application/inc/phy
+    application/inc/protobuf
+    application/inc/protobuf/generated
+    application/inc/ptp
+    application/inc/stp
+    application/inc/switch
+
+    # Ports
+    ports/zenoh-pico/inc
+    libraries/zenoh-pico/include
+
+    # Libraries (TODO: Covert to standalone)
+    libraries/fram/inc
+)
+
+###############################################################
+#                            Macros                           #
+###############################################################
+
+# Add project symbols (macros)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user defined symbols
+
+    HAL_ETH_USE_PTP
+    TX_THREAD_SECURE_STACK_MAXIMUM=4096
+
+    ZENOH_GENERIC
+    Z_FEATURE_UNSTABLE_API
+)
+
+###############################################################
+#                       Library Linking                       #
+###############################################################
+
+# Add linked libraries
+target_link_libraries(${CMAKE_PROJECT_NAME}
+    stm32cubemx
+
+    # Add user defined libraries
+    nanopb
+    sja1105
+    phy_drivers
+    logging
+)
+
+###############################################################
+#                      Finishing Touches                      #
+###############################################################
 
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
