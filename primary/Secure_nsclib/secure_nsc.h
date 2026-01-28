@@ -22,3 +22,4 @@
 /* This is just a wrapper, the actual NSC files are in the secure bootloader */
 #include "bootloader/inc/secure_nsc.h"
 /* USER CODE END Non_Secure_CallLib_h */
+
