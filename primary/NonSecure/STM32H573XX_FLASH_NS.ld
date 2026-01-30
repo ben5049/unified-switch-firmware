@@ -274,7 +274,7 @@ KEEP (*(.FLASH2))
 . = ALIGN(4);
 } >FLASH2
 
-.LOG :
+.LOG (NOLOAD):
 {. = ALIGN(4);
 KEEP (*(.LOG))
 . = ALIGN(4);
