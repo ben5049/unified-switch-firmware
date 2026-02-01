@@ -10,8 +10,6 @@
 
 #include "background_thread.h"
 #include "utils.h"
-#include "metadata.h"
-#include "error.h"
 #include "secure_nsc.h"
 #include "config.h"
 

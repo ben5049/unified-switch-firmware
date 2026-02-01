@@ -46,9 +46,6 @@ add_executable(${CMAKE_PROJECT_NAME})
 # In order to use CMake for cross-compiling
 set(CMAKE_CXX_COMPILER_FORCED "true")
 
-# Include mx-generated
-include("mx-generated.cmake")
-
 ###############################################################
 #                          Platform                           #
 ###############################################################
@@ -59,11 +56,6 @@ if(DEFINED ENV{PLATFORM})
 endif()
 if(NOT PLATFORM)
     message(FATAL_ERROR "No PLATFORM found in environment")
-endif()
-
-# Include mx-generated.cmake
-if(NOT PLATFORM STREQUAL "switch")
-    message(FATAL_ERROR "Invalid PLATFORM: ${PLATFORM}")
 endif()
 
 # Pass it to the program
@@ -110,6 +102,46 @@ else()
 endif()
 
 ###############################################################
+#                         STM32CubeMX                         #
+###############################################################
+
+# Include mx-generated
+include("mx-generated.cmake")
+
+# Remove sources added in stm32cubemx
+get_target_property(APP_SRCS ${CMAKE_PROJECT_NAME} SOURCES)
+list(FILTER APP_SRCS EXCLUDE REGEX "nx_stm32_phy_custom_driver\\.c$")
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES SOURCES "${APP_SRCS}")
+
+# Remove NetXDuo source files
+get_target_property(NETX_SRCS NetXDuo SOURCES)
+list(FILTER NETX_SRCS EXCLUDE REGEX "nx_stm32_eth_driver\\.c$")
+set_target_properties(NetXDuo PROPERTIES SOURCES "${NETX_SRCS}")
+
+# Add NetXDuo source files
+target_sources(NetXDuo PRIVATE
+    ../Middlewares/ST/netxduo/addons/ptp/nxd_ptp_client.c
+)
+
+# Add STM32CubeMX source files
+target_sources(stm32cubemx PRIVATE
+
+    # This used to be in NetXDuo but has a dependency on the rest of the application
+    application/src/nx_app/nx_stm32_eth_driver.c
+)
+
+# Add STM32CubeMX includes
+target_include_directories(stm32cubemx INTERFACE
+    ../Middlewares/ST/netxduo/addons/ptp
+    application/inc/hal
+)
+
+# Add STM32CubeMX symbols (macros)
+target_compile_definitions(stm32cubemx INTERFACE
+    HAL_ETH_USE_PTP
+)
+
+###############################################################
 #                   Library Subdirectories                    #
 ###############################################################
 
@@ -128,9 +160,41 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 #                           Sources                           #
 ###############################################################
 
+# Collect application sources
+file(GLOB_RECURSE APPLICATION_SOURCES
+    application/src/*.c
+)
+
+# Collect Zenoh Pico sources
+file(GLOB_RECURSE ZENOH_VENDOR_SOURCES
+    libraries/zenoh-pico/src/*.c
+)
+set(ZENOH_FILTERED)
+foreach(src_file IN LISTS ZENOH_VENDOR_SOURCES)
+    # Keep if NOT under src/system or is under src/system/common
+    string(FIND "${src_file}" "/system/" pos_system)
+    string(FIND "${src_file}" "/system/common/" pos_common)
+    if(pos_system EQUAL -1 OR pos_common GREATER -1)
+        list(APPEND ZENOH_FILTERED "${src_file}")
+    endif()
+endforeach()
+set(ZENOH_SOURCES
+    ${ZENOH_FILTERED}
+    ports/zenoh-pico/src/network.c
+    ports/zenoh-pico/src/system.c
+    ports/zenoh-pico/src/tcp.c
+    ports/zenoh-pico/src/udp.c
+)
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+
+    # Application
+    ${APPLICATION_SOURCES}
+
+    # Ports
+    ${ZENOH_SOURCES}
 )
 
 ###############################################################
@@ -159,9 +223,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Ports
     ports/zenoh-pico/inc
     libraries/zenoh-pico/include
-
-    # Libraries (TODO: Covert to standalone)
-    libraries/fram/inc
 )
 
 ###############################################################

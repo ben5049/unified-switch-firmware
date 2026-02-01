@@ -26,7 +26,7 @@ uint32_t        sja1105_static_conf_size;
 
 sja1105_status_t switch_init(sja1105_handle_t *dev) {
 
-    sja1105_status_t status;
+    sja1105_status_t status = SJA1105_OK;
     sja1105_port_t   port_config;
 
     /* Reset switch handles */

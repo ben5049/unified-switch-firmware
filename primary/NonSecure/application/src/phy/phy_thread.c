@@ -35,22 +35,25 @@ void phy_thread_entry(uint32_t initial_input) {
 
     UNUSED(cable_state); // TODO: Use
 
+    /* Initialise structs */
     memset((bool *) &phy_temperatures_valid, 0, sizeof(phy_temperatures_valid));
+
+    LOG_INFO("Starting PHY thread");
 
     /* Initialise PHYs */
     phy_status = phys_init();
     if (phy_status != PHY_OK) Error_Handler();
 
-    /* Check if any links are up (also call the corresponding callback which is needed because the link can go up before the interrupt is enabled) */
-    phy_status = PHY_88Q211X_GetLinkState(&hphy1, &link_up);
+    /* Check if any links are up (this calls the corresponding link state change callback which is needed because the link can go up before the interrupt is enabled) */
+    phy_status = PHY_88Q211X_GetLinkState(&hphy1, NULL);
     if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy2, &link_up);
+    phy_status = PHY_88Q211X_GetLinkState(&hphy2, NULL);
     if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy3, &link_up);
+    phy_status = PHY_88Q211X_GetLinkState(&hphy3, NULL);
     if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy4, &link_up);
+    phy_status = PHY_88Q211X_GetLinkState(&hphy4, NULL);
     if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy5, &link_up);
+    phy_status = PHY_88Q211X_GetLinkState(&hphy5, NULL);
     if (phy_status != PHY_OK) Error_Handler();
 
     /* Setup timing control variables (done in ms) */

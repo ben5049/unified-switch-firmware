@@ -31,7 +31,7 @@ phy_status_t phys_init() {
 
     phy_status_t status = PHY_OK;
 
-    /* Reset PHY handles */
+    /* Reset shared structs */
     memset(&hphy0, 0, sizeof(phy_handle_dp83867_t));
     memset(&hphy1, 0, sizeof(phy_handle_88q211x_t));
     memset(&hphy2, 0, sizeof(phy_handle_88q211x_t));
@@ -117,16 +117,16 @@ phy_status_t phys_init() {
 
     /* Hardware reset all PHYs (TODO: Reduce times) */
     tx_thread_sleep_ms(10);
-    HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, RESET);
+    HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_RESET);
     tx_thread_sleep_ms(10); /* 10ms required by 88Q2112 */
-    HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, SET);
+    HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_SET);
     tx_thread_sleep_ms(10);
 
     /* Initialise all PHYs, setting the callback context to the port number */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], (void *) i);
         if (status != PHY_OK) {
-            ns_log_write("Failed to initialise PHY %d", i);
+            LOG_ERROR("Failed to initialise PHY %d", i);
             Error_Handler();
         }
     }

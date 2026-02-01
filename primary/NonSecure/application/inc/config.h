@@ -27,7 +27,16 @@ extern "C" {
 /* Common Config */
 /* ---------------------------------------------------------------------------- */
 
-#define LOGGING_STACK_SIZE (1024) /* Any thread that calls secure logging functions should allocate this ammount of secure stack */
+#define DEFAULT_SECURE_STACK_SIZE (1024) /* Any thread that calls secure functions should allocate this ammount of secure stack */
+
+/* ---------------------------------------------------------------------------- */
+/* Logging Config */
+/* ---------------------------------------------------------------------------- */
+
+#define NUM_LOGGERS     (7)
+#define LOG_BASE        (SRAM1_BASE_NS)
+#define LOG_BUFFER_SIZE (128 * 1024) /* Same size in Secure */ // TODO: generate from linker
+#define LOG_TIMEOUT     (100)                                  /* ms */
 
 /* ---------------------------------------------------------------------------- */
 /* State Machine Config */

@@ -24,10 +24,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "assert.h"
 #include "stdbool.h"
-#include <stdint.h>
-
+#include "stdint.h"
+#include "app_setup.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,7 +94,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
-    while (1);
+    app_setup();
   /* USER CODE END 2 */
 
   MX_ThreadX_Init();

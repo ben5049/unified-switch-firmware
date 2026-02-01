@@ -5,14 +5,19 @@
  *      Author: bens1
  */
 
+#include "stdatomic.h"
+#include "stdarg.h"
+
 #include "tx_api.h"
 #include "hal.h"
 
 #include "main.h"
+#include "app_setup.h"
+#include "logging.h"
+#include "utils.h"
 #include "switch_thread.h"
 #include "switch_callbacks.h"
 #include "sja1105.h"
-#include "utils.h"
 #include "sja1105q_default_conf.h"
 
 
@@ -23,11 +28,12 @@ static TX_BYTE_POOL switch0_byte_pool, switch1_byte_pool;
 
 /* Small state machine to check CRC calculations aren't interrupted */
 #ifdef DEBUG
-volatile enum crc_owner_e {
+typedef enum {
     CRC_OWNER_SW0 = SWITCH0,
     CRC_OWNER_SW1 = SWITCH1,
     CRC_OWNER_NONE
-} crc_owner = CRC_OWNER_NONE;
+} crc_owner_t;
+_Atomic(crc_owner_t) crc_owner = CRC_OWNER_NONE;
 #endif
 
 
@@ -270,7 +276,7 @@ static sja1105_status_t sja1105_crc_reset(void *context) {
     SWCH_CRC.Instance->POL  = 0x04c11db7;
 
 #ifdef DEBUG
-    crc_owner = CRC_OWNER_NONE;
+    atomic_store_explicit(&crc_owner, CRC_OWNER_NONE, memory_order_release);
 #endif
 
     return status;
@@ -283,13 +289,14 @@ static sja1105_status_t sja1105_crc_accumulate(const uint32_t *buffer, uint32_t 
 
     /* Make sure the other switch isn't using the CRC */
 #ifdef DEBUG
-    if (((switch_num == SWITCH0) && (crc_owner == CRC_OWNER_SW1)) ||
-        ((switch_num == SWITCH1) && (crc_owner == CRC_OWNER_SW0))) {
+    crc_owner_t crc_owner_local = atomic_load_explicit(&crc_owner, memory_order_acquire);
+    if (((switch_num == SWITCH0) && (crc_owner_local == CRC_OWNER_SW1)) ||
+        ((switch_num == SWITCH1) && (crc_owner_local == CRC_OWNER_SW0))) {
         status = SJA1105_CRC_ERROR;
-        ns_log_write("Switch %d attempted CRC accumulation without CRC ownership", (uint8_t) switch_num);
+        LOG_ERROR("Switch %d attempted CRC accumulation without CRC ownership", (uint8_t) switch_num);
         return status;
     } else {
-        crc_owner = switch_num;
+        atomic_store_explicit(&crc_owner, switch_num, memory_order_release);
     }
 #endif
 
@@ -314,5 +321,5 @@ const sja1105_callbacks_t sja1105_callbacks = {
     .callback_free_all             = &sja1105_free_all,
     .callback_crc_reset            = &sja1105_crc_reset,
     .callback_crc_accumulate       = &sja1105_crc_accumulate,
-    .callback_write_log            = &ns_log_write,
+    .callback_write_log            = &log_info,
 };

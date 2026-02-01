@@ -9,6 +9,7 @@
 
 #include "utils.h"
 #include "config.h"
+#include "app_setup.h"
 #include "sja1105.h"
 #include "secure_nsc.h"
 
@@ -57,21 +58,64 @@ void delay_ns(uint32_t ns) {
 
 void set_3v3_regulator_to_FPWM() {
     __disable_irq();
-    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, RESET);
+    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, GPIO_PIN_RESET);
     delay_ns(500);
-    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, SET);
+    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, GPIO_PIN_SET);
     delay_ns(500);
-    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, RESET);
+    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, GPIO_PIN_RESET);
     delay_ns(500);
-    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, SET);
+    HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, GPIO_PIN_SET);
     __enable_irq();
 }
 
 
-/* This function can only be called by threads with a secure stack allocated, or before the scheduler starts */
-void ns_log_write(const char* format, ...) {
+/* Get the appropriate logger handle */
+log_handle_t* get_logger() {
+    TX_THREAD*    thread_ptr    = tx_thread_identify();
+    log_handle_t* logger_handle = NULL;
+
+    /* Not in a thread */
+    if (thread_ptr == TX_NULL) {
+
+        /* Kernel not started */
+        if (_tx_thread_system_state != TX_INITIALIZE_IS_FINISHED) {
+            logger_handle = &hlog_setup;
+        }
+
+        /* In an ISR */
+        else {
+            logger_handle = &hlog_generic;
+        }
+    }
+
+    /* In a thread */
+    else {
+
+        /* User created thread. Note: we can't trust thread_ptr->logger isn't from uninitialised memory */
+        for (uint_fast8_t i = 0; (logger_handle == NULL) && (i < NUM_LOGGERS); i++) {
+            if (thread_ptr->logger == loggers[i]) logger_handle = thread_ptr->logger;
+        }
+
+        /* System created thread */
+        if (logger_handle == NULL) {
+            logger_handle = &hlog_system;
+        }
+    }
+    return logger_handle;
+}
+
+/* This function writes a log.
+   Note: It is not preferred since it cannot estimate the log size (max 128 bytes) and is always
+         LOG_TYPE_INFO. LOG_x() Macros should be used instead where possible.  */
+void log_info(const char* format, ...) {
+
+    log_status_t status = LOGGING_OK;
+
     va_list args;
     va_start(args, format);
-    s_log_vwrite(format, args);
+
+    status = log_vwrite(get_logger(), LOG_TYPE_INFO, 128, format, args);
+    if (status != LOGGING_OK) Error_Handler();
+
     va_end(args);
 }

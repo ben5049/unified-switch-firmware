@@ -20,6 +20,7 @@
 #include "config.h"
 #include "tx_app.h"
 #include "comms_thread.h"
+#include "app_setup.h"
 
 
 /*------------------ Random ------------------*/
@@ -79,11 +80,19 @@ z_result_t _z_task_init(_z_task_t *task, z_task_attr_t *attr, void *(*fun)(void 
     tx_status_t tx_status = TX_SUCCESS;
 
     /* Create the thread */
-    tx_status = tx_thread_create(&task->threadx_thread, "ztask", (VOID (*)(ULONG)) fun, (ULONG) arg,
+    tx_status = tx_thread_create(&(task->threadx_thread), "ztask", (VOID(*)(ULONG)) fun, (ULONG) arg,
                                  task->threadx_stack, Z_TASK_STACK_SIZE, Z_TASK_PRIORITY, Z_TASK_PREEMPT_THRESHOLD,
-                                 Z_TASK_TIME_SLICE, TX_AUTO_START);
+                                 Z_TASK_TIME_SLICE, TX_DONT_START);
+    if (tx_status != TX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        return z_status;
+    }
 
-    /* Check for failure */
+    /* Assign the logger */
+    task->threadx_thread.logger = &hlog_comms;
+
+    /* Start the thread */
+    tx_status = tx_thread_resume(&(task->threadx_thread));
     if (tx_status != TX_SUCCESS) {
         z_status = _Z_ERR_GENERIC;
         return z_status;

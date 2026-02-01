@@ -85,7 +85,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
     /* Attempt to load and restore the DHCP record */
     NX_DHCP_CLIENT_RECORD dhcp_record;
     uint32_t              dhcp_record_next_save_time = 0;
-    s_load_dhcp_client_record(&dhcp_record);
+    s_load_dhcp_client_record((s_dhcp_client_record_t *) &dhcp_record);
     if (dhcp_record.nx_dhcp_state != NX_DHCP_STATE_NOT_STARTED) {
         nx_status = nx_dhcp_client_restore_record(&dhcp_client, &dhcp_record, 0); /* TODO: Set time elapsed based on RTC while asleep */
         if (nx_status != NX_SUCCESS) Error_Handler();
@@ -106,7 +106,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
             if (linkdown) {
 
                 /* Send request to enable our MAC */
-                nx_status = nx_ip_driver_direct_command(&nx_ip_instance, NX_LINK_ENABLE, &actual_status);
+                nx_status = nx_ip_driver_direct_command(&nx_ip_instance, NX_LINK_ENABLE, (ULONG *) &actual_status);
                 if ((nx_status != NX_SUCCESS) && (nx_status != NX_ALREADY_ENABLED)) Error_Handler();
 
                 /* Notify the state machine that the link is up */
@@ -139,7 +139,6 @@ void nx_link_thread_entry(uint32_t thread_input) {
 
                 linkdown = false;
             }
-
         }
 
         /* The link is down */
@@ -156,7 +155,6 @@ void nx_link_thread_entry(uint32_t thread_input) {
 
                 linkdown = true;
             }
-
         }
 
         /* An error occured */
@@ -170,7 +168,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
             dhcp_record_next_save_time = current_time + DHCP_RECORD_SAVE_INTERVAL;
             nx_status                  = nx_dhcp_client_get_record(&dhcp_client, &dhcp_record);
             if (nx_status == NX_SUCCESS) {
-                s_save_dhcp_client_record(&dhcp_record);
+                s_save_dhcp_client_record((s_dhcp_client_record_t *) &dhcp_record);
             } else if ((nx_status != NX_DHCP_NO_INTERFACES_STARTED) && (nx_status != NX_DHCP_NO_INTERFACES_ENABLED)) {
                 Error_Handler();
             }

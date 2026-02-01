@@ -1,21 +1,22 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file    eth.c
-  * @brief   This file provides code for the configuration
-  *          of the ETH instances.
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    eth.c
+ * @brief   This file provides code for the configuration
+ *          of the ETH instances.
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
+#include "utils.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "eth.h"
@@ -25,7 +26,8 @@ ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptor
 ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
 
 /* USER CODE BEGIN 0 */
-
+__attribute__((section(".ETH"))) ETH_DMADescTypeDef CustomDMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
+__attribute__((section(".ETH"))) ETH_DMADescTypeDef CustomDMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
 /* USER CODE END 0 */
 
 ETH_HandleTypeDef heth;
@@ -57,7 +59,9 @@ void MX_ETH_Init(void)
   heth.Init.RxBuffLen = 1524;
 
   /* USER CODE BEGIN MACADDRESS */
-
+    write_mac_addr(MACAddr);
+    heth.Init.TxDesc = CustomDMATxDscrTab;
+    heth.Init.RxDesc = CustomDMARxDscrTab;
   /* USER CODE END MACADDRESS */
 
   if (HAL_ETH_Init(&heth) != HAL_OK)

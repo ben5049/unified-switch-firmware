@@ -5,6 +5,7 @@
  *      Author: bens1
  */
 
+#include "logging.h"
 #include "stdint.h"
 #include "stdatomic.h"
 #include "main.h"
@@ -37,6 +38,8 @@ void switch_thread_entry(uint32_t initial_input) {
 
     switch_temperature       = 0.0;
     switch_temperature_valid = false;
+
+    LOG_INFO("Starting switch thread");
 
     status = init_switch_diagnostics();
     if (status != SJA1105_OK) Error_Handler();

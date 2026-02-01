@@ -256,7 +256,7 @@ const phy_callbacks_t phy_callbacks_88q2112 = {
     .callback_take_mutex    = &phy_callback_take_mutex,
     .callback_give_mutex    = &phy_callback_give_mutex,
     .callback_event         = &phy_callback_event,
-    .callback_write_log     = &ns_log_write,
+    .callback_write_log     = &log_info,
 };
 
 const phy_callbacks_t phy_callbacks_lan8671 = {
@@ -269,7 +269,7 @@ const phy_callbacks_t phy_callbacks_lan8671 = {
     .callback_delay_ns      = &phy_callback_delay_ns,
     .callback_take_mutex    = &phy_callback_take_mutex,
     .callback_give_mutex    = &phy_callback_give_mutex,
-    .callback_write_log     = &ns_log_write,
+    .callback_write_log     = &log_info,
 };
 
 const phy_callbacks_t phy_callbacks_dp83867 = {
@@ -282,7 +282,7 @@ const phy_callbacks_t phy_callbacks_dp83867 = {
     .callback_delay_ns      = &phy_callback_delay_ns,
     .callback_take_mutex    = &phy_callback_take_mutex,
     .callback_give_mutex    = &phy_callback_give_mutex,
-    .callback_write_log     = &ns_log_write,
+    .callback_write_log     = &log_info,
 };
 
 

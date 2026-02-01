@@ -2,7 +2,7 @@
 
 ## Non-Secure
 
-Almost all code is contained in the Application and Libraries folders, however certain functions must interact with auto-generated code. This page lists all such scenarios so they can be reimplemented if lost due to re-auto-generation. 
+Almost all code is contained in the Application and Libraries folders, however certain functions must interact with auto-generated code. This page lists all such scenarios so they can be reimplemented if lost due to re-auto-generation.
 
 ### Set MAC address && Ethernet DMA Descriptors
 
@@ -13,8 +13,8 @@ Almost all code is contained in the Application and Libraries folders, however c
 ...
 
 /* USER CODE BEGIN 0 */
-__attribute__((section(".ETH_Section"))) ETH_DMADescTypeDef CustomDMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
-__attribute__((section(".ETH_Section"))) ETH_DMADescTypeDef CustomDMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
+__attribute__((section(".ETH"))) ETH_DMADescTypeDef CustomDMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
+__attribute__((section(".ETH"))) ETH_DMADescTypeDef CustomDMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
 /* USER CODE END 0 */
 
 void MX_ETH_Init(void) {

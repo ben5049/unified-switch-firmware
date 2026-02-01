@@ -147,7 +147,7 @@ void comms_thread_entry(uint32_t initial_input) {
         z_open_options_default(&opts);
 
         /* Start a session */
-        ns_log_write("Zenoh Pico: Attempting to open session\n");
+        LOG_INFO("Zenoh Pico: Attempting to open session");
         z_owned_session_t session;
         do {
 
@@ -165,7 +165,7 @@ void comms_thread_entry(uint32_t initial_input) {
             else if ((z_status == _Z_ERR_SCOUT_NO_RESULTS)                 /* Unable to find other Zenoh devices */
                      || (z_status == _Z_ERR_CONFIG_LOCATOR_SCHEMA_UNKNOWN) /* Can occur when the router is not configured with an incorrect transport or incorrect IP version (e.g. IPv6) */
             ) {
-                ns_log_write("Zenoh Pico: Failed to open session, error code %i\n", z_status);
+                LOG_ERROR("Failed to open session, error code %i", z_status);
                 failure_streak_valid = false;
                 goto retry;
             }
@@ -176,7 +176,7 @@ void comms_thread_entry(uint32_t initial_input) {
             ) {
                 failure_streak++;
                 failure_streak_valid = true;
-                ns_log_write("Zenoh Pico: Failed to open session (%lu), error code %i\n", failure_streak, z_status);
+                LOG_ERROR("Failed to open session (%lu), error code %i", failure_streak, z_status);
                 goto retry;
             }
 
@@ -187,7 +187,7 @@ void comms_thread_entry(uint32_t initial_input) {
 
         } while (z_status < Z_OK);
 
-        ns_log_write("Zenoh Pico: Session opened\n");
+        LOG_INFO("Session opened");
 
         /* Declare stats publisher */
         z_owned_keyexpr_t stats_pub_key;
@@ -222,7 +222,7 @@ void comms_thread_entry(uint32_t initial_input) {
         tx_status = zenoh_connected(true);
         if (tx_status != TX_SUCCESS) Error_Handler();
 
-        ns_log_write("Zenoh Pico: Entering main loop\n");
+        LOG_INFO("Entering main loop");
 
         /* Enter the main loop */
         session_open = !z_session_is_closed(z_loan(session));
@@ -239,7 +239,7 @@ void comms_thread_entry(uint32_t initial_input) {
                 (current_time > (heartbeat_consumer_timestamp + HEARTBEAT_MISS_TIMEOUT))) {
                 heartbeat_consumer_state = HEARTBEAT_MISSED;
                 zenoh_events.heartbeats_missed++;
-                ns_log_write("Zenoh Pico: Heartbeat missed\n");
+                LOG_ERROR("Heartbeat missed");
                 goto close;
             }
 
@@ -270,7 +270,7 @@ void comms_thread_entry(uint32_t initial_input) {
             uint32_t flags;
             tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR, &flags, HEARTBEAT_INTERVAL);
             if (tx_status == TX_SUCCESS) {
-                ns_log_write("Zenoh Pico: Received disconnect event\n");
+                LOG_INFO("Received disconnect event");
                 goto restart;
             } else if (tx_status != TX_NO_EVENTS) {
                 Error_Handler();
@@ -278,7 +278,7 @@ void comms_thread_entry(uint32_t initial_input) {
             session_open = !z_session_is_closed(z_loan(session));
         }
 
-        ns_log_write("Zenoh Pico: Session closed\n");
+        LOG_INFO("Session closed");
 
     /* Close the session gracefully */
     close:
@@ -316,7 +316,7 @@ void comms_thread_entry(uint32_t initial_input) {
         tx_status = tx_byte_pool_delete(&zenoh_byte_pool);
         if (tx_status != TX_SUCCESS) Error_Handler();
 
-        ns_log_write("Zenoh Pico: Terminated\n");
+        LOG_INFO("Terminated");
 
         /* Break after termination before restarting. If there are many back to back attempts then wait for any leases to expire */
         if (failure_streak && !(failure_streak % ZENOH_MAX_RETRIES_BEFORE_LONG_PAUSE) && failure_streak_valid) {

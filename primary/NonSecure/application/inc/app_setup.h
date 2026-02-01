@@ -13,7 +13,14 @@ extern "C" {
 #endif
 
 
+#include "logging.h"
+
+
 void app_setup(void);
+
+
+extern log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network;
+extern log_handle_t* loggers[];
 
 
 #ifdef __cplusplus

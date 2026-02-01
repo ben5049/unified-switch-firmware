@@ -16,7 +16,13 @@ extern "C" {
 #include "stdint.h"
 #include "stdbool.h"
 #include "stdarg.h"
+#include "assert.h"
+
 #include "tx_api.h"
+#include "tx_thread.h"
+#include "tx_initialize.h"
+
+#include "logging.h"
 
 
 /* Because of the multiply, care should be taken when putting large values into these functions (>4,000,000) to make sure the don't overflow */
@@ -26,6 +32,41 @@ extern "C" {
 #define MIN(a, b)                 ((a) < (b) ? (a) : (b))
 #define MAX(a, b)                 ((a) > (b) ? (a) : (b))
 #define CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
+
+
+#define LOG_INFO(format, ...)                                           \
+    ({                                                                  \
+        log_status_t _s = _LOG(LOG_TYPE_INFO, (format), ##__VA_ARGS__); \
+        if (_s != LOGGING_OK) Error_Handler();                          \
+        _s;                                                             \
+    })
+#define LOG_INFO_NO_CHECK(format, ...) _LOG(LOG_TYPE_INFO, (format), ##__VA_ARGS__)
+
+
+#define LOG_WARNING(format, ...)                                           \
+    ({                                                                     \
+        log_status_t _s = _LOG(LOG_TYPE_WARNING, (format), ##__VA_ARGS__); \
+        if (_s != LOGGING_OK) Error_Handler();                             \
+        _s;                                                                \
+    })
+#define LOG_WARNING_NO_CHECK(format, ...) _LOG(LOG_TYPE_WARNING, (format), ##__VA_ARGS__)
+
+
+#define LOG_ERROR(format, ...)                                           \
+    ({                                                                   \
+        log_status_t _s = _LOG(LOG_TYPE_ERROR, (format), ##__VA_ARGS__); \
+        if (_s != LOGGING_OK) Error_Handler();                           \
+        _s;                                                              \
+    })
+#define LOG_ERROR_NO_CHECK(format, ...) _LOG(LOG_TYPE_ERROR, (format), ##__VA_ARGS__)
+
+
+/* Get the thread's logger and write the message using it */
+#define _LOG(type, format, ...)                                                              \
+    ({                                                                                       \
+        log_write(get_logger(), (type), LOG_ESTIMATE_SIZE(format), (format), ##__VA_ARGS__); \
+    })
+
 
 void write_mac_addr(uint8_t* buf);
 bool compare_mac_addrs_with_mask(const uint8_t* addr1, const uint8_t* addr2, const uint8_t* mask);
@@ -37,7 +78,8 @@ void delay_ns(uint32_t ns);
 
 void set_3v3_regulator_to_FPWM(void);
 
-void ns_log_write(const char* format, ...);
+log_handle_t* get_logger(void);
+void          log_info(const char* format, ...);
 
 
 #ifdef __cplusplus
