@@ -11,17 +11,20 @@
 #include "switch_thread.h"
 #include "switch_callbacks.h"
 #include "sja1105.h"
-#include "sja1105q_default_conf.h"
 #include "utils.h"
+
+#if HW_VERSION == 4
+#include "swv4_sja1105_static_config_default.h"
+#elif HW_VERSION == 5
+#include "swv5_0_sja1105_static_config_default.h"
+#include "swv5_1_sja1105_static_config_default.h"
+#endif
 
 
 sja1105_handle_t        hsw0, hsw1;
 static sja1105_config_t sw0_conf, sw1_conf;
 static uint32_t         sw0_fixed_length_table_buffer[SJA1105_FIXED_BUFFER_SIZE] __ALIGNED(32);
 static uint32_t         sw1_fixed_length_table_buffer[SJA1105_FIXED_BUFFER_SIZE] __ALIGNED(32);
-
-const uint32_t *sja1105_static_conf;
-uint32_t        sja1105_static_conf_size;
 
 
 sja1105_status_t switch_init(sja1105_handle_t *dev) {
@@ -178,16 +181,17 @@ sja1105_status_t switch_init(sja1105_handle_t *dev) {
         if (status != SJA1105_OK) return status;
     }
 
-    /* Set the static config to the default */
-    sja1105_static_conf      = swv4_sja1105_static_config_default;
-    sja1105_static_conf_size = SWV4_SJA1105_STATIC_CONFIG_DEFAULT_SIZE;
-    Error_Handler(); // TODO: Get new default configs
+    /* Initialise the switches with the default config(s) */
+    #if HW_VERSION == 4
+    status = SJA1105_Init(&hsw0, &sw0_conf, &sja1105_callbacks, (void *) SWITCH0, sw0_fixed_length_table_buffer, swv4_sja1105_static_config_default, SWV4_SJA1105_STATIC_CONFIG_DEFAULT_SIZE);
+    if (status != SJA1105_OK) return status;
 
-    /* Initialise the switches */
-    status = SJA1105_Init(&hsw0, &sw0_conf, &sja1105_callbacks, (void *) SWITCH0, sw0_fixed_length_table_buffer, sja1105_static_conf, sja1105_static_conf_size);
+    #elif HW_VERSION == 5
+    status = SJA1105_Init(&hsw0, &sw0_conf, &sja1105_callbacks, (void *) SWITCH0, sw0_fixed_length_table_buffer, swv5_0_sja1105_static_config_default, SWV5_0_SJA1105_STATIC_CONFIG_DEFAULT_SIZE);
     if (status != SJA1105_OK) return status;
-    status = SJA1105_Init(&hsw1, &sw1_conf, &sja1105_callbacks, (void *) SWITCH1, sw1_fixed_length_table_buffer, sja1105_static_conf, sja1105_static_conf_size);
+    status = SJA1105_Init(&hsw1, &sw1_conf, &sja1105_callbacks, (void *) SWITCH1, sw1_fixed_length_table_buffer, swv5_1_sja1105_static_config_default, SWV5_1_SJA1105_STATIC_CONFIG_DEFAULT_SIZE);
     if (status != SJA1105_OK) return status;
+    #endif
 
     /* Set the speed of the dynamic ports. TODO: This should be after PHY auto-negotiaion */
     status = SJA1105_PortSetSpeed(&hsw1, SW1_PORT_PHY0_DP83867, SJA1105_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS));

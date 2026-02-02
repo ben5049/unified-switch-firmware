@@ -14,8 +14,14 @@
 #include "switch_callbacks.h"
 #include "switch_diagnostics.h"
 #include "sja1105.h"
-#include "sja1105q_default_conf.h"
 #include "utils.h"
+
+#if HW_VERSION == 4
+#include "swv4_sja1105_static_config_default.h"
+#elif HW_VERSION == 5
+#include "swv5_0_sja1105_static_config_default.h"
+#include "swv5_1_sja1105_static_config_default.h"
+#endif
 
 
 uint8_t   switch_thread_stack[SWITCH_THREAD_STACK_SIZE];

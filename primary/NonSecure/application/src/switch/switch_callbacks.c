@@ -18,7 +18,13 @@
 #include "switch_thread.h"
 #include "switch_callbacks.h"
 #include "sja1105.h"
-#include "sja1105q_default_conf.h"
+
+#if HW_VERSION == 4
+#include "swv4_sja1105_static_config_default.h"
+#elif HW_VERSION == 5
+#include "swv5_0_sja1105_static_config_default.h"
+#include "swv5_1_sja1105_static_config_default.h"
+#endif
 
 
 TX_MUTEX            sja1105_mutex_handle;

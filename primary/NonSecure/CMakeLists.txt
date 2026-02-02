@@ -219,6 +219,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     application/inc/ptp
     application/inc/stp
     application/inc/switch
+    application/inc/switch/v${HW_VERSION}_config
 
     # Ports
     ports/zenoh-pico/inc
