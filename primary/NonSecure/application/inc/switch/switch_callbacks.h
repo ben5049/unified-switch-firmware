@@ -20,8 +20,9 @@ extern "C" {
 #define SWCH_CRC   hcrc
 
 #define SWCH_POOL0 (1 << 0)
+#if HW_VERSION == 5
 #define SWCH_POOL1 (1 << 1)
-
+#endif
 
 /* Imported variables */
 extern SPI_HandleTypeDef SWCH_SPI;

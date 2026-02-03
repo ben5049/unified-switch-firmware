@@ -19,27 +19,26 @@
 #include "switch_callbacks.h"
 #include "sja1105.h"
 
-#if HW_VERSION == 4
-#include "swv4_sja1105_static_config_default.h"
-#elif HW_VERSION == 5
-#include "swv5_0_sja1105_static_config_default.h"
-#include "swv5_1_sja1105_static_config_default.h"
-#endif
-
 
 TX_MUTEX            sja1105_mutex_handle;
 static UCHAR        switch0_byte_pool_buffer[SWITCH_MEM_POOL_SIZE] __ALIGNED(32);
+static TX_BYTE_POOL switch0_byte_pool;
+#if HW_VERSION == 5
 static UCHAR        switch1_byte_pool_buffer[SWITCH_MEM_POOL_SIZE] __ALIGNED(32);
-static TX_BYTE_POOL switch0_byte_pool, switch1_byte_pool;
+static TX_BYTE_POOL switch1_byte_pool;
+#endif
+
+
+#if defined(DEBUG) && (HW_VERSION == 5)
 
 /* Small state machine to check CRC calculations aren't interrupted */
-#ifdef DEBUG
 typedef enum {
     CRC_OWNER_SW0 = SWITCH0,
     CRC_OWNER_SW1 = SWITCH1,
     CRC_OWNER_NONE
 } crc_owner_t;
 _Atomic(crc_owner_t) crc_owner = CRC_OWNER_NONE;
+
 #endif
 
 
@@ -54,12 +53,16 @@ sja1105_status_t switch_byte_pool_init(uint8_t pool) {
         }
     }
 
+#if HW_VERSION == 5
+
     /* Initialise pool 1 */
     if (pool & SWCH_POOL1) {
         if (tx_byte_pool_create(&switch1_byte_pool, "Switch 1 memory pool", switch1_byte_pool_buffer, SWITCH_MEM_POOL_SIZE) != TX_SUCCESS) {
             status = SJA1105_DYNAMIC_MEMORY_ERROR;
         }
     }
+
+#endif
 
     return status;
 }
@@ -81,6 +84,8 @@ static void sja1105_write_cs_pin(sja1105_pinstate_t state, void *context) {
         }
     }
 
+#if HW_VERSION == 5
+
     /* Select switch 1 */
     else if (switch_num == SWITCH1) {
         if (state == SJA1105_PIN_RESET) {
@@ -91,6 +96,8 @@ static void sja1105_write_cs_pin(sja1105_pinstate_t state, void *context) {
             sw1_sel = false;
         }
     }
+
+#endif
 
     /* Invalid switch */
     else {
@@ -207,12 +214,16 @@ static sja1105_status_t sja1105_allocate(uint32_t **memory_ptr, uint32_t size, v
         }
     }
 
+#if HW_VERSION == 5
+
     /* Allocate bytes from pool 1 */
     else if (switch_num == SWITCH1) {
         if (tx_byte_allocate(&switch1_byte_pool, (void **) memory_ptr, size * sizeof(uint32_t), TX_NO_WAIT) != TX_SUCCESS) {
             status = SJA1105_DYNAMIC_MEMORY_ERROR;
         }
     }
+
+#endif
 
     /* Invalid switch */
     else {
@@ -253,6 +264,8 @@ static sja1105_status_t sja1105_free_all(void *context) {
         }
     }
 
+#if HW_VERSION == 5
+
     /* Reset byte pool 1 */
     else if (switch_num == SWITCH1) {
         if (tx_byte_pool_delete(&switch1_byte_pool) == TX_SUCCESS) {
@@ -261,6 +274,8 @@ static sja1105_status_t sja1105_free_all(void *context) {
             status = SJA1105_DYNAMIC_MEMORY_ERROR;
         }
     }
+
+#endif
 
     /* Invalid switch */
     else {
@@ -281,7 +296,7 @@ static sja1105_status_t sja1105_crc_reset(void *context) {
     SWCH_CRC.Instance->INIT = 0xffffffff;
     SWCH_CRC.Instance->POL  = 0x04c11db7;
 
-#ifdef DEBUG
+#if defined(DEBUG) && (HW_VERSION == 5)
     atomic_store_explicit(&crc_owner, CRC_OWNER_NONE, memory_order_release);
 #endif
 
@@ -290,12 +305,14 @@ static sja1105_status_t sja1105_crc_reset(void *context) {
 
 static sja1105_status_t sja1105_crc_accumulate(const uint32_t *buffer, uint32_t size, uint32_t *result, void *context) {
 
-    sja1105_status_t status     = SJA1105_OK;
-    switch_index_t   switch_num = (switch_index_t) context;
+    sja1105_status_t status = SJA1105_OK;
+
+#if defined(DEBUG) && (HW_VERSION == 5)
 
     /* Make sure the other switch isn't using the CRC */
-#ifdef DEBUG
-    crc_owner_t crc_owner_local = atomic_load_explicit(&crc_owner, memory_order_acquire);
+    switch_index_t switch_num      = (switch_index_t) context;
+    crc_owner_t    crc_owner_local = atomic_load_explicit(&crc_owner, memory_order_acquire);
+
     if (((switch_num == SWITCH0) && (crc_owner_local == CRC_OWNER_SW1)) ||
         ((switch_num == SWITCH1) && (crc_owner_local == CRC_OWNER_SW0))) {
         status = SJA1105_CRC_ERROR;
@@ -304,6 +321,7 @@ static sja1105_status_t sja1105_crc_accumulate(const uint32_t *buffer, uint32_t 
     } else {
         atomic_store_explicit(&crc_owner, switch_num, memory_order_release);
     }
+
 #endif
 
     *result = ~HAL_CRC_Accumulate(&SWCH_CRC, (uint32_t *) buffer, size * sizeof(uint32_t));

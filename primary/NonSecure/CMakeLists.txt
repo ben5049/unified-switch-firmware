@@ -29,19 +29,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # Compiler options
 set(STM32_MCU_FLAGS  "-mcpu=cortex-m33 -mfpu=fpv5-sp-d16 -mfloat-abi=hard " )
 
-#Linker options
-set(STM32_LINKER_SCRIPT STM32H573XX_FLASH_NS.ld)
-set(STM32_LINKER_OPTION  )
-
 # Set the project name
 set(CMAKE_PROJECT_NAME primary_NS)
-project(${CMAKE_PROJECT_NAME})
-
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
-
-# Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
 
 # In order to use CMake for cross-compiling
 set(CMAKE_CXX_COMPILER_FORCED "true")
@@ -58,13 +47,6 @@ if(NOT PLATFORM)
     message(FATAL_ERROR "No PLATFORM found in environment")
 endif()
 
-# Pass it to the program
-string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    PLATFORM="${PLATFORM}"
-    PLATFORM_${PLATFORM_UPPER}
-)
-
 ###############################################################
 #                      Hardware Revision                      #
 ###############################################################
@@ -78,35 +60,75 @@ if(NOT HW_VERSION)
 endif()
 message(STATUS "Configuring for hardware: ${PLATFORM} v${HW_VERSION}")
 
-# Convert the hardware version to an integer and pass it to the program
-math(EXPR HW_VERSION_INT "${HW_VERSION}")
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_VERSION=${HW_VERSION_INT})
-
 # Apply version specific settings
 if(HW_VERSION STREQUAL "4")
-
-    # # Add v4 specific files if needed
-    # target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    #     src/hardware_v4_init.c
-    # )
-
 elseif(HW_VERSION STREQUAL "5")
-
-    # # Add v5 specific files if needed
-    # target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    #     src/hardware_v5_init.c
-    # )
-
 else()
     message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
 endif()
+
+###############################################################
+#                  Re-Regenerate CubeMX Files                 #
+###############################################################
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Verify the path to the script actually exists before running
+set(SCRIPT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/scripts/move_generated_files.py")
+if(NOT EXISTS "${SCRIPT_PATH}")
+    message(FATAL_ERROR "Script not found at: ${SCRIPT_PATH}")
+endif()
+
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" "${PLATFORM}_v${HW_VERSION}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE script_res
+    OUTPUT_VARIABLE script_out
+    ERROR_VARIABLE  script_err
+)
+
+# Check the result
+if(NOT "${script_res}" STREQUAL "0")
+    message(FATAL_ERROR "Python script failed!\nResult: ${script_res}\nSTDOUT: ${script_out}\nSTDERR: ${script_err}")
+endif()
+
+###############################################################
+#                           Linker                            #
+###############################################################
+
+#Linker options
+set(STM32_LINKER_SCRIPT "platform/${PLATFORM}_v${HW_VERSION}/STM32H573XX_FLASH_NS.ld")
+set(STM32_LINKER_OPTION  )
+
+###############################################################
+#                     Create the project                      #
+###############################################################
+
+project(${CMAKE_PROJECT_NAME})
+
+# Enable CMake support for ASM and C languages
+enable_language(C ASM)
+
+# Create an executable object type
+add_executable(${CMAKE_PROJECT_NAME})
+
+# Pass the platform name to the program
+string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    PLATFORM="${PLATFORM}"
+    PLATFORM_${PLATFORM_UPPER}
+)
+
+# Convert the hardware version to an integer and pass it to the program
+math(EXPR HW_VERSION_INT "${HW_VERSION}")
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_VERSION=${HW_VERSION_INT})
 
 ###############################################################
 #                         STM32CubeMX                         #
 ###############################################################
 
 # Include mx-generated
-include("mx-generated.cmake")
+include("platform/${PLATFORM}_v${HW_VERSION}/mx-generated.cmake")
 
 # Remove sources added in stm32cubemx
 get_target_property(APP_SRCS ${CMAKE_PROJECT_NAME} SOURCES)

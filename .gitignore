@@ -58,3 +58,7 @@ dkms.conf
 
 /**/.vscode/c_cpp_properties.json
 /**/.clangd
+
+primary/NonSecure/Core/*
+primary/NonSecure/*.ld
+primary/NonSecure/mx-generated.cmake
