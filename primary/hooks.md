@@ -35,6 +35,20 @@ Ethernet DMA descriptors be placed in the ETH section of RAM (marked by the MPU 
 
 ### ThreadX init
 
+`Core/Src/app_threadx.c`:
+
+```C
+/* USER CODE BEGIN Includes */
+#include "tx_app.h"
+/* USER CODE END Includes */
+
+...
+
+/* USER CODE BEGIN App_ThreadX_Init */
+tx_setup(memory_ptr);
+/* USER CODE END App_ThreadX_Init */
+```
+
 ### NetX init
 
 ```C

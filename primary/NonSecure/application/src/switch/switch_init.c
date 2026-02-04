@@ -96,13 +96,15 @@ sja1105_status_t switch_init(sja1105_handle_t *dev) {
     status                    = SJA1105_PortConfigure(&sw0_conf, &port_config, true);
     if (status != SJA1105_OK) return status;
 #elif HW_VERSION == 5
-    port_config.port_num      = SW0_PORT_SW1;
-    port_config.interface     = SJA1105_INTERFACE_RGMII;
-    port_config.mode          = SJA1105_MODE_MAC;
-    port_config.speed         = SJA1105_SPEED_1G;
-    port_config.voltage       = SJA1105_IO_1V8;
-    port_config.rgmii_id_mode = SJA1105_RGMII_ID_TX_1NS; /* Both switches have a 1ns TX_CLK delay */
-    status                    = SJA1105_PortConfigure(&sw0_conf, &port_config, true);
+    port_config.port_num                  = SW0_PORT_SW1;
+    port_config.interface                 = SJA1105_INTERFACE_RGMII;
+    port_config.mode                      = SJA1105_MODE_MAC;
+    port_config.speed                     = SJA1105_SPEED_1G;
+    port_config.voltage                   = SJA1105_IO_1V8;
+    port_config.rgmii_id_mode             = SJA1105_RGMII_ID_TX_1NS; /* Both switches have a 1ns TX_CLK delay */
+    port_config.connected_switch_port_num = SW1_PORT_SW0;
+    port_config.connected_switch_handle   = &hsw1;
+    status                                = SJA1105_PortConfigure(&sw0_conf, &port_config, true);
     if (status != SJA1105_OK) return status;
 #endif
 
@@ -204,13 +206,15 @@ sja1105_status_t switch_init(sja1105_handle_t *dev) {
     if (status != SJA1105_OK) return status;
 
     /* Switch 1 port 4 config */
-    port_config.port_num      = SW1_PORT_SW0;
-    port_config.interface     = SJA1105_INTERFACE_RGMII;
-    port_config.mode          = SJA1105_MODE_MAC;
-    port_config.speed         = SJA1105_SPEED_1G;
-    port_config.voltage       = SJA1105_IO_1V8;
-    port_config.rgmii_id_mode = SJA1105_RGMII_ID_TX_1NS; /* Both switches have a 1ns TX_CLK delay */
-    status                    = SJA1105_PortConfigure(&sw1_conf, &port_config, true);
+    port_config.port_num                  = SW1_PORT_SW0;
+    port_config.interface                 = SJA1105_INTERFACE_RGMII;
+    port_config.mode                      = SJA1105_MODE_MAC;
+    port_config.speed                     = SJA1105_SPEED_1G;
+    port_config.voltage                   = SJA1105_IO_1V8;
+    port_config.rgmii_id_mode             = SJA1105_RGMII_ID_TX_1NS; /* Both switches have a 1ns TX_CLK delay */
+    port_config.connected_switch_port_num = SW0_PORT_SW1;
+    port_config.connected_switch_handle   = &hsw0;
+    status                                = SJA1105_PortConfigure(&sw1_conf, &port_config, true);
     if (status != SJA1105_OK) return status;
 
 #endif

@@ -278,6 +278,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     logging
 )
 
+# Get access to MDIO helper functions
+target_compile_definitions(phy_drivers PUBLIC STM32H573xx)
+target_link_libraries(phy_drivers PRIVATE stm32cubemx)
+
 ###############################################################
 #                      Finishing Touches                      #
 ###############################################################

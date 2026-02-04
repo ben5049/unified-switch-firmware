@@ -312,6 +312,22 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
             flags_to_set |= PHY_PHY3_EVENT;
             break;
 
+#if HW_VERSION == 5
+
+        case (PHY4_INT_Pin):
+            flags_to_set |= PHY_PHY4_EVENT;
+            break;
+
+        case (PHY5_INT_Pin):
+            flags_to_set |= PHY_PHY5_EVENT;
+            break;
+
+        case (PHY6_INT_Pin):
+            flags_to_set |= PHY_PHY6_EVENT;
+            break;
+
+#endif
+
         default:
             Error_Handler();
             break;
