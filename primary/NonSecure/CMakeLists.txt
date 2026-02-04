@@ -47,6 +47,8 @@ if(NOT PLATFORM)
     message(FATAL_ERROR "No PLATFORM found in environment")
 endif()
 
+string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
+
 ###############################################################
 #                      Hardware Revision                      #
 ###############################################################
@@ -66,6 +68,8 @@ elseif(HW_VERSION STREQUAL "5")
 else()
     message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
 endif()
+
+math(EXPR HW_VERSION_INT "${HW_VERSION}")
 
 ###############################################################
 #                  Re-Regenerate CubeMX Files                 #
@@ -111,17 +115,6 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
-
-# Pass the platform name to the program
-string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    PLATFORM="${PLATFORM}"
-    PLATFORM_${PLATFORM_UPPER}
-)
-
-# Convert the hardware version to an integer and pass it to the program
-math(EXPR HW_VERSION_INT "${HW_VERSION}")
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_VERSION=${HW_VERSION_INT})
 
 ###############################################################
 #                         STM32CubeMX                         #
@@ -255,6 +248,11 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+
+    PLATFORM="${PLATFORM}"
+    PLATFORM_${PLATFORM_UPPER}
+    HW_VERSION=${HW_VERSION_INT}
+    DEVICE_NAME="${PLATFORM}-v${HW_VERSION}"
 
     HAL_ETH_USE_PTP
     TX_THREAD_SECURE_STACK_MAXIMUM=4096

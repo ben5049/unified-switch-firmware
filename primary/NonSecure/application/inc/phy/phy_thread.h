@@ -23,6 +23,12 @@ extern "C" {
 
 
 typedef enum {
+#if HW_VERSION == 4
+    PHY0_88Q2112 = 0,
+    PHY1_88Q2112 = 1,
+    PHY2_88Q2112 = 2,
+    PHY3_LAN8671 = 3
+#elif HW_VERSION == 5
     PHY0_DP83867 = 0,
     PHY1_88Q2112 = 1,
     PHY2_88Q2112 = 2,
@@ -30,15 +36,21 @@ typedef enum {
     PHY4_88Q2112 = 4,
     PHY5_88Q2112 = 5,
     PHY6_LAN8671 = 6
+#endif
 } phy_index_t;
 
 
 extern uint8_t   phy_thread_stack[PHY_THREAD_STACK_SIZE];
 extern TX_THREAD phy_thread_handle;
 
+#if HW_VERSION == 4
+extern phy_handle_88q211x_t hphy0, hphy1, hphy2;
+extern phy_handle_lan867x_t hphy3;
+#elif HW_VERSION == 5
 extern phy_handle_dp83867_t hphy0;
 extern phy_handle_88q211x_t hphy1, hphy2, hphy3, hphy4, hphy5;
 extern phy_handle_lan867x_t hphy6;
+#endif
 
 extern void *phy_handles[NUM_PHYS];
 extern float phy_temperatures[NUM_PHYS];

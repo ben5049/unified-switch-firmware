@@ -57,8 +57,6 @@ extern "C" {
 #define MAC_ADDR_OCTET5                  (0x6a)
 #define MAC_ADDR_OCTET6                  (0x48)
 
-#define DEVICE_NAME                      "switch-v5"
-
 #define NX_APP_DEFAULT_TIMEOUT           (10000)                                           /* Generic timeout for nx events (e.g. TCP send) in ms */
 #define NX_APP_PACKET_POOL_SIZE          ((DEFAULT_PAYLOAD_SIZE + sizeof(NX_PACKET)) * 32) /* Enough space for 32 max size packets */
 
@@ -78,6 +76,13 @@ extern "C" {
 
 #define PRIMARY_INTERFACE                (0)     /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
 
+#if HW_VERSION == 4
+#define PORT0_SPEED_MBPS                 (1000)  /* 88Q2112 #1 (100 or 1000 Mbps) */
+#define PORT1_SPEED_MBPS                 (1000)  /* 88Q2112 #2 (100 or 1000 Mbps) */
+#define PORT2_SPEED_MBPS                 (1000)  /* 88Q2112 #3 (100 or 1000 Mbps) */
+#define PORT3_SPEED_MBPS                 (10)    /* 10BASE-T1S (10 Mbps) */
+#define PORT4_SPEED_MBPS                 (100)   /* Host (10 or 100 Mbps) */
+#elif HW_VERSION == 5
 #define PORT0_SPEED_MBPS                 (1000)  /* DP83867 (10, 100 or 1000 Mbps) */
 #define PORT1_SPEED_MBPS                 (1000)  /* 88Q2112 #1 (100 or 1000 Mbps) */
 #define PORT2_SPEED_MBPS                 (1000)  /* 88Q2112 #2 (100 or 1000 Mbps) */
@@ -86,6 +91,7 @@ extern "C" {
 #define PORT5_SPEED_MBPS                 (1000)  /* 88Q2112 #5 (100 or 1000 Mbps) */
 #define PORT6_SPEED_MBPS                 (10)    /* 10BASE-T1S (10 Mbps) */
 #define PORT7_SPEED_MBPS                 (100)   /* Host (10 or 100 Mbps) */
+#endif
 
 #define PHY_LINK_REQUIRED_FOR_NX_LINK    (true)  /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
 
