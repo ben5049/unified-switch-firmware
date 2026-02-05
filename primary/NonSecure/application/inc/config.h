@@ -72,32 +72,32 @@ extern "C" {
 #define NX_APP_THREAD_STACK_SIZE         (2 * 1024)
 #define NX_APP_THREAD_PRIORITY           (10)
 
-#define NUM_VLANS                        (8)     /* Currently only used for STP (unused due to RSTP not MSTP) */
+#define NUM_VLANS                        (8) /* Currently only used for STP (unused due to RSTP not MSTP) */
 
-#define PRIMARY_INTERFACE                (0)     /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
+#define PRIMARY_INTERFACE                (0) /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
 
 #if HW_VERSION == 4
-#define PORT0_SPEED_MBPS                 (1000)  /* 88Q2112 #1 (100 or 1000 Mbps) */
-#define PORT1_SPEED_MBPS                 (1000)  /* 88Q2112 #2 (100 or 1000 Mbps) */
-#define PORT2_SPEED_MBPS                 (1000)  /* 88Q2112 #3 (100 or 1000 Mbps) */
-#define PORT3_SPEED_MBPS                 (10)    /* 10BASE-T1S (10 Mbps) */
-#define PORT4_SPEED_MBPS                 (100)   /* Host (10 or 100 Mbps) */
+#define PORT0_SPEED_MBPS (1000) /* 88Q2112 #1 (100 or 1000 Mbps) */
+#define PORT1_SPEED_MBPS (1000) /* 88Q2112 #2 (100 or 1000 Mbps) */
+#define PORT2_SPEED_MBPS (1000) /* 88Q2112 #3 (100 or 1000 Mbps) */
+#define PORT3_SPEED_MBPS (10)   /* 10BASE-T1S (10 Mbps) */
+#define PORT4_SPEED_MBPS (100)  /* Host (10 or 100 Mbps) */
 #elif HW_VERSION == 5
-#define PORT0_SPEED_MBPS                 (1000)  /* DP83867 (10, 100 or 1000 Mbps) */
-#define PORT1_SPEED_MBPS                 (1000)  /* 88Q2112 #1 (100 or 1000 Mbps) */
-#define PORT2_SPEED_MBPS                 (1000)  /* 88Q2112 #2 (100 or 1000 Mbps) */
-#define PORT3_SPEED_MBPS                 (1000)  /* 88Q2112 #3 (100 or 1000 Mbps) */
-#define PORT4_SPEED_MBPS                 (1000)  /* 88Q2112 #4 (100 or 1000 Mbps) */
-#define PORT5_SPEED_MBPS                 (1000)  /* 88Q2112 #5 (100 or 1000 Mbps) */
-#define PORT6_SPEED_MBPS                 (10)    /* 10BASE-T1S (10 Mbps) */
-#define PORT7_SPEED_MBPS                 (100)   /* Host (10 or 100 Mbps) */
+#define PORT0_SPEED_MBPS (1000) /* DP83867 (10, 100 or 1000 Mbps) */
+#define PORT1_SPEED_MBPS (1000) /* 88Q2112 #1 (100 or 1000 Mbps) */
+#define PORT2_SPEED_MBPS (1000) /* 88Q2112 #2 (100 or 1000 Mbps) */
+#define PORT3_SPEED_MBPS (1000) /* 88Q2112 #3 (100 or 1000 Mbps) */
+#define PORT4_SPEED_MBPS (1000) /* 88Q2112 #4 (100 or 1000 Mbps) */
+#define PORT5_SPEED_MBPS (1000) /* 88Q2112 #5 (100 or 1000 Mbps) */
+#define PORT6_SPEED_MBPS (10)   /* 10BASE-T1S (10 Mbps) */
+#define PORT7_SPEED_MBPS (100)  /* Host (10 or 100 Mbps) */
 #endif
 
-#define PHY_LINK_REQUIRED_FOR_NX_LINK    (true)  /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
+#define PHY_LINK_REQUIRED_FOR_NX_LINK (true)  /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
 
-#define DHCP_RECORD_SAVE_INTERVAL        (10000) /* How often to save the current DHCP record for restoration later in case of reboot in ms */
+#define DHCP_RECORD_SAVE_INTERVAL     (10000) /* How often to save the current DHCP record for restoration later in case of reboot in ms */
 
-#define ENABLE_DHCP_RESTORE              (true)
+#define ENABLE_DHCP_RESTORE           (true)
 
 /* ---------------------------------------------------------------------------- */
 /* Link Config */
@@ -143,7 +143,7 @@ extern "C" {
 /* PHY Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_PHYS                      (7)
+#define NUM_PHYS                      ((HW_VERSION == 4) ? 4 : 7)
 #define PHY_TIMEOUT_MS                (100) /* Default timeout for PHY operations in ms */
 
 #define PHY_THREAD_STACK_SIZE         (1024)

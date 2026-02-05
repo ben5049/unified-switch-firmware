@@ -2,3 +2,7 @@ build
 mx.scratch
 !.settings
 .cache
+
+NonSecure/Core
+NonSecure/*.ld
+NonSecure/mx-generated.cmake

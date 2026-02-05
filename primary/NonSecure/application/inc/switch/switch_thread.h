@@ -39,7 +39,9 @@ extern "C" {
 
 typedef enum {
     SWITCH0 = 0,
+#if HW_VERSION == 5
     SWITCH1 = 1
+#endif
 } switch_index_t;
 
 typedef enum {
@@ -72,12 +74,12 @@ typedef enum {
 extern uint8_t              switch_thread_stack[SWITCH_THREAD_STACK_SIZE];
 extern TX_THREAD            switch_thread_handle;
 extern atomic_uint_fast32_t sja1105_error_counter;
-extern sja1105_handle_t     hsw0
+extern sja1105_handle_t     hsw0;
 #if HW_VERSION == 5
-extern sja1105_handle_t     hsw1;
+extern sja1105_handle_t hsw1;
 #endif
-extern float                switch_temperature;
-extern bool                 switch_temperature_valid;
+extern float switch_temperature;
+extern bool  switch_temperature_valid;
 
 
 /* Exported functions*/

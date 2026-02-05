@@ -262,7 +262,7 @@ KEEP (*(.ETH))
 . = ALIGN(4);
 } >ETH
 
-.TRACE :
+.TRACE (NOLOAD):
 {. = ALIGN(4);
 KEEP (*(.TRACE))
 . = ALIGN(4);

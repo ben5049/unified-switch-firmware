@@ -106,9 +106,9 @@ phy_status_t phys_init() {
     phy_config_6.plca_node_count = PHY_PLCA_DEFAULT_NODE_COUNT; /* Maximum of 16 devices on the bus by default, all devices must have the same node count setting. */
 
     /* Set pins to a known state */
-    HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, SET);
-    HAL_GPIO_WritePin(PHY_WAKE_GPIO_Port, PHY_WAKE_Pin, SET);
-    HAL_GPIO_WritePin(PHY_CLK_EN_GPIO_Port, PHY_CLK_EN_Pin, SET);
+    HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(PHY_WAKE_GPIO_Port, PHY_WAKE_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(PHY_CLK_EN_GPIO_Port, PHY_CLK_EN_Pin, GPIO_PIN_SET);
 
     /* Select PHY 1 to start */
     HAL_GPIO_WritePin(SMI_SEL1_GPIO_Port, SMI_SEL1_Pin, GPIO_PIN_SET);
@@ -116,11 +116,11 @@ phy_status_t phys_init() {
     HAL_GPIO_WritePin(SMI_SEL3_GPIO_Port, SMI_SEL3_Pin, GPIO_PIN_SET);
 
     /* Hardware reset all PHYs (TODO: Reduce times) */
-    tx_thread_sleep_ms(10);
+    tx_thread_sleep_ms(2);
     HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_RESET);
     tx_thread_sleep_ms(10); /* 10ms required by 88Q2112 */
     HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_SET);
-    tx_thread_sleep_ms(10);
+    tx_thread_sleep_ms(2);
 
     /* Initialise all PHYs, setting the callback context to the port number */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {

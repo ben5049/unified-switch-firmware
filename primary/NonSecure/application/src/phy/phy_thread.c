@@ -44,17 +44,12 @@ void phy_thread_entry(uint32_t initial_input) {
     phy_status = phys_init();
     if (phy_status != PHY_OK) Error_Handler();
 
-    /* Check if any links are up (this calls the corresponding link state change callback which is needed because the link can go up before the interrupt is enabled) */
-    phy_status = PHY_88Q211X_GetLinkState(&hphy1, NULL);
-    if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy2, NULL);
-    if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy3, NULL);
-    if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy4, NULL);
-    if (phy_status != PHY_OK) Error_Handler();
-    phy_status = PHY_88Q211X_GetLinkState(&hphy5, NULL);
-    if (phy_status != PHY_OK) Error_Handler();
+    /* Check if any links are up (this calls the corresponding link state change callback which
+     * is needed because the link can go up before the interrupt is enabled) */
+    for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
+        phy_status = PHY_GetLinkState(phy_handles[i], NULL);
+        if (phy_status != PHY_OK) Error_Handler();
+    }
 
     /* Setup timing control variables (done in ms) */
     uint32_t current_time   = tx_time_get_ms();
@@ -67,7 +62,7 @@ void phy_thread_entry(uint32_t initial_input) {
         if (current_time < next_wake_time) {
 
             /* Wait for an interrupt */
-            tx_status = tx_event_flags_get(&phy_events_handle, PHY_ALL_EVENTS, TX_OR_CLEAR, &event_flags, MS_TO_TICKS(next_wake_time - current_time));
+            tx_status = tx_event_flags_get(&phy_events_handle, PHY_ALL_EVENTS, TX_OR_CLEAR, (ULONG *) &event_flags, MS_TO_TICKS(next_wake_time - current_time));
             if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) Error_Handler();
 
             /* Process any interrupts */

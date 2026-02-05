@@ -102,14 +102,16 @@ static phy_status_t phy_88q2112_callback_read_reg(uint8_t phy_addr, uint8_t mmd_
 static phy_status_t phy_lan8671_callback_read_reg(uint8_t phy_addr, uint16_t reg_addr, uint16_t *data, uint32_t timeout, void *context) {
 
     /* Set the clock frequency to 2.45MHz (PHY supports up to 4MHz) */
-    return phy_read_reg_c22(phy_addr, reg_addr, data, timeout, ETH_MACMDIOAR_CR_DIV102);
+    return phy_read_reg_c22(phy_addr, reg_addr, data, timeout, false, ETH_MACMDIOAR_CR_DIV102);
 }
 
+#if HW_VERSION == 5
 static phy_status_t phy_dp83867_callback_read_reg(uint8_t phy_addr, uint16_t reg_addr, uint16_t *data, uint32_t timeout, void *context) {
 
     /* Set the clock frequency to 15.6MHz (PHY supports up to 25MHz) */
-    return phy_read_reg_c22(phy_addr, reg_addr, data, timeout, ETH_MACMDIOAR_CR_DIV16);
+    return phy_read_reg_c22(phy_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV16);
 }
+#endif
 
 
 static phy_status_t phy_88q2112_callback_write_reg(uint8_t phy_addr, uint8_t mmd_addr, uint16_t reg_addr, uint16_t data, uint32_t timeout, void *context) {
@@ -130,14 +132,16 @@ static phy_status_t phy_88q2112_callback_write_reg(uint8_t phy_addr, uint8_t mmd
 static phy_status_t phy_lan8671_callback_write_reg(uint8_t phy_addr, uint16_t reg_addr, uint16_t data, uint32_t timeout, void *context) {
 
     /* Set the clock frequency to 2.45MHz (PHY supports up to 4MHz) */
-    return phy_write_reg_c22(phy_addr, reg_addr, data, timeout, ETH_MACMDIOAR_CR_DIV102);
+    return phy_write_reg_c22(phy_addr, reg_addr, data, timeout, false, ETH_MACMDIOAR_CR_DIV102);
 }
 
+#if HW_VERSION == 5
 static phy_status_t phy_dp83867_callback_write_reg(uint8_t phy_addr, uint16_t reg_addr, uint16_t data, uint32_t timeout, void *context) {
 
     /* Set the clock frequency to 15.6MHz (PHY supports up to 25MHz) */
-    return phy_write_reg_c22(phy_addr, reg_addr, data, timeout, ETH_MACMDIOAR_CR_DIV16);
+    return phy_write_reg_c22(phy_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV16);
 }
+#endif
 
 
 static uint32_t phy_callback_get_time_ms(void *context) {
@@ -228,12 +232,14 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
             } else if (context == &hphy3) {
                 tx_status = tx_event_flags_set(&stp_events_handle, STP_PORT3_LINK_STATE_CHANGE_EVENT, TX_OR);
             }
+
             /* Return the tx_status */
             if (tx_status != TX_SUCCESS) {
                 status = PHY_ERROR;
             } else {
                 status = PHY_OK;
             }
+
 #endif
 
             break;
@@ -269,9 +275,11 @@ const phy_callbacks_t phy_callbacks_lan8671 = {
     .callback_delay_ns      = &phy_callback_delay_ns,
     .callback_take_mutex    = &phy_callback_take_mutex,
     .callback_give_mutex    = &phy_callback_give_mutex,
+    .callback_event         = &phy_callback_event,
     .callback_write_log     = &log_info,
 };
 
+#if HW_VERSION == 5
 const phy_callbacks_t phy_callbacks_dp83867 = {
     .callback_read_reg_c22  = &phy_dp83867_callback_read_reg,
     .callback_write_reg_c22 = &phy_dp83867_callback_write_reg,
@@ -282,8 +290,10 @@ const phy_callbacks_t phy_callbacks_dp83867 = {
     .callback_delay_ns      = &phy_callback_delay_ns,
     .callback_take_mutex    = &phy_callback_take_mutex,
     .callback_give_mutex    = &phy_callback_give_mutex,
+    .callback_event         = &phy_callback_event,
     .callback_write_log     = &log_info,
 };
+#endif
 
 
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
