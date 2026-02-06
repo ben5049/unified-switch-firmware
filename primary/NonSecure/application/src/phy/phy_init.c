@@ -5,6 +5,7 @@
  *      Author: bens1
  */
 
+#include "stdbool.h"
 #include "stdint.h"
 #include "main.h"
 
@@ -42,6 +43,7 @@ phy_status_t phys_init() {
 
     phy_config_0.variant       = PHY_VARIANT_DP83867;
     phy_config_0.phy_addr      = 0x03;
+    phy_config_0.c45_en        = false;
     phy_config_0.timeout       = PHY_TIMEOUT_MS;
     phy_config_0.interface     = PHY_INTERFACE_RGMII;
     phy_config_0.default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS);
@@ -49,6 +51,7 @@ phy_status_t phys_init() {
 
     phy_config_1.variant               = PHY_VARIANT_88Q2112;
     phy_config_1.phy_addr              = 0x00;
+    phy_config_1.c45_en                = true;
     phy_config_1.timeout               = PHY_TIMEOUT_MS;
     phy_config_1.interface             = PHY_INTERFACE_RGMII;
     phy_config_1.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT1_SPEED_MBPS);
@@ -59,6 +62,7 @@ phy_status_t phys_init() {
 
     phy_config_2.variant               = PHY_VARIANT_88Q2112;
     phy_config_2.phy_addr              = 0x00;
+    phy_config_2.c45_en                = true;
     phy_config_2.timeout               = PHY_TIMEOUT_MS;
     phy_config_2.interface             = PHY_INTERFACE_RGMII;
     phy_config_2.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT2_SPEED_MBPS);
@@ -69,6 +73,7 @@ phy_status_t phys_init() {
 
     phy_config_3.variant               = PHY_VARIANT_88Q2112;
     phy_config_3.phy_addr              = 0x00;
+    phy_config_3.c45_en                = true;
     phy_config_3.timeout               = PHY_TIMEOUT_MS;
     phy_config_3.interface             = PHY_INTERFACE_RGMII;
     phy_config_3.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT3_SPEED_MBPS);
@@ -79,6 +84,7 @@ phy_status_t phys_init() {
 
     phy_config_4.variant               = PHY_VARIANT_88Q2112;
     phy_config_4.phy_addr              = 0x00;
+    phy_config_4.c45_en                = true;
     phy_config_4.timeout               = PHY_TIMEOUT_MS;
     phy_config_4.interface             = PHY_INTERFACE_RGMII;
     phy_config_4.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT4_SPEED_MBPS);
@@ -89,6 +95,7 @@ phy_status_t phys_init() {
 
     phy_config_5.variant               = PHY_VARIANT_88Q2112;
     phy_config_5.phy_addr              = 0x00;
+    phy_config_5.c45_en                = true;
     phy_config_5.timeout               = PHY_TIMEOUT_MS;
     phy_config_5.interface             = PHY_INTERFACE_RGMII;
     phy_config_5.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT5_SPEED_MBPS);
@@ -99,6 +106,7 @@ phy_status_t phys_init() {
 
     phy_config_6.variant         = PHY_VARIANT_LAN8671;
     phy_config_6.phy_addr        = 0x08;
+    phy_config_6.c45_en          = false;
     phy_config_6.timeout         = PHY_TIMEOUT_MS;
     phy_config_6.interface       = PHY_INTERFACE_RMII;
     phy_config_6.plca_enabled    = true;

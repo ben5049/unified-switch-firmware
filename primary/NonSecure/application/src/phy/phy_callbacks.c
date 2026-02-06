@@ -6,6 +6,8 @@
  */
 
 #include "stdint.h"
+#include "stdbool.h"
+
 #include "hal.h"
 #include "tx_api.h"
 #include "main.h"
@@ -25,13 +27,19 @@ TX_EVENT_FLAGS_GROUP phy_events_handle;
 
 
 /* 88Q2112 PHY MDIO lines are selected by an external mux */
-static phy_status_t select_phy(phy_index_t phy_num) {
+#if HW_VERSION == 5
+static phy_status_t select_phy(phy_index_t phy_num, bool *switchover) {
 
     phy_status_t   status       = PHY_OK;
     static uint8_t prev_phy_num = NUM_PHYS;
 
     /* Mux already has the correct PHY selected */
-    if (phy_num == prev_phy_num) return status;
+    if (phy_num == prev_phy_num) {
+        *switchover = false;
+        return status;
+    } else {
+        *switchover = true;
+    }
 
     /* Mux selection */
     switch (phy_num) {
@@ -77,23 +85,27 @@ static phy_status_t select_phy(phy_index_t phy_num) {
     }
 
     /* Delay while mux switches over and pullup resistors take effect */
-    delay_ns(200);
+    delay_ns(500);
     prev_phy_num = phy_num;
 
     return status;
 }
+#endif
 
 
 static phy_status_t phy_88q2112_callback_read_reg(uint8_t phy_addr, uint8_t mmd_addr, uint16_t reg_addr, uint16_t *data, uint32_t timeout, void *context) {
 
     phy_status_t status = PHY_OK;
+    bool         switchover;
 
     /* Select the PHY */
-    status = select_phy((phy_index_t) context);
+    status = select_phy((phy_index_t) context, &switchover);
     PHY_CHECK_RET(status);
 
     /* 88Q2112 only needs 1 preamble bit */
     /* Set the clock frequency to 9.62MHz (PHY supports up to 12.5MHz) */
+    /* If switched over perform a dummy read first */
+    if (switchover) phy_read_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
     status = phy_read_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
 
     return status;
@@ -109,7 +121,7 @@ static phy_status_t phy_lan8671_callback_read_reg(uint8_t phy_addr, uint16_t reg
 static phy_status_t phy_dp83867_callback_read_reg(uint8_t phy_addr, uint16_t reg_addr, uint16_t *data, uint32_t timeout, void *context) {
 
     /* Set the clock frequency to 15.6MHz (PHY supports up to 25MHz) */
-    return phy_read_reg_c22(phy_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV16);
+    return phy_read_reg_c22(phy_addr, reg_addr, data, timeout, false, ETH_MACMDIOAR_CR_DIV16);
 }
 #endif
 
@@ -117,13 +129,16 @@ static phy_status_t phy_dp83867_callback_read_reg(uint8_t phy_addr, uint16_t reg
 static phy_status_t phy_88q2112_callback_write_reg(uint8_t phy_addr, uint8_t mmd_addr, uint16_t reg_addr, uint16_t data, uint32_t timeout, void *context) {
 
     phy_status_t status = PHY_OK;
+    bool         switchover;
 
     /* Select the PHY */
-    status = select_phy((phy_index_t) context);
+    status = select_phy((phy_index_t) context, &switchover);
     PHY_CHECK_RET(status);
 
     /* 88Q2112 only needs 1 preamble bit */
     /* Set the clock frequency to 9.62MHz (PHY supports up to 12.5MHz) */
+    /* If switched over perform a dummy write first */
+    if (switchover) phy_write_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
     status = phy_write_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
 
     return status;
@@ -139,7 +154,7 @@ static phy_status_t phy_lan8671_callback_write_reg(uint8_t phy_addr, uint16_t re
 static phy_status_t phy_dp83867_callback_write_reg(uint8_t phy_addr, uint16_t reg_addr, uint16_t data, uint32_t timeout, void *context) {
 
     /* Set the clock frequency to 15.6MHz (PHY supports up to 25MHz) */
-    return phy_write_reg_c22(phy_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV16);
+    return phy_write_reg_c22(phy_addr, reg_addr, data, timeout, false, ETH_MACMDIOAR_CR_DIV16);
 }
 #endif
 
@@ -223,6 +238,7 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
 
             tx_status_t tx_status = TX_SUCCESS;
 
+            // TODO: context is the PHY number not handle
             if (context == &hphy0) {
                 tx_status = tx_event_flags_set(&stp_events_handle, STP_PORT0_LINK_STATE_CHANGE_EVENT, TX_OR);
             } else if (context == &hphy1) {
