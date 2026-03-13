@@ -42,7 +42,7 @@ void MX_DTS_Init(void)
   hdts.Init.RefClock = DTS_REFCLKSEL_PCLK;
   hdts.Init.TriggerInput = DTS_TRIGGER_HW_NONE;
   hdts.Init.SamplingTime = DTS_SMP_TIME_1_CYCLE;
-  hdts.Init.Divider = 0;
+  hdts.Init.Divider = 1;
   hdts.Init.HighThreshold = 0x0;
   hdts.Init.LowThreshold = 0x0;
   if (HAL_DTS_Init(&hdts) != HAL_OK)
@@ -97,3 +97,4 @@ void HAL_DTS_MspDeInit(DTS_HandleTypeDef* dtsHandle)
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
+

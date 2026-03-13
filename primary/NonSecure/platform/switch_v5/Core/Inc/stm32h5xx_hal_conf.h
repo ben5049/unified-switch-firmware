@@ -40,6 +40,7 @@
   */
 
 #define HAL_MODULE_ENABLED
+/*#define HAL_CCB_MODULE_ENABLED */
 #define HAL_ADC_MODULE_ENABLED
 /*#define HAL_CEC_MODULE_ENABLED */
 /*#define HAL_COMP_MODULE_ENABLED */
@@ -208,6 +209,7 @@
   *        for each PPP peripheral).
   */
 #define  USE_HAL_ADC_REGISTER_CALLBACKS       0U    /* ADC register callback disabled       */
+#define  USE_HAL_CCB_REGISTER_CALLBACKS           0U /* CCB register callback disabled       */
 #define  USE_HAL_CEC_REGISTER_CALLBACKS       0U    /* CEC register callback disabled       */
 #define  USE_HAL_COMP_REGISTER_CALLBACKS      0U    /* COMP register callback disabled      */
 #define  USE_HAL_CORDIC_REGISTER_CALLBACKS    0U    /* CORDIC register callback disabled    */
@@ -266,6 +268,10 @@
 
 #define USE_SDIO_TRANSCEIVER          0U
 #define SDIO_MAX_IO_NUMBER            7U
+
+/* ################## ETH peripheral configuration ######################### */
+#define ETH_TX_DESC_CNT 4U
+#define ETH_RX_DESC_CNT 4U
 
 /* Includes ----------------------------------------------------------------------------------------------------------*/
 
@@ -436,6 +442,10 @@
 #ifdef HAL_PCD_MODULE_ENABLED
  #include "stm32h5xx_hal_pcd.h"
 #endif /* HAL_PCD_MODULE_ENABLED */
+
+#ifdef HAL_CCB_MODULE_ENABLED
+#include "stm32h5xx_hal_ccb.h"
+#endif /* HAL_CCB_MODULE_ENABLED */
 
 #ifdef HAL_HCD_MODULE_ENABLED
  #include "stm32h5xx_hal_hcd.h"
