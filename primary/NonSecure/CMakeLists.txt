@@ -47,7 +47,9 @@ if(NOT PLATFORM)
     message(FATAL_ERROR "No PLATFORM found in environment")
 endif()
 
+# Create variable that will be used as a C macro
 string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
+string(REPLACE "-" "_" PLATFORM_UPPER "${PLATFORM_UPPER}")
 
 ###############################################################
 #                      Hardware Revision                      #

@@ -6,3 +6,6 @@ mx.scratch
 NonSecure/Core
 NonSecure/*.ld
 NonSecure/mx-generated.cmake
+
+.vscode/c_cpp_properties.json
+.clangd
