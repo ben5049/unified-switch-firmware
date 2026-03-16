@@ -185,7 +185,7 @@ extern "C" {
 #define HEARTBEAT_MISS_TIMEOUT              (2000) /* ms, if the time between heartbeats is larger than this value then assume the producer has disconnected */
 
 /* ---------------------------------------------------------------------------- */
-/* Commmunications Config */
+/* Background Thread Config */
 /* ---------------------------------------------------------------------------- */
 
 #define BACKGROUND_THREAD_STACK_SIZE         (1024)

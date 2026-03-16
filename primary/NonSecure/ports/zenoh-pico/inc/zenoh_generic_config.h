@@ -20,6 +20,7 @@ extern "C" {
 #define Z_TRANSPORT_LEASE                10000
 #define ZP_PERIODIC_SCHEDULER_MAX_TASKS  64
 
+#define Z_FEATURE_CONNECTIVITY           0
 #define Z_FEATURE_MULTI_THREAD           1
 #define Z_FEATURE_PUBLICATION            1
 #define Z_FEATURE_ADVANCED_PUBLICATION   0
@@ -50,13 +51,13 @@ extern "C" {
 #define Z_FEATURE_BATCHING               1
 #define Z_FEATURE_BATCH_TX_MUTEX         0
 #define Z_FEATURE_BATCH_PEER_MUTEX       0
-#define Z_FEATURE_MATCHING               0
+#define Z_FEATURE_MATCHING               1
 #define Z_FEATURE_RX_CACHE               0
 #define Z_FEATURE_UNICAST_PEER           1
 #define Z_FEATURE_AUTO_RECONNECT         0 /* Must be disabled: https://github.com/eclipse-zenoh/zenoh-pico/issues/1053 */
 #define Z_FEATURE_MULTICAST_DECLARATIONS 0
 #define Z_FEATURE_PERIODIC_TASKS         1
-
+#define Z_FEATURE_ADMIN_SPACE            0
 
 /*------------------ Runtime configuration properties ------------------*/
 /**
