@@ -3,7 +3,7 @@ set(ST_MULTICONTEXT TRUST_ZONE CACHE STRING "Type of multi-context")
 #-----------------------Build Secure Project-----------------------#
 if((${BUILD_CONTEXT} MATCHES .*Secure.*) OR (NOT DEFINED BUILD_CONTEXT))
     message("   Build context: " Secure)
-    ExternalProject_Add(primary_S
+    ExternalProject_Add(primary-v4_S
         BINARY_DIR                  ${CMAKE_SOURCE_DIR}/Secure/build
         SOURCE_DIR                  ${PROJECT_SOURCE_DIR}/Secure
         PREFIX                      Secure
@@ -14,12 +14,12 @@ if((${BUILD_CONTEXT} MATCHES .*Secure.*) OR (NOT DEFINED BUILD_CONTEXT))
     )
 
 	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_SOURCE_DIR}/Secure/build")
-	set(ST_TRUST_ZONE_SECURE_PROJECT_BUILD_TARGET ${CMAKE_SOURCE_DIR}/Secure/build/primary_S${CMAKE_EXECUTABLE_SUFFIX_CXX} CACHE FILEPATH "Path to secure project target")
+	set(ST_TRUST_ZONE_SECURE_PROJECT_BUILD_TARGET ${CMAKE_SOURCE_DIR}/Secure/build/primary-v4_S${CMAKE_EXECUTABLE_SUFFIX_CXX} CACHE FILEPATH "Path to secure project target")
 endif()
 #-----------------------Build NonSecure Project-----------------------#
 if((${BUILD_CONTEXT} MATCHES .*NonSecure.*) OR (NOT DEFINED BUILD_CONTEXT))
     message("   Build context: " NonSecure)
-    ExternalProject_Add(primary_NS
+    ExternalProject_Add(primary-v4_NS
         BINARY_DIR                  ${CMAKE_SOURCE_DIR}/NonSecure/build
         SOURCE_DIR                  ${PROJECT_SOURCE_DIR}/NonSecure
         PREFIX                      NonSecure
@@ -27,10 +27,10 @@ if((${BUILD_CONTEXT} MATCHES .*NonSecure.*) OR (NOT DEFINED BUILD_CONTEXT))
         INSTALL_COMMAND             ""
         CMAKE_ARGS                  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON  -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}  -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         BUILD_ALWAYS                true
-        DEPENDS                     primary_S
+        DEPENDS                     primary-v4_S
     )
 
 	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_SOURCE_DIR}/NonSecure/build")
-	set(ST_TRUST_ZONE_NONSECURE_PROJECT_BUILD_TARGET ${CMAKE_SOURCE_DIR}/NonSecure/build/primary_NS${CMAKE_EXECUTABLE_SUFFIX_CXX} CACHE FILEPATH "Path to nonsecure project target")
+	set(ST_TRUST_ZONE_NONSECURE_PROJECT_BUILD_TARGET ${CMAKE_SOURCE_DIR}/NonSecure/build/primary-v4_NS${CMAKE_EXECUTABLE_SUFFIX_CXX} CACHE FILEPATH "Path to nonsecure project target")
 endif()
 

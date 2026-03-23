@@ -105,7 +105,7 @@ static void sja1105_write_cs_pin(sja1105_pinstate_t state, void *context) {
     }
 
     /* Both switches shouldn't be selected at the same time */
-#ifdef DEBUG
+#if DEBUG
     if (sw0_sel && sw1_sel) Error_Handler();
 #endif
 }

@@ -43,7 +43,7 @@ sja1105_status_t switch_init(sja1105_handle_t *dev) {
     HAL_Delay(1);            /* 329us minimum until SPI commands can be written (SJA1105_T_RST_STARTUP_HW). Must be blocking since TX kernel hasn't started */
 
     /* Check SPI parameters */
-#ifdef DEBUG
+#if DEBUG
     if (SWCH_SPI.Init.DataSize != SPI_DATASIZE_32BIT) status = SJA1105_PARAMETER_ERROR;
     if (SWCH_SPI.Init.CLKPolarity != SPI_POLARITY_LOW) status = SJA1105_PARAMETER_ERROR;
     if (SWCH_SPI.Init.CLKPhase != SPI_PHASE_2EDGE) status = SJA1105_PARAMETER_ERROR;

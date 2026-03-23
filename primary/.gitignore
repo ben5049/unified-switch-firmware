@@ -7,5 +7,9 @@ NonSecure/Core
 NonSecure/*.ld
 NonSecure/mx-generated.cmake
 
+Secure/Core
+Secure/*.ld
+Secure/mx-generated.cmake
+
 .vscode/c_cpp_properties.json
 .clangd

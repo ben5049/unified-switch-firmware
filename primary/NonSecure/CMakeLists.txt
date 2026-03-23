@@ -62,7 +62,8 @@ endif()
 if(NOT HW_VERSION)
     message(FATAL_ERROR "No HW_VERSION found in environment")
 endif()
-message(STATUS "Configuring for hardware: ${PLATFORM} v${HW_VERSION}")
+message(STATUS "PLATFORM = ${PLATFORM}")
+message(STATUS "HW_VERSION = ${HW_VERSION}")
 
 # Apply version specific settings
 if(HW_VERSION STREQUAL "4")
@@ -72,6 +73,37 @@ else()
 endif()
 
 math(EXPR HW_VERSION_INT "${HW_VERSION}")
+
+###############################################################
+#                           Node IDs                          #
+###############################################################
+#
+# The node ID is a string passed as an environment variable.
+# It is used as a prefix to all published Zenoh topics e.g:
+#     ${NODE_ID}/status
+#     ${NODE_ID}/stdin
+#     ${NODE_ID}/stdout
+#     ${NODE_ID}/stderr'
+#
+
+if(DEFINED ENV{NODE_ID} AND NOT "$ENV{NODE_ID}" STREQUAL "")
+    set(NODE_ID $ENV{NODE_ID})
+else()
+    set(NODE_ID "default-${PLATFORM}-v${HW_VERSION}")
+endif()
+
+message(STATUS "NODE_ID = ${NODE_ID}")
+
+# The server ID is used to monitor the server's status. E.g.
+# When the server goes down we need to attempt reconnection.
+
+if(DEFINED ENV{SERVER_ID} AND NOT "$ENV{SERVER_ID}" STREQUAL "")
+    set(SERVER_ID $ENV{SERVER_ID})
+else()
+    set(SERVER_ID "default-server")
+endif()
+
+message(STATUS "SERVER_ID = ${SERVER_ID}")
 
 ###############################################################
 #                  Re-Regenerate CubeMX Files                 #
@@ -255,6 +287,8 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     PLATFORM_${PLATFORM_UPPER}
     HW_VERSION=${HW_VERSION_INT}
     DEVICE_NAME="${PLATFORM}-v${HW_VERSION}"
+    NODE_ID="${NODE_ID}"
+    SERVER_ID="${SERVER_ID}"
 
     HAL_ETH_USE_PTP
     TX_THREAD_SECURE_STACK_MAXIMUM=4096

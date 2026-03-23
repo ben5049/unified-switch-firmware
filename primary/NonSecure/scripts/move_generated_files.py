@@ -8,7 +8,7 @@ from sys import argv
 
 
 ROOT      = dirname(dirname(abspath(__file__)))
-GENERATED = join(ROOT)
+GENERATED = ROOT
 PLATFORM  = join(ROOT, "platform")
 
 CMAKE     = regex(r"mx-generated.cmake")

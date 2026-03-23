@@ -1,12 +1,12 @@
 /*
- * sja1105_callbacks.h
+ * switch_callbacks.h
  *
  *  Created on: Aug 5, 2025
  *      Author: bens1
  */
 
-#ifndef INC_SWITCH_SJA1105_CALLBACKS_H_
-#define INC_SWITCH_SJA1105_CALLBACKS_H_
+#ifndef INC_SWITCH_CALLBACKS_H_
+#define INC_SWITCH_CALLBACKS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,4 +41,4 @@ sja1105_status_t switch_byte_pool_init(uint8_t pool);
 }
 #endif
 
-#endif /* INC_SWITCH_SJA1105_CALLBACKS_H_ */
+#endif /* INC_SWITCH_CALLBACKS_H_ */
