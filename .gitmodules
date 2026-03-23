@@ -18,7 +18,3 @@
 	path = primary/NonSecure/libraries/sja1105
 	url = https://github.com/ben5049/sja1105
     branch = main
-[submodule "primary/Secure"]
-	path = primary/Secure
-	url = https://github.com/ben5049/bootloader
-    branch = main
