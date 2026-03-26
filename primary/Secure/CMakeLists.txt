@@ -152,11 +152,6 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_VERSION=${HW_VERSION
 # Add library subdirectories
 add_subdirectory(bootloader)
 
-# Link directories setup
-target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
-)
-
 ###############################################################
 #                           Sources                           #
 ###############################################################
@@ -164,8 +159,14 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    common/src/bootloader_callbacks.c
-    common/src/memory_tools.c
+    application/src/app.c
+    application/src/backup.c
+    application/src/bootloader_hooks/crypto.c
+    application/src/bootloader_hooks/io.c
+    application/src/bootloader_hooks/memory.c
+    application/src/bootloader_hooks/sys.c
+    application/src/bootloader_hooks/time.c
+    application/src/bootloader_hooks/user.c
 )
 
 ###############################################################
@@ -175,8 +176,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    common/inc
-    bootloader # This is here because the bootloader secure_nsc.h needs to be exposed
+    application/inc
+    bootloader # Required for secure_nsc.h
 )
 
 ###############################################################
@@ -199,11 +200,16 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 #                       Library Linking                       #
 ###############################################################
 
-# stm32cubemx depends on bootloader
-target_link_libraries(stm32cubemx PUBLIC bootloader)
+# Add linked libraries
+target_link_libraries(${CMAKE_PROJECT_NAME}
+    stm32cubemx
 
-# Secure firmware depends on stm32cubemx
-target_link_libraries(${CMAKE_PROJECT_NAME} stm32cubemx)
+    # Add user defined libraries
+    bootloader
+)
+
+target_link_libraries(bootloader PUBLIC stm32cubemx)      # bootloader depends on stm32cubemx
+target_link_libraries(system_handlers PUBLIC stm32cubemx) # system_handlers depends on stm32cubemx
 
 ###############################################################
 #                      Finishing Touches                      #

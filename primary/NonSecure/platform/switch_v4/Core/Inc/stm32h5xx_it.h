@@ -58,7 +58,6 @@ void TIM6_IRQHandler(void);
 void SPI2_IRQHandler(void);
 void ADC2_IRQHandler(void);
 void FPU_IRQHandler(void);
-void ICACHE_IRQHandler(void);
 void ETH_IRQHandler(void);
 void ETH_WKUP_IRQHandler(void);
 void DTS_IRQHandler(void);

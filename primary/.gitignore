@@ -2,6 +2,7 @@ build
 mx.scratch
 !.settings
 .cache
+MXTmpFiles
 
 NonSecure/Core
 NonSecure/*.ld

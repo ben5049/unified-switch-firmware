@@ -43,7 +43,6 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/dts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/eth.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/gtzc_ns.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/rtc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/spi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/app_threadx.c
@@ -86,7 +85,6 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_dts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_eth.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_eth_ex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_icache.c
 )
 
 # Drivers Middlewares

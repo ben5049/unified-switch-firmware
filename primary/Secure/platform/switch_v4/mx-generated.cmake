@@ -26,6 +26,7 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/flash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/gtzc_s.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/hash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/pka.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/ramcfg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/rng.c
@@ -60,6 +61,7 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_exti.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_gtzc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_hash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pka.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_ramcfg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_rng.c

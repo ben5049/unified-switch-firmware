@@ -517,7 +517,7 @@
 //   <o.5>  UART12_IRQn           <0=> Secure state
 //   <o.6>  SDMMC2_IRQn           <0=> Secure state
 //   <o.7>  FPU_IRQn              <1=> Non-Secure state
-//   <o.8>  ICACHE_IRQn           <1=> Non-Secure state
+//   <o.8>  ICACHE_IRQn           <0=> Secure state
 //   <o.9>  DCACHE_IRQn           <0=> Secure state
 //   <o.10> ETH_IRQn              <1=> Non-Secure state
 //   <o.11> ETH_WKUP_IRQn         <1=> Non-Secure state
@@ -542,7 +542,7 @@
 //   <o.30> I2C4_ER_IRQn          <0=> Secure state
 //   <o.31> LPTIM3_IRQn           <0=> Secure state
 */
-#define NVIC_INIT_ITNS3_VAL      0x00120D80
+#define NVIC_INIT_ITNS3_VAL      0x00120C80
 
 /*
 //   </e>

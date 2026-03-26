@@ -85,6 +85,9 @@ void HAL_MspInit(void)
   /* FPU_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FPU_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(FPU_IRQn);
+  /* ICACHE_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(ICACHE_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(ICACHE_IRQn);
 
   /* USER CODE BEGIN MspInit 1 */
 

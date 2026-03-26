@@ -2,7 +2,7 @@ from os import listdir, makedirs, walk
 from os.path import dirname, abspath, join, relpath, exists
 
 from re import compile as regex
-from re import DOTALL, search
+from re import DOTALL, search, sub
 
 from sys import argv
 
@@ -151,6 +151,67 @@ def move_core(platform: str):
                 file.write(contents)
 
 
+def parse_size(size_str: str) -> int:
+    """Parses sizes like '0x1000', '32K', '1M', '1024' into integer bytes."""
+    size_str = size_str.strip().upper()
+    multiplier = 1
+
+    # Handle GNU ld size suffixes
+    if size_str.endswith('K'):
+        multiplier = 1024
+        size_str = size_str[:-1]
+    elif size_str.endswith('M'):
+        multiplier = 1024 * 1024
+        size_str = size_str[:-1]
+    elif size_str.endswith('G'):
+        multiplier = 1024 * 1024 * 1024
+        size_str = size_str[:-1]
+
+    # Handle hex vs decimal bases
+    base = 16 if size_str.startswith('0X') else 10
+
+    return int(size_str, base) * multiplier
+
+def get_sections_from_linker(contents: str) -> dict:
+
+    # 1. Strip C-style /* ... */ comments (re.DOTALL allows matching across newlines)
+    clean_text = sub(r'/\*.*?\*/', '', contents, flags=DOTALL)
+
+    # Optional: Strip C++ style // comments if the script was passed through a preprocessor
+    clean_text = sub(r'//.*', '', clean_text)
+
+    memory = {}
+
+    # 2. Extract the block inside MEMORY { ... }
+    # Using [^}]* ensures we stop at the first closing brace.
+    mem_block_match = search(r'MEMORY\s*\{([^}]*)\}', clean_text)
+    if not mem_block_match:
+        return memory
+
+    mem_block = mem_block_match.group(1)
+
+    # 3. Parse individual memory regions using finditer (handles multi-line wraps safely)
+    region_pattern = regex(
+        r'(\w+)\s*'                    # Group 1: Name (e.g., FLASH)
+        r'(?:\([^)]*\))?\s*:\s*'       # Optional attributes like (rx) -> not captured
+        r'(?:ORIGIN|org|o)\s*=\s*'     # Origin keyword (handles abbreviations)
+        r'([^,\s]+)\s*,\s*'            # Group 2: Origin value (stops at comma or space)
+        r'(?:LENGTH|len|l)\s*=\s*'     # Length keyword
+        r'([^\s;]+)'                   # Group 3: Length value (stops at space or ;)
+    )
+
+    for match in region_pattern.finditer(mem_block):
+        name = match.group(1)
+        origin_str = match.group(2)
+        length_str = match.group(3)
+
+        memory[name] = {
+            "origin": parse_size(origin_str),
+            "length": parse_size(length_str)
+        }
+
+    return memory
+
 def move_linker(platform: str):
 
     files = [p for p in listdir(GENERATED) if LINKER.match(p)]
@@ -166,15 +227,25 @@ def move_linker(platform: str):
     makedirs(dirname(dst_path), exist_ok=True)
 
     src_file = open(src_path, "r")
+    src_file_contents = src_file.read()
     dst_file = open(dst_path, "w")
 
-    for line in src_file.readlines():
+    for line in src_file_contents.split("\n"):
 
         # Make the backup section NOLOAD. This is done because the backup domain has to be enabled in firmware before being used
         if ".BACKUP :" in line:
             line = line.replace(".BACKUP :", ".BACKUP (NOLOAD):")
 
-        dst_file.write(line)
+        dst_file.write(line + "\n")
+
+    # Add a section to the end with symbols for the start and end of all sections
+    sections = get_sections_from_linker(src_file_contents)
+    for section, attributes in sections.items():
+        dst_file.write("\n")
+        dst_file.write(f"__{section}_START__ = ORIGIN({section});\n")
+        dst_file.write(f"__{section}_END__   = ORIGIN({section}) + LENGTH({section});\n")
+        dst_file.write(f"__{section}_SIZE__  = LENGTH({section});\n")
+        dst_file.write("\n")
 
     src_file.close()
     dst_file.close()

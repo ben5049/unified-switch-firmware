@@ -12,7 +12,6 @@
 #include "crc.h"
 #include "dts.h"
 #include "eth.h"
-#include "icache.h"
 #include "spi.h"
 #include "gpio.h"
 #include "aes.h"
@@ -57,7 +56,6 @@ void app_setup(void) {
 
     /* Initialise important peripherals */
     MX_GPIO_Init();
-    MX_ICACHE_Init();
     MX_RTC_Init();
     MX_CRC_Init();
     MX_SPI2_Init();

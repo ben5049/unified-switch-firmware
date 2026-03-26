@@ -200,11 +200,6 @@ add_subdirectory(libraries/phy-drivers)
 add_subdirectory(libraries/sja1105)
 add_subdirectory(libraries/logging)
 
-# Link directories setup
-target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
-)
-
 ###############################################################
 #                           Sources                           #
 ###############################################################
@@ -255,7 +250,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
 
     # Bootloader (needed for secure_nsc.h)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Secure
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Secure/bootloader
 
     # Application
     application/inc

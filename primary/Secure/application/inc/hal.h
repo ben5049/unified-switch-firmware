@@ -20,7 +20,7 @@ extern "C" {
 
 
 typedef HAL_StatusTypeDef hal_status_t;
-typedef GPIO_TypeDef gpio_t;
+typedef GPIO_TypeDef      gpio_t;
 
 
 #ifdef __cplusplus
