@@ -13,10 +13,13 @@ extern "C" {
 #endif
 
 
+#include "main.h"
+#include "config.h"
 #include "logging.h"
 
 
-void app_setup(void);
+void mpu_config(void);
+int  main(void);
 
 
 extern log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network;

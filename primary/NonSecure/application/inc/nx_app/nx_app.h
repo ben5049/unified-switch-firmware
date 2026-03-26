@@ -113,6 +113,8 @@ typedef enum {
     NX_STATUS_DHCP_NO_INTERFACES_STARTED     = NX_DHCP_NO_INTERFACES_STARTED,
     NX_STATUS_DHCP_NO_RECORDS_AVAILABLE      = NX_DHCP_NO_RECORDS_AVAILABLE,
     NX_STATUS_DHCP_INVALID_NAME              = NX_DHCP_INVALID_NAME,
+    NX_STATUS_DHCP_WRITE_ERROR, /* Custom error messages for when a record write fails */
+    NX_STATUS_DHCP_READ_ERROR,  /* Custom error messages for when a record read fails */
 
     NX_STATUS_PTP_CLIENT_NOT_STARTED                 = NX_PTP_CLIENT_NOT_STARTED,
     NX_STATUS_PTP_CLIENT_ALREADY_STARTED             = NX_PTP_CLIENT_ALREADY_STARTED,

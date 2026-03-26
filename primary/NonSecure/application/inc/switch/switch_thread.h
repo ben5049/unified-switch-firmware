@@ -83,7 +83,7 @@ extern bool  switch_temperature_valid;
 
 
 /* Exported functions*/
-sja1105_status_t switch_init(sja1105_handle_t *dev);
+sja1105_status_t switch_init(void);
 void             switch_thread_entry(uint32_t initial_input);
 
 

@@ -21,3 +21,8 @@
 [submodule "primary/Secure/bootloader"]
 	path = primary/Secure/bootloader
 	url = https://github.com/ben5049/bootloader
+    branch = main
+[submodule "scripts"]
+	path = scripts
+	url = https://github.com/ben5049/cubemx-scripts
+    branch = main

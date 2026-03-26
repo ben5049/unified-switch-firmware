@@ -5,11 +5,8 @@
  *      Author: bens1
  */
 
-#include "main.h"
-
+#include "app.h"
 #include "utils.h"
-#include "config.h"
-#include "app_setup.h"
 #include "sja1105.h"
 #include "secure_nsc.h"
 

@@ -96,16 +96,20 @@ static phy_status_t select_phy(phy_index_t phy_num, bool *switchover) {
 static phy_status_t phy_88q2112_callback_read_reg(uint8_t phy_addr, uint8_t mmd_addr, uint16_t reg_addr, uint16_t *data, uint32_t timeout, void *context) {
 
     phy_status_t status = PHY_OK;
-    bool         switchover;
 
     /* Select the PHY */
+#if HW_VERSION == 5
+    bool switchover;
     status = select_phy((phy_index_t) context, &switchover);
     PHY_CHECK_RET(status);
+#endif
 
     /* 88Q2112 only needs 1 preamble bit */
     /* Set the clock frequency to 9.62MHz (PHY supports up to 12.5MHz) */
     /* If switched over perform a dummy read first */
+#if HW_VERSION == 5
     if (switchover) phy_read_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
+#endif
     status = phy_read_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
 
     return status;
@@ -129,16 +133,20 @@ static phy_status_t phy_dp83867_callback_read_reg(uint8_t phy_addr, uint16_t reg
 static phy_status_t phy_88q2112_callback_write_reg(uint8_t phy_addr, uint8_t mmd_addr, uint16_t reg_addr, uint16_t data, uint32_t timeout, void *context) {
 
     phy_status_t status = PHY_OK;
-    bool         switchover;
 
     /* Select the PHY */
+#if HW_VERSION == 5
+    bool switchover;
     status = select_phy((phy_index_t) context, &switchover);
     PHY_CHECK_RET(status);
+#endif
 
     /* 88Q2112 only needs 1 preamble bit */
     /* Set the clock frequency to 9.62MHz (PHY supports up to 12.5MHz) */
     /* If switched over perform a dummy write first */
+#if HW_VERSION == 5
     if (switchover) phy_write_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
+#endif
     status = phy_write_reg_c45(phy_addr, mmd_addr, reg_addr, data, timeout, true, ETH_MACMDIOAR_CR_DIV26);
 
     return status;

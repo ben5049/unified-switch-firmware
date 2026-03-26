@@ -5,9 +5,8 @@
  *      Author: bens1
  */
 
+#include "app.h"
 #include "tx_app.h"
-#include "app_setup.h"
-#include "main.h"
 #include "nx_app.h"
 #include "nx_link_thread.h"
 #include "switch_thread.h"
@@ -19,7 +18,6 @@
 #include "ptp_thread.h"
 #include "state_machine.h"
 #include "background_thread.h"
-#include "config.h"
 #include "utils.h"
 
 

@@ -18,6 +18,10 @@
 #include "tx_app.h"
 
 
+/* Private function prototypes */
+static phy_status_t phy_process_interrupts(uint32_t event_flags);
+
+
 uint8_t   phy_thread_stack[PHY_THREAD_STACK_SIZE];
 TX_THREAD phy_thread_handle;
 
@@ -67,36 +71,8 @@ void phy_thread_entry(uint32_t initial_input) {
 
             /* Process any interrupts */
             if (event_flags && (tx_status != TX_NO_EVENTS)) {
-
-                /* Call the interrupt handlers */
-                if (event_flags & PHY_PHY0_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy0);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
-                if (event_flags & PHY_PHY1_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy1);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
-                if (event_flags & PHY_PHY2_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy2);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
-                if (event_flags & PHY_PHY3_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy3);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
-                if (event_flags & PHY_PHY4_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy4);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
-                if (event_flags & PHY_PHY5_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy5);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
-                if (event_flags & PHY_PHY6_EVENT) {
-                    phy_status = PHY_ProcessInterrupt(&hphy6);
-                    if (phy_status != PHY_OK) Error_Handler();
-                }
+                phy_status = phy_process_interrupts(event_flags);
+                if (phy_status != PHY_OK) Error_Handler();
 
                 /* Go to the start of the loop and go back to sleep if necessary */
                 continue;
@@ -109,58 +85,104 @@ void phy_thread_entry(uint32_t initial_input) {
         next_wake_time += PHY_THREAD_INTERVAL;
 
         /* Read temperatures */
-        // phy_status = PHY_88Q211X_ReadTemperature(&hphy0, &(phy_temperatures[0]), &(phy_temperatures_valid[0]));
-        // if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_ReadTemperature(&hphy1, &(phy_temperatures[1]), &(phy_temperatures_valid[1]));
-        if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_ReadTemperature(&hphy2, &(phy_temperatures[2]), &(phy_temperatures_valid[2]));
-        if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_ReadTemperature(&hphy3, &(phy_temperatures[3]), &(phy_temperatures_valid[3]));
-        if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_ReadTemperature(&hphy4, &(phy_temperatures[4]), &(phy_temperatures_valid[4]));
-        if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_ReadTemperature(&hphy5, &(phy_temperatures[5]), &(phy_temperatures_valid[5]));
-        if (phy_status != PHY_OK) Error_Handler();
+        for (phy_index_t i = 0; i < NUM_PHYS; i++) {
+            phy_status = PHY_ReadTemperature(&(phy_handles[i]), &(phy_temperatures[1]), &(phy_temperatures_valid[1]));
+            if (phy_status != PHY_OK) Error_Handler();
+        }
 
         /* Poll link states in case an interrupt is missed */
-        // phy_status = PHY_88Q211X_GetLinkState(&hphy0, &link_up);
-        // if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_GetLinkState(&hphy1, &link_up);
-        if (phy_status != PHY_OK) Error_Handler();
-        phy_status = PHY_88Q211X_GetLinkState(&hphy2, &link_up);
-        if (phy_status != PHY_OK) Error_Handler();
-
-        // phy_fault_t fault = PHY_FAULT_NONE;
-        // phy_status        = PHY_88Q211X_CheckFaults(&hphy0, &fault);
-        // phy_status         = PHY_88Q211X_CheckFaults(&hphy1, &fault1);
-        // phy_status         = PHY_88Q211X_CheckFaults(&hphy2, &fault2);
-        //        if (fault != PHY_FAULT_NONE) {
-        //            phy_status = PHY_88Q211X_Start100MBIST(&hphy0);
-        //            if (phy_status != PHY_OK) Error_Handler();
-        //            phy_status = PHY_88Q211X_Get100MBISTResults(&hphy0, &error);
-        //            if (phy_status != PHY_OK) Error_Handler();
-        //        }
-
-        /* TODO: Move VCT to after a timeout if there is no link (to prioritise startup speed), also the PHY probably needs to be reset after due to magic numbers in undocumented registers */
-        // /* Start the virtual cable tests (this can take up to 500ms) */
-        // status = PHY_88Q211X_StartVCT(&hphy0);
-        // if (status != PHY_OK) Error_Handler();
-        // status = PHY_88Q211X_StartVCT(&hphy1);
-        // if (status != PHY_OK) Error_Handler();
-        // status = PHY_88Q211X_StartVCT(&hphy2);
-        // if (status != PHY_OK) Error_Handler();
-
-        // /* Get the VCT results */
-        // tx_thread_sleep_ms(500);
-        // uint32_t                  maximum_peak_distance;
-        // status = PHY_88Q211X_GetVCTResults(&hphy0, &cable_state, &maximum_peak_distance);
-        // if (status != PHY_OK) Error_Handler();
-        // status = PHY_88Q211X_GetVCTResults(&hphy1, &cable_state, &maximum_peak_distance);
-        // if (status != PHY_OK) Error_Handler();
-        // status = PHY_88Q211X_GetVCTResults(&hphy2, &cable_state, &maximum_peak_distance);
-        // if (status != PHY_OK) Error_Handler();
-
-
-        /* TODO: If the current thread holds the phy mutex when it shouldn't report an error */
+        // bool
+        for (phy_index_t i = 0; i < NUM_PHYS; i++) {
+            bool
+                phy_status = PHY_GetLinkState(&(phy_handles[i]), &link_up);
+            if (phy_status != PHY_OK) Error_Handler();
+        }
     }
 }
+
+
+static phy_status_t phy_process_interrupts(uint32_t event_flags) {
+
+    phy_status_t status = PHY_OK;
+
+    /* Call the interrupt handlers */
+
+#if NUM_PHYS > 0
+    if (event_flags & PHY_PHY0_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy0);
+        if (status != PHY_OK) return status;
+    }
+#endif
+#if NUM_PHYS > 1
+    if (event_flags & PHY_PHY1_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy1);
+        if (status != PHY_OK) return status;
+    }
+#endif
+#if NUM_PHYS > 2
+    if (event_flags & PHY_PHY2_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy2);
+        if (status != PHY_OK) return status;
+    }
+#endif
+#if NUM_PHYS > 3
+    if (event_flags & PHY_PHY3_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy3);
+        if (status != PHY_OK) return status;
+    }
+#endif
+#if NUM_PHYS > 4
+    if (event_flags & PHY_PHY4_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy4);
+        if (status != PHY_OK) return status;
+    }
+#endif
+#if NUM_PHYS > 5
+    if (event_flags & PHY_PHY5_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy5);
+        if (status != PHY_OK) return status;
+    }
+#endif
+#if NUM_PHYS > 6
+    if (event_flags & PHY_PHY6_EVENT) {
+        status = PHY_ProcessInterrupt(&hphy6);
+        if (status != PHY_OK) return status;
+    }
+#endif
+
+    return status;
+}
+
+
+// phy_fault_t fault = PHY_FAULT_NONE;
+// phy_status        = PHY_88Q211X_CheckFaults(&hphy0, &fault);
+// phy_status         = PHY_88Q211X_CheckFaults(&hphy1, &fault1);
+// phy_status         = PHY_88Q211X_CheckFaults(&hphy2, &fault2);
+//        if (fault != PHY_FAULT_NONE) {
+//            phy_status = PHY_88Q211X_Start100MBIST(&hphy0);
+//            if (phy_status != PHY_OK) Error_Handler();
+//            phy_status = PHY_88Q211X_Get100MBISTResults(&hphy0, &error);
+//            if (phy_status != PHY_OK) Error_Handler();
+//        }
+
+/* TODO: Move VCT to after a timeout if there is no link (to prioritise startup speed), also the PHY probably needs to be reset after due to magic numbers in undocumented registers */
+// /* Start the virtual cable tests (this can take up to 500ms) */
+// status = PHY_88Q211X_StartVCT(&hphy0);
+// if (status != PHY_OK) Error_Handler();
+// status = PHY_88Q211X_StartVCT(&hphy1);
+// if (status != PHY_OK) Error_Handler();
+// status = PHY_88Q211X_StartVCT(&hphy2);
+// if (status != PHY_OK) Error_Handler();
+
+// /* Get the VCT results */
+// tx_thread_sleep_ms(500);
+// uint32_t                  maximum_peak_distance;
+// status = PHY_88Q211X_GetVCTResults(&hphy0, &cable_state, &maximum_peak_distance);
+// if (status != PHY_OK) Error_Handler();
+// status = PHY_88Q211X_GetVCTResults(&hphy1, &cable_state, &maximum_peak_distance);
+// if (status != PHY_OK) Error_Handler();
+// status = PHY_88Q211X_GetVCTResults(&hphy2, &cable_state, &maximum_peak_distance);
+// if (status != PHY_OK) Error_Handler();
+
+
+/* TODO: If the current thread holds the phy mutex when it shouldn't report an error */

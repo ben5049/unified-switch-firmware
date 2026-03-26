@@ -8,15 +8,14 @@
  *
  */
 
-#include <stdbool.h>
 #include "tx_api.h"
 #include "nx_stm32_eth_config.h"
 #include "nx_stm32_phy_driver.h"
 
+#include "app.h"
 #include "nx_app.h"
 #include "switch_thread.h"
 #include "phy_thread.h"
-#include "config.h"
 
 
 int32_t nx_eth_phy_init(void) {

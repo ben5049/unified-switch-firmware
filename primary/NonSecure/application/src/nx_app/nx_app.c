@@ -11,8 +11,8 @@
 #include "nxd_dhcp_client.h"
 #include "nxd_ptp_client.h"
 #include "nx_stm32_eth_driver.h"
-#include "main.h"
 
+#include "app.h"
 #include "nx_app.h"
 #include "tx_app.h"
 #include "ptp_thread.h"

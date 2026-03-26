@@ -79,7 +79,7 @@ math(EXPR HW_VERSION_INT "${HW_VERSION}")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Verify the path to the script actually exists before running
-set(SCRIPT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/scripts/move_generated_files.py")
+set(SCRIPT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/bin/move_generated_files.py")
 if(NOT EXISTS "${SCRIPT_PATH}")
     message(FATAL_ERROR "Script not found at: ${SCRIPT_PATH}")
 endif()

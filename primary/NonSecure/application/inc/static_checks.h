@@ -18,26 +18,5 @@
     CHECK_MEMBER_OFFSET(instance, base, member);           \
     CHECK_MEMBER_SIZE(instance, base, member)
 
-
-#ifdef NX_DHCP_CLIENT_RESTORE_STATE
-#define CHECK_DHCP_RECORD_MEMBERS()                                                                         \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_state);               \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_ip_address);          \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_network_mask);        \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_gateway_address);     \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_interface_index);     \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_timeout);             \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_server_ip);           \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_lease_remain_time);   \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_lease_time);          \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_renewal_time);        \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_rebind_time);         \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_renewal_remain_time); \
-    CHECK_MEMBER_COMPATIBILITY(NX_DHCP_CLIENT_RECORD, s_dhcp_client_record_t, nx_dhcp_rebind_remain_time)
-#else
-#define CHECK_DHCP_RECORD_MEMBERS()
-#endif
-
-
 #define CHECK_BASIC_TYPES()                                                               \
     static_assert(sizeof(ULONG) == sizeof(uint32_t), "sizeof(ULONG) != sizeof(uint32_t)")

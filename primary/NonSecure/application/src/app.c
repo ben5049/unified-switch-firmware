@@ -5,18 +5,20 @@
  *      Author: bens1
  */
 
-#include "app_setup.h"
 #include "main.h"
 #include "app_threadx.h"
 #include "main.h"
-#include "crc.h"
-#include "dts.h"
-#include "eth.h"
-#include "spi.h"
+#include "gtzc_ns.h"
 #include "gpio.h"
-#include "aes.h"
 #include "rtc.h"
+#include "crc.h"
+#include "spi.h"
+#include "eth.h"
+#include "adc.h"
+#include "dts.h"
+#include "aes.h"
 
+#include "app.h"
 #include "switch_thread.h"
 #include "phy_thread.h"
 #include "utils.h"
@@ -28,11 +30,19 @@ log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_syst
 log_handle_t *loggers[NUM_LOGGERS] = {&hlog_setup, &hlog_generic, &hlog_phy, &hlog_sw, &hlog_comms, &hlog_system, &hlog_network};
 
 
-void app_setup(void) {
+int main(void) {
 
     /* Static assertions */
     CHECK_BASIC_TYPES();
-    CHECK_DHCP_RECORD_MEMBERS();
+
+    /* MPU Configuration */
+    mpu_config();
+
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
+
+    /* GTZC initialisation */
+    MX_GTZC_NS_Init();
 
     /* Start setup logger */
     log_status_t log_status;
@@ -66,7 +76,7 @@ void app_setup(void) {
     LOG_INFO("3V3 Regulator changed to FPWM mode");
 
     /* Initialise the switch */
-    sja1105_status_t switch_status = switch_init(&hsw0);
+    sja1105_status_t switch_status = switch_init();
     if (switch_status != SJA1105_OK) Error_Handler();
     LOG_INFO("SJA1105 Initialised");
 
@@ -75,7 +85,12 @@ void app_setup(void) {
     LOG_INFO("ETH Peripheral initialised");
 
     /* Initialise less important peripherals */
+    MX_ADC2_Init();
     MX_DTS_Init();
     MX_AES_Init();
     LOG_INFO("Peripheral group 2 initialised");
+
+    /* Shouldn't return */
+    MX_ThreadX_Init();
+    while (1);
 }

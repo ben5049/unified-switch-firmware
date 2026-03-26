@@ -25,7 +25,7 @@ static uint32_t         sw1_fixed_length_table_buffer[SJA1105_FIXED_BUFFER_SIZE]
 #endif
 
 
-sja1105_status_t switch_init(sja1105_handle_t *dev) {
+sja1105_status_t switch_init() {
 
     sja1105_status_t status = SJA1105_OK;
     sja1105_port_t   port_config;
@@ -142,9 +142,13 @@ sja1105_status_t switch_init(sja1105_handle_t *dev) {
 #elif HW_VERSION == 5
     port_config.port_num = SW0_PORT_PHY6_LAN8671;
 #endif
-    port_config.interface          = SJA1105_INTERFACE_RMII;
-    port_config.mode               = SJA1105_MODE_MAC;
-    port_config.speed              = SJA1105_SPEED_MBPS_TO_ENUM(PORT6_SPEED_MBPS);
+    port_config.interface = SJA1105_INTERFACE_RMII;
+    port_config.mode      = SJA1105_MODE_MAC;
+#if HW_VERSION == 4
+    port_config.speed = SJA1105_SPEED_MBPS_TO_ENUM(PORT3_SPEED_MBPS);
+#elif HW_VERSION == 5
+    port_config.speed = SJA1105_SPEED_MBPS_TO_ENUM(PORT6_SPEED_MBPS);
+#endif
     port_config.voltage            = SJA1105_IO_3V3;
     port_config.output_rmii_refclk = true;
     port_config.rx_error_unused    = false;
@@ -152,10 +156,14 @@ sja1105_status_t switch_init(sja1105_handle_t *dev) {
     if (status != SJA1105_OK) return status;
 
     /* Switch 0 port 4 config */
-    port_config.port_num           = SW0_PORT_HOST;
-    port_config.interface          = SJA1105_INTERFACE_RMII;
-    port_config.mode               = SJA1105_MODE_PHY;
-    port_config.speed              = SJA1105_SPEED_MBPS_TO_ENUM(PORT7_SPEED_MBPS);
+    port_config.port_num  = SW0_PORT_HOST;
+    port_config.interface = SJA1105_INTERFACE_RMII;
+    port_config.mode      = SJA1105_MODE_PHY;
+#if HW_VERSION == 4
+    port_config.speed = SJA1105_SPEED_MBPS_TO_ENUM(PORT4_SPEED_MBPS);
+#elif HW_VERSION == 5
+    port_config.speed = SJA1105_SPEED_MBPS_TO_ENUM(PORT7_SPEED_MBPS);
+#endif
     port_config.voltage            = SJA1105_IO_3V3;
     port_config.output_rmii_refclk = true;
     port_config.rx_error_unused    = true;

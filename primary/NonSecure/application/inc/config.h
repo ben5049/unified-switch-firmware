@@ -14,6 +14,7 @@ extern "C" {
 
 
 #include "tx_api.h"
+#include "nx_api.h"
 #include "zenoh_generic_platform.h"
 
 
@@ -174,19 +175,19 @@ extern "C" {
 #define ZENOH_MAX_RETRIES_BEFORE_LONG_PAUSE (5)   /* After this number of failed attempts to open a session pause for Z_TRANSPORT_LEASE to reset any leases on remote devices */
 
 #define ZENOH_MODE                          Z_CONFIG_MODE_CLIENT
-#define ZENOH_LOCATOR                       "" /* Empty means it will scout. Otherwise: "udp/192.168.50.2:7447" */
+#define ZENOH_LOCATOR                       ""                  /* Empty means it will scout. Otherwise: "udp/192.168.50.2:7447" */
 
-#define ZENOH_PUB_HEARTBEAT_KEYEXPR         NODE_ID   "/status"       /* The topic to send heartbeats to */
-#define ZENOH_SUB_HEARTBEAT_KEYEXPR         SERVER_ID "/status"       /* The topic to receive heartbeats from */
+#define ZENOH_PUB_HEARTBEAT_KEYEXPR         NODE_ID "/status"   /* The topic to send heartbeats to */
+#define ZENOH_SUB_HEARTBEAT_KEYEXPR         SERVER_ID "/status" /* The topic to receive heartbeats from */
 
-#define ZENOH_SUB_STDIN_KEYEXPR             NODE_ID   "/stdin"
-#define ZENOH_PUB_STDOUT_KEYEXPR            NODE_ID   "/stdout"
-#define ZENOH_PUB_STDERR_KEYEXPR            NODE_ID   "/stderr"
+#define ZENOH_SUB_STDIN_KEYEXPR             NODE_ID "/stdin"
+#define ZENOH_PUB_STDOUT_KEYEXPR            NODE_ID "/stdout"
+#define ZENOH_PUB_STDERR_KEYEXPR            NODE_ID "/stderr"
 
-#define ZENOH_PUB_STATS_KEYEXPR             NODE_ID   "/switch-stats" /* The topic to publish switch stats to */
+#define ZENOH_PUB_STATS_KEYEXPR             NODE_ID "/switch-stats" /* The topic to publish switch stats to */
 
-#define HEARTBEAT_INTERVAL                  (500)  /* ms */
-#define HEARTBEAT_MISS_TIMEOUT              (2000) /* ms, if the time between heartbeats is larger than this value then assume the producer has disconnected */
+#define HEARTBEAT_INTERVAL                  (500)                   /* ms */
+#define HEARTBEAT_MISS_TIMEOUT              (2000)                  /* ms, if the time between heartbeats is larger than this value then assume the producer has disconnected */
 
 /* ---------------------------------------------------------------------------- */
 /* Background Thread Config */
@@ -197,6 +198,19 @@ extern "C" {
 #define BACKGROUND_THREAD_PREMPTION_PRIORITY (15)
 
 #define BACKGROUND_THREAD_INTERVAL           (1000) /* ms, how often to run */
+
+/* ---------------------------------------------------------------------------- */
+/* User storage config */
+/* ---------------------------------------------------------------------------- */
+
+#define USER_STORAGE_DHCP_VALID_ADDR  (0)
+#define USER_STORAGE_DHCP_VALID_SIZE  (sizeof(bool))
+
+#define USER_STORAGE_DHCP_RECORD_ADDR (USER_STORAGE_DHCP_VALID_ADDR + USER_STORAGE_DHCP_VALID_SIZE)
+#define USER_STORAGE_DHCP_RECORD_SIZE (sizeof(NX_DHCP_CLIENT_RECORD))
+
+#define USER_STORAGE_TEST_ADDR        (USER_STORAGE_DHCP_RECORD_ADDR + USER_STORAGE_DHCP_RECORD_SIZE)
+#define USER_STORAGE_TEST_SIZE        (sizeof(uint32_t))
 
 
 #ifdef __cplusplus

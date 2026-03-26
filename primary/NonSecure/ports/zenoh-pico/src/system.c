@@ -16,11 +16,10 @@
 #include "zenoh-pico/system/platform.h"
 #include "zenoh-pico/utils/logging.h"
 
-#include "utils.h"
-#include "config.h"
+#include "app.h"
 #include "tx_app.h"
+#include "utils.h"
 #include "comms_thread.h"
-#include "app_setup.h"
 
 
 /*------------------ Random ------------------*/

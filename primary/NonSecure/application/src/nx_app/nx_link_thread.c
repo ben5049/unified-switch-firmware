@@ -10,8 +10,8 @@
 #include "stdbool.h"
 #include "tx_api.h"
 #include "nx_api.h"
-#include "main.h"
 
+#include "app.h"
 #include "nx_app.h"
 #include "config.h"
 #include "utils.h"
@@ -23,45 +23,19 @@
 #define NULL_ADDRESS 0
 
 
+/* Private function prototypes */
+static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr);
+#if ENABLE_DHCP_RESTORE
+static nx_status_t restore_dhcp_record(NX_DHCP *client);
+static nx_status_t store_dhcp_record(NX_DHCP *client);
+#endif
+
 uint32_t ip_address;
 uint32_t net_mask;
 
 TX_THREAD nx_link_thread_handle;
 uint8_t   nx_link_thread_stack[NX_LINK_THREAD_STACK_SIZE];
 
-
-static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
-
-    /* Get the new IP address */
-    if (nx_ip_address_get(&nx_ip_instance, &ip_address, &net_mask) != NX_SUCCESS) {
-        Error_Handler();
-    }
-
-    /* IP address has been assigned */
-    if (ip_address != NULL_ADDRESS) {
-
-        /* Notify the state machine */
-        if (tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED | STATE_MACHINE_UPDATE, TX_OR) != TX_SUCCESS) {
-            Error_Handler();
-        }
-    }
-
-    /* IP address has been unassigned */
-    else {
-
-        /* Notify the state machine */
-        if (tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_AND) != TX_SUCCESS) {
-            Error_Handler();
-        }
-        if (tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_UPDATE, TX_OR) != TX_SUCCESS) {
-            Error_Handler();
-        }
-    }
-}
-
-
-/* TODO: Remember the dynamically assigned IP address (NX_DHCP_CLIENT_RESTORE_STATE) */
-/* TODO: Respond to PHY linkup events or poll faster when the link is down */
 
 /* This thread monitors the link state */
 void nx_link_thread_entry(uint32_t thread_input) {
@@ -71,6 +45,9 @@ void nx_link_thread_entry(uint32_t thread_input) {
     tx_status_t tx_status     = TX_SUCCESS;
     bool        linkdown      = true;
     uint32_t    current_time;
+#if ENABLE_DHCP_RESTORE
+    uint32_t dhcp_record_next_save_time = 0;
+#endif
 
     /* Register the IP address change callback */
     nx_status = nx_ip_address_change_notify(&nx_ip_instance, ip_address_change_notify_callback, NULL);
@@ -80,16 +57,10 @@ void nx_link_thread_entry(uint32_t thread_input) {
     nx_status = nx_dhcp_start(&dhcp_client);
     if (nx_status != NX_SUCCESS) Error_Handler();
 
-    /* FIXME: Move to after link up? */
-#if ENABLE_DHCP_RESTORE == true
     /* Attempt to load and restore the DHCP record */
-    NX_DHCP_CLIENT_RECORD dhcp_record;
-    uint32_t              dhcp_record_next_save_time = 0;
-    s_load_dhcp_client_record((s_dhcp_client_record_t *) &dhcp_record);
-    if (dhcp_record.nx_dhcp_state != NX_DHCP_STATE_NOT_STARTED) {
-        nx_status = nx_dhcp_client_restore_record(&dhcp_client, &dhcp_record, 0); /* TODO: Set time elapsed based on RTC while asleep */
-        if (nx_status != NX_SUCCESS) Error_Handler();
-    }
+#if ENABLE_DHCP_RESTORE
+    nx_status = restore_dhcp_record(&dhcp_client);
+    if (nx_status != NX_SUCCESS) Error_Handler();
 #endif
 
     while (1) {
@@ -97,7 +68,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
         current_time = tx_time_get_ms();
 
         /* Send request to check if the switch is up and running */
-        nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_LINK_ENABLED, &actual_status, 10);
+        nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_LINK_ENABLED, &actual_status, 0);
 
         /* The link is up */
         if (nx_status == NX_SUCCESS) {
@@ -114,7 +85,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
                 if (tx_status != TX_SUCCESS) Error_Handler();
 
                 /* Send request to check if an address is resolved */
-                nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_ADDRESS_RESOLVED, &actual_status, 10);
+                nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_ADDRESS_RESOLVED, &actual_status, 0);
 
                 /* If we have an IP address then restart DHCP to get a new IP address for the new network */
                 if (nx_status == NX_SUCCESS) {
@@ -162,20 +133,17 @@ void nx_link_thread_entry(uint32_t thread_input) {
             Error_Handler();
         }
 
-#if ENABLE_DHCP_RESTORE == true
         /* Periodically save the DHCP record to non-volatile memory in case of a reboot */
+#if ENABLE_DHCP_RESTORE
         if (dhcp_record_next_save_time <= current_time) {
             dhcp_record_next_save_time = current_time + DHCP_RECORD_SAVE_INTERVAL;
-            nx_status                  = nx_dhcp_client_get_record(&dhcp_client, &dhcp_record);
-            if (nx_status == NX_SUCCESS) {
-                s_save_dhcp_client_record((s_dhcp_client_record_t *) &dhcp_record);
-            } else if ((nx_status != NX_DHCP_NO_INTERFACES_STARTED) && (nx_status != NX_DHCP_NO_INTERFACES_ENABLED)) {
-                Error_Handler();
-            }
+            nx_status                  = store_dhcp_record(&dhcp_client);
+            if (nx_status != NX_SUCCESS) Error_Handler();
         }
 #endif
 
-        /* Delay differently based on link state. TODO: Use an event from the PHY thread to wake up faster */
+        /* Delay differently based on link state */
+        // TODO: Use an event from the PHY thread to wake up faster
         if (linkdown) {
             tx_thread_sleep_ms(NX_APP_CABLE_CONNECTION_CHECK_UP_PERIOD);
         } else {
@@ -183,3 +151,98 @@ void nx_link_thread_entry(uint32_t thread_input) {
         }
     }
 }
+
+
+static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
+
+    /* Get the new IP address */
+    if (nx_ip_address_get(&nx_ip_instance, &ip_address, &net_mask) != NX_SUCCESS) {
+        Error_Handler();
+    }
+
+    /* IP address has been assigned */
+    if (ip_address != NULL_ADDRESS) {
+
+        /* Notify the state machine */
+        if (tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED | STATE_MACHINE_UPDATE, TX_OR) != TX_SUCCESS) {
+            Error_Handler();
+        }
+    }
+
+    /* IP address has been unassigned */
+    else {
+
+        /* Notify the state machine */
+        if (tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_AND) != TX_SUCCESS) {
+            Error_Handler();
+        }
+        if (tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_UPDATE, TX_OR) != TX_SUCCESS) {
+            Error_Handler();
+        }
+    }
+}
+
+
+#if ENABLE_DHCP_RESTORE
+
+
+static nx_status_t restore_dhcp_record(NX_DHCP *client) {
+
+    nx_status_t           status = NX_SUCCESS;
+    NX_DHCP_CLIENT_RECORD record;
+    bool                  valid = false;
+    int                   bytes_read;
+
+    /* Attempt to read the record valid flag */
+    bytes_read = s_read_user_storage(USER_STORAGE_DHCP_VALID_ADDR, (uint8_t *) &valid, USER_STORAGE_DHCP_VALID_SIZE);
+    if (bytes_read != USER_STORAGE_DHCP_VALID_SIZE) status = NX_STATUS_DHCP_READ_ERROR;
+    if ((status != NX_STATUS_SUCCESS) || !valid) return status;
+
+    /* Attempt to read the record */
+    bytes_read = s_read_user_storage(USER_STORAGE_DHCP_RECORD_ADDR, (uint8_t *) &record, USER_STORAGE_DHCP_RECORD_SIZE);
+    if (bytes_read != USER_STORAGE_DHCP_RECORD_SIZE) status = NX_STATUS_DHCP_READ_ERROR;
+    if (status != NX_STATUS_SUCCESS) return status;
+
+    /* Just return if the DHCP record wasn't started */
+    if (record.nx_dhcp_state == NX_DHCP_STATE_NOT_STARTED) {
+        return status;
+    }
+
+    /* Attempt to restore the record */
+    status = nx_dhcp_client_restore_record(client, &record, 0); /* TODO: Set time elapsed based on RTC while asleep */
+
+    // TODO: Check this is reachable
+    return status;
+}
+
+
+static nx_status_t store_dhcp_record(NX_DHCP *client) {
+
+    nx_status_t           status = NX_SUCCESS;
+    NX_DHCP_CLIENT_RECORD record;
+    bool                  valid;
+    int                   bytes_written;
+
+    /* Attempt to get the record */
+    status = nx_dhcp_client_get_record(client, &record);
+    if (status == NX_SUCCESS) {
+
+        /* Attempt to write the record to non-volatile storage */
+        bytes_written = s_write_user_storage(USER_STORAGE_DHCP_RECORD_ADDR, (uint8_t *) &record, USER_STORAGE_DHCP_RECORD_SIZE);
+        valid         = bytes_written == USER_STORAGE_DHCP_RECORD_SIZE;
+
+        /* If the write was successful set the valid flag */
+        bytes_written = s_write_user_storage(USER_STORAGE_DHCP_VALID_ADDR, (uint8_t *) &valid, USER_STORAGE_DHCP_VALID_SIZE);
+        if ((bytes_written != USER_STORAGE_DHCP_VALID_SIZE) || !valid) status = NX_STATUS_DHCP_WRITE_ERROR;
+    }
+
+    /* If the record couldn't be found make sure its for a valid reason */
+    else if ((status == NX_DHCP_NO_INTERFACES_STARTED) || (status == NX_DHCP_NO_INTERFACES_ENABLED)) {
+        status = NX_SUCCESS;
+    }
+
+    return status;
+}
+
+
+#endif

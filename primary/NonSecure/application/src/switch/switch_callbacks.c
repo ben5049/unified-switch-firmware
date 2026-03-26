@@ -11,9 +11,7 @@
 #include "tx_api.h"
 #include "hal.h"
 
-#include "main.h"
-#include "app_setup.h"
-#include "logging.h"
+#include "app.h"
 #include "utils.h"
 #include "switch_thread.h"
 #include "switch_callbacks.h"
