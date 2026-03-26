@@ -9,6 +9,7 @@
 #include "flash.h"
 #include "ramcfg.h"
 
+#include "app.h"
 #include "bootloader.h"
 
 
@@ -36,7 +37,7 @@ bootloader_status_t bootloader_program_flash(uint32_t to_addr, uint32_t from_add
     }
     if (status != BL_OK) return status;
 
-/* Don't program during debug TODO: this needs to be tested */
+    /* Don't program during debug TODO: this needs to be tested */
 #if !DEBUG
 
     /* Unlock the flash */
@@ -104,4 +105,43 @@ bootloader_status_t bootloader_erase_ram(bootloader_erase_ram_t erase) {
     }
 
     return (status == HAL_OK) ? BL_OK : BL_ERROR;
+}
+
+
+void bootloader_jump_to_bootloader(uint8_t image) {
+
+#if DEBUG
+    __BKPT(0);
+#endif
+
+    if (image != bootloader_get_bl_image()) {
+        // TODO: swap banks and reboot
+    }
+
+    /* In debug mode don't actually jump */
+#if DEBUG
+    while (1);
+#endif
+
+    HAL_NVIC_SystemReset();
+}
+
+
+void bootloader_jump_to_application(uint8_t image) {
+
+#if DEBUG
+    __BKPT(0);
+#endif
+
+    if (image != bootloader_get_bl_image()) {
+        // TODO: swap banks and reboot
+    }
+
+    /* In debug mode don't actually jump */
+#if DEBUG
+    while (1);
+#endif
+
+    /* Shouldn't return */
+    nonsecure_init();
 }

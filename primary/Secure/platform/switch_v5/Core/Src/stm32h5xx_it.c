@@ -75,20 +75,6 @@ extern UART_HandleTypeDef huart4;
 /*           Cortex Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
-  * @brief This function handles Non maskable interrupt.
-  */
-void NMI_Handler(void)
-{
-  /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
-  nmi_handler();
-  /* USER CODE END NonMaskableInt_IRQn 0 */
-  HAL_RCC_NMI_IRQHandler();
-  /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-
-  /* USER CODE END NonMaskableInt_IRQn 1 */
-}
-
-/**
   * @brief This function handles Hard fault interrupt.
   */
 void HardFault_Handler(void)
@@ -331,6 +317,20 @@ void FPU_IRQHandler(void)
   /* USER CODE BEGIN FPU_IRQn 1 */
 
   /* USER CODE END FPU_IRQn 1 */
+}
+
+/**
+  * @brief This function handles Instruction cache global interrupt.
+  */
+void ICACHE_IRQHandler(void)
+{
+  /* USER CODE BEGIN ICACHE_IRQn 0 */
+
+  /* USER CODE END ICACHE_IRQn 0 */
+  HAL_ICACHE_IRQHandler();
+  /* USER CODE BEGIN ICACHE_IRQn 1 */
+
+  /* USER CODE END ICACHE_IRQn 1 */
 }
 
 /**

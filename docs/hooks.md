@@ -4,6 +4,24 @@
 
 Almost all code is contained in the Application and Libraries folders, however certain functions must interact with auto-generated code. This page lists all such scenarios so they can be reimplemented if lost due to re-auto-generation.
 
+### Expose functions in main
+
+`main.c`
+
+```C
+/* USER CODE BEGIN Includes */
+#include "app.h"
+/* USER CODE END Includes */
+
+...
+
+/* USER CODE BEGIN 0 */
+void mpu_config() {
+    MPU_Config();
+}
+/* USER CODE END 0 */
+```
+
 ### Set MAC address && Ethernet DMA Descriptors
 
 `eth.c`
@@ -74,4 +92,54 @@ UINT MX_NetXDuo_Init(VOID *memory_ptr) {
 
     return ret;
 }
+```
+
+
+## Secure
+
+### Expose functions in main and set NS vector table address
+`main.c`
+
+```C
+
+/* USER CODE BEGIN Includes */
+#include "error.h"
+#include "app.h"
+/* USER CODE END Includes */
+
+...
+
+/* USER CODE BEGIN VTOR_TABLE */
+#define VTOR_TABLE_NS_START_ADDR ((uint32_t) &__FLASH_NSC_END__)
+/* USER CODE END VTOR_TABLE */
+
+...
+
+/* USER CODE BEGIN PV */
+extern uint32_t __FLASH_NSC_END__;
+/* USER CODE END PV */
+
+...
+
+/* USER CODE BEGIN 0 */
+void nonsecure_init() {
+    NonSecure_Init();
+}
+void system_clock_config() {
+    SystemClock_Config();
+}
+void periph_common_clock_config() {
+    PeriphCommonClock_Config();
+}
+void mpu_config() {
+    MPU_Config();
+}
+/* USER CODE END 0 */
+
+...
+
+  /* USER CODE BEGIN Error_Handler_Debug */
+  error_handler(BL_HAL_ERROR);
+  /* USER CODE END Error_Handler_Debug */
+
 ```

@@ -9,6 +9,9 @@
 #define INC_APP_H_
 
 
+#include "main.h"
+
+
 /* Wrappers to access MX gernerated main.c functions */
 void nonsecure_init(void);
 void system_clock_config(void);

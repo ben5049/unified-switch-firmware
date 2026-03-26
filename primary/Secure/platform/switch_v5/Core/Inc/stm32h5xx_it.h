@@ -46,7 +46,6 @@ extern "C" {
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void NMI_Handler(void);
 void HardFault_Handler(void);
 void MemManage_Handler(void);
 void BusFault_Handler(void);
@@ -64,6 +63,7 @@ void SAES_IRQHandler(void);
 void SPI1_IRQHandler(void);
 void UART4_IRQHandler(void);
 void FPU_IRQHandler(void);
+void ICACHE_IRQHandler(void);
 void RNG_IRQHandler(void);
 void HASH_IRQHandler(void);
 void PKA_IRQHandler(void);

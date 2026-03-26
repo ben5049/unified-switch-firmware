@@ -12,5 +12,7 @@ Secure/Core
 Secure/*.ld
 Secure/mx-generated.cmake
 
+Secure_nsclib/secure_nsclib.o
+
 .vscode/c_cpp_properties.json
 .clangd

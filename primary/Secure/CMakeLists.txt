@@ -27,7 +27,10 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Compiler options
-set(STM32_MCU_FLAGS  "-mcpu=cortex-m33 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mcmse " )
+set(STM32_MCU_FLAGS  "-mcpu=cortex-m33 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mcmse ")
+
+# Set the project name
+set(CMAKE_PROJECT_NAME primary_S)
 
 # In order to use CMake for cross-compiling
 set(CMAKE_CXX_COMPILER_FORCED "true")
@@ -43,15 +46,7 @@ endif()
 if(NOT PLATFORM)
     message(FATAL_ERROR "No PLATFORM found in environment")
 endif()
-
-# Set the project name
-if(PLATFORM STREQUAL "switch")
-    set(CMAKE_PROJECT_NAME primary_S)
-elseif(PLATFORM STREQUAL "mag-lock")
-    set(CMAKE_PROJECT_NAME mag-lock_S)
-else()
-    message(FATAL_ERROR "Invalid PLATFORM: ${PLATFORM}")
-endif()
+message(STATUS "PLATFORM = ${PLATFORM}")
 
 # Create variable that will be used as a C macro
 string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
@@ -61,15 +56,23 @@ string(REPLACE "-" "_" PLATFORM_UPPER "${PLATFORM_UPPER}")
 #                      Hardware Revision                      #
 ###############################################################
 
-# Turn the environment variable into a cmake variable
+# Turn the HW_VERSION environment variable into a cmake variable
 if(DEFINED ENV{HW_VERSION})
     set(HW_VERSION "$ENV{HW_VERSION}" CACHE STRING "Hardware Revision" FORCE)
 endif()
 if(NOT HW_VERSION)
     message(FATAL_ERROR "No HW_VERSION found in environment")
 endif()
-message(STATUS "Configuring for hardware: ${PLATFORM} v${HW_VERSION}")
+message(STATUS "HW_VERSION = ${HW_VERSION}")
 
+# Apply version specific settings
+if(HW_VERSION STREQUAL "4")
+elseif(HW_VERSION STREQUAL "5")
+else()
+    message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
+endif()
+
+# Convert the hardware version to an integer
 math(EXPR HW_VERSION_INT "${HW_VERSION}")
 
 ###############################################################
@@ -85,12 +88,16 @@ if(NOT EXISTS "${SCRIPT_PATH}")
 endif()
 
 execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" "${PLATFORM}_v${HW_VERSION}"
+    COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}" "${PLATFORM}_v${HW_VERSION}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     RESULT_VARIABLE script_res
     OUTPUT_VARIABLE script_out
     ERROR_VARIABLE  script_err
 )
+
+message(STATUS "Moving CubeMX generated files")
+message(STATUS "${script_out}")
+message(STATUS "Moved CubeMX generated files")
 
 # Check the result
 if(NOT "${script_res}" STREQUAL "0")
@@ -121,31 +128,6 @@ add_executable(${CMAKE_PROJECT_NAME})
 include("platform/${PLATFORM}_v${HW_VERSION}/mx-generated.cmake")
 
 ###############################################################
-#                      Hardware Revision                      #
-###############################################################
-
-# Turn the HW_VERSION environment variable into a cmake variable
-if(DEFINED ENV{HW_VERSION})
-    set(HW_VERSION "$ENV{HW_VERSION}" CACHE STRING "Hardware Revision" FORCE)
-endif()
-if(NOT HW_VERSION)
-    message(FATAL_ERROR "No HW_VERSION found in environment")
-endif()
-message(STATUS "PLATFORM = ${PLATFORM}")
-message(STATUS "HW_VERSION = ${HW_VERSION}")
-
-# Apply version specific settings
-if(HW_VERSION STREQUAL "4")
-elseif(HW_VERSION STREQUAL "5")
-else()
-    message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
-endif()
-
-# Convert the hardware version to an integer and pass it to the program
-math(EXPR HW_VERSION_INT "${HW_VERSION}")
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HW_VERSION=${HW_VERSION_INT})
-
-###############################################################
 #                   Library Subdirectories                    #
 ###############################################################
 
@@ -161,6 +143,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     application/src/app.c
     application/src/backup.c
+    application/src/secure_nsc.c
     application/src/bootloader_hooks/crypto.c
     application/src/bootloader_hooks/io.c
     application/src/bootloader_hooks/memory.c
@@ -177,7 +160,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     application/inc
-    bootloader # Required for secure_nsc.h
 )
 
 ###############################################################

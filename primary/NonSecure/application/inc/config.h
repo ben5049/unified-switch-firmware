@@ -18,6 +18,11 @@ extern "C" {
 #include "zenoh_generic_platform.h"
 
 
+/* Imported linker symbols */
+extern uint32_t __LOG_START__;
+extern uint32_t __LOG_SIZE__;
+
+
 /* ---------------------------------------------------------------------------- */
 /* Thread Enables */
 /* ---------------------------------------------------------------------------- */
@@ -35,9 +40,9 @@ extern "C" {
 /* ---------------------------------------------------------------------------- */
 
 #define NUM_LOGGERS     (7)
-#define LOG_BASE        (SRAM1_BASE_NS)
-#define LOG_BUFFER_SIZE (128 * 1024) /* Same size in Secure */ // TODO: generate from linker
-#define LOG_TIMEOUT     (100)                                  /* ms */
+#define LOG_BASE        ((uint32_t) &__LOG_START__)
+#define LOG_BUFFER_SIZE ((uint32_t) &__LOG_SIZE__)
+#define LOG_TIMEOUT     (100) /* ms */
 
 /* ---------------------------------------------------------------------------- */
 /* State Machine Config */

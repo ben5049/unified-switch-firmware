@@ -10,7 +10,7 @@ set(MX_Defines_Syms
 )
 # STM32CubeMX generated include paths
 set(MX_Include_Dirs
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/../Secure_nsclib
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/CMSIS/Device/ST/STM32H5xx/Include
@@ -21,31 +21,32 @@ set(MX_Include_Dirs
 )
 # STM32CubeMX generated application sources
 set(MX_Application_Src
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/gpio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/flash.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/gtzc_s.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/hash.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/pka.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/ramcfg.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/rng.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/rtc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/aes.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/sau.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/spi.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/threadx.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/usart.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/stm32h5xx_it.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/stm32h5xx_hal_msp.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/secure_nsc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/sysmem.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/syscalls.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Startup/startup_stm32h573xx.s
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/gpio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/flash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/gtzc_s.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/hash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/icache.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/pka.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/ramcfg.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/rng.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/rtc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/aes.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/sau.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/spi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/threadx.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/usart.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/stm32h5xx_it.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/stm32h5xx_hal_msp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/secure_nsc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/sysmem.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/syscalls.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Startup/startup_stm32h573xx.s
 )
 
 # STM32 HAL/LL Drivers
 set(STM32_Drivers_Src
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch/Core/Src/system_stm32h5xx_s.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v5/Core/Src/system_stm32h5xx_s.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_rcc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_rcc_ex.c
@@ -60,6 +61,7 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_exti.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_gtzc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_hash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_icache.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pka.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_ramcfg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_rng.c

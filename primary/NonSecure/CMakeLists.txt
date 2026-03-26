@@ -46,6 +46,7 @@ endif()
 if(NOT PLATFORM)
     message(FATAL_ERROR "No PLATFORM found in environment")
 endif()
+message(STATUS "PLATFORM = ${PLATFORM}")
 
 # Create variable that will be used as a C macro
 string(TOUPPER "${PLATFORM}" PLATFORM_UPPER)
@@ -62,7 +63,6 @@ endif()
 if(NOT HW_VERSION)
     message(FATAL_ERROR "No HW_VERSION found in environment")
 endif()
-message(STATUS "PLATFORM = ${PLATFORM}")
 message(STATUS "HW_VERSION = ${HW_VERSION}")
 
 # Apply version specific settings
@@ -72,6 +72,7 @@ else()
     message(FATAL_ERROR "Unknown Hardware Version: ${HW_VERSION}")
 endif()
 
+# Convert the hardware version to an integer
 math(EXPR HW_VERSION_INT "${HW_VERSION}")
 
 ###############################################################
@@ -112,18 +113,22 @@ message(STATUS "SERVER_ID = ${SERVER_ID}")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Verify the path to the script actually exists before running
-set(SCRIPT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/scripts/move_generated_files.py")
+set(SCRIPT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/bin/move_generated_files.py")
 if(NOT EXISTS "${SCRIPT_PATH}")
     message(FATAL_ERROR "Script not found at: ${SCRIPT_PATH}")
 endif()
 
 execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" "${PLATFORM}_v${HW_VERSION}"
+    COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}" "${PLATFORM}_v${HW_VERSION}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     RESULT_VARIABLE script_res
     OUTPUT_VARIABLE script_out
     ERROR_VARIABLE  script_err
 )
+
+message(STATUS "Moving CubeMX generated files")
+message(STATUS "${script_out}")
+message(STATUS "Moved CubeMX generated files")
 
 # Check the result
 if(NOT "${script_res}" STREQUAL "0")
@@ -248,9 +253,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-
-    # Bootloader (needed for secure_nsc.h)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Secure/bootloader
 
     # Application
     application/inc

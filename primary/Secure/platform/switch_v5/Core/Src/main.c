@@ -18,15 +18,24 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "flash.h"
 #include "gtzc_s.h"
+#include "hash.h"
+#include "icache.h"
+#include "pka.h"
+#include "ramcfg.h"
+#include "rng.h"
+#include "rtc.h"
+#include "aes.h"
 #include "sau.h"
+#include "spi.h"
 #include "usart.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "boot_main.h"
-#include "config.h"
 #include "error.h"
+#include "app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,12 +49,7 @@
 /* USER CODE END PD */
 
 /* USER CODE BEGIN VTOR_TABLE */
-
-/* Non-secure Vector table to jump to (internal Flash Bank2 here)             */
-/* Caution: address must correspond to non-secure internal Flash where is     */
-/*          mapped in the non-secure vector table                             */
-#define VTOR_TABLE_NS_START_ADDR (FLASH_NS_BANK1_BASE_ADDR + FLASH_NS_REGION_OFFSET)
-
+#define VTOR_TABLE_NS_START_ADDR ((uint32_t) &__FLASH_NSC_END__)
 /* USER CODE END VTOR_TABLE */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,7 +60,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+extern uint32_t __FLASH_NSC_END__;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,65 +74,24 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void nonsecure_init() {
+    NonSecure_Init();
+}
+void system_clock_config() {
+    SystemClock_Config();
+}
+void periph_common_clock_config() {
+    PeriphCommonClock_Config();
+}
+void mpu_config() {
+    MPU_Config();
+}
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* MPU Configuration--------------------------------------------------------*/
-  MPU_Config();
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
-  /* GTZC initialisation */
-  MX_GTZC_S_Init();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_SAU_Init();
-  /* USER CODE BEGIN 2 */
-    boot_main();
-    /* USER CODE END 2 */
-
-  /*************** Setup and jump to non-secure *******************************/
-
-  NonSecure_Init();
-
-  /* Non-secure software does not return, this code is not executed */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-    while (1) {
-        /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-    }
-    /* USER CODE END 3 */
-}
 
 /**
   * @brief  Non-secure call function
@@ -294,8 +257,8 @@ void MPU_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  error_handler(ERROR_HAL, HAL_ERROR);
-  /* USER CODE END Error_Handler_Debug */
+    error_handler(BL_HAL_ERROR);
+    /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
 /**

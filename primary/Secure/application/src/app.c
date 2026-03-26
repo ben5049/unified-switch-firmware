@@ -13,11 +13,6 @@
 #include "bootloader_config.h"
 
 
-/* Imported linker symbols */
-extern uint32_t __LOG_NS_START__;
-extern uint32_t __LOG_NS_SIZE__;
-
-
 static const bootloader_region_info_t app_regions[NUM_BANKS] = {
     {.addr = FLASH_NS_BANK1_BASE_ADDR + FLASH_NS_REGION_OFFSET,
      .size = FLASH_NS_REGION_SIZE},
@@ -39,8 +34,8 @@ static const bootloader_config_t bootloader_config = {
     .bootloader_count   = NUM_BANKS,
     .bootloader_regions = bootloader_regions,
 
-    .log_buffer_base = ((uint32_t) &__LOG_NS_START__),
-    .log_buffer_size = ((uint32_t) &__LOG_NS_SIZE__),
+    .log_buffer_base = (LOG_BASE),
+    .log_buffer_size = (LOG_BUFFER_SIZE),
 
     .app_erase_ram_on_boot = true,
     .disable_tick_in_app   = false,

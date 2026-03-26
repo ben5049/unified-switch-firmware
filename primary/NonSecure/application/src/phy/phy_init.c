@@ -30,6 +30,8 @@ static phy_config_88q211x_t phy_config_2;
 phy_handle_lan867x_t        hphy3;
 static phy_config_lan867x_t phy_config_3;
 #elif HW_VERSION == 5
+phy_handle_88q211x_t        hphy3;
+static phy_config_88q211x_t phy_config_3;
 phy_handle_88q211x_t        hphy4;
 static phy_config_88q211x_t phy_config_4;
 phy_handle_88q211x_t        hphy5;
@@ -70,8 +72,9 @@ const static phy_callbacks_t *phy_callbacks[NUM_PHYS] = {
 #endif
     &phy_callbacks_88q2112,
     &phy_callbacks_88q2112,
+#if HW_VERSION == 4
     &phy_callbacks_lan8671,
-#if HW_VERSION == 5
+#elif HW_VERSION == 5
     &phy_callbacks_88q2112,
     &phy_callbacks_88q2112,
     &phy_callbacks_88q2112,

@@ -26,6 +26,11 @@
 #include "logging.h"
 
 
+/* Private function prototypes */
+static bool     test_nvm(void);
+static uint32_t logging_timestamp_callback(void *context);
+
+
 log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network;
 log_handle_t *loggers[NUM_LOGGERS] = {&hlog_setup, &hlog_generic, &hlog_phy, &hlog_sw, &hlog_comms, &hlog_system, &hlog_network};
 
@@ -44,24 +49,27 @@ int main(void) {
     /* GTZC initialisation */
     MX_GTZC_NS_Init();
 
+    /* Test the non-volatile memory is working correctly */
+    if (!test_nvm()) Error_Handler();
+
     /* Start setup logger */
     log_status_t log_status;
-    log_status = log_init(&hlog_setup, LOGGER_ID_ROOT_NS, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_setup, LOGGER_ID_ROOT_NS, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
     LOG_INFO("Starting non-secure firmware");
 
     /* Start other loggers */
-    log_status = log_init(&hlog_generic, LOGGER_ID_0, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_generic, LOGGER_ID_0, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
-    log_status = log_init(&hlog_phy, LOGGER_ID_1, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_phy, LOGGER_ID_1, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
-    log_status = log_init(&hlog_sw, LOGGER_ID_2, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_sw, LOGGER_ID_2, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
-    log_status = log_init(&hlog_comms, LOGGER_ID_3, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_comms, LOGGER_ID_3, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
-    log_status = log_init(&hlog_system, LOGGER_ID_4, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_system, LOGGER_ID_4, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
-    log_status = log_init(&hlog_network, LOGGER_ID_5, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, &uwTick, LOGGING_TIMEOUT);
+    log_status = log_init(&hlog_network, LOGGER_ID_5, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) Error_Handler();
 
     /* Initialise important peripherals */
@@ -93,4 +101,40 @@ int main(void) {
     /* Shouldn't return */
     MX_ThreadX_Init();
     while (1);
+}
+
+
+/* Test the non-volatile memory is working. This is accessessed via the secure firmware */
+static bool test_nvm() {
+
+    bool                  test_failed = false;
+    static const uint32_t test_write  = 0xaa55aa55;
+    uint32_t              test_read   = 0;
+    int                   bytes_written;
+    int                   bytes_read;
+
+    static_assert(sizeof(test_write) == USER_STORAGE_TEST_SIZE);
+    static_assert(sizeof(test_read) == USER_STORAGE_TEST_SIZE);
+
+    bytes_written = s_write_user_storage(USER_STORAGE_TEST_ADDR, (uint8_t *) &test_write, USER_STORAGE_TEST_SIZE);
+    if (bytes_written != USER_STORAGE_TEST_SIZE) test_failed = true;
+    if (test_failed) return false;
+
+    bytes_read = s_read_user_storage(USER_STORAGE_TEST_ADDR, (uint8_t *) &test_read, USER_STORAGE_TEST_SIZE);
+    if (bytes_read != USER_STORAGE_TEST_SIZE) test_failed = true;
+    if (test_failed) return false;
+
+    if (test_read != test_write) test_failed = true;
+    if (test_failed) return false;
+}
+
+
+static uint32_t logging_timestamp_callback(void *context) {
+
+    /* Use kernel time only if it has been started */
+    if (tx_thread_identify() == TX_NULL) {
+        return HAL_GetTick();
+    } else {
+        return tx_time_get_ms();
+    }
 }

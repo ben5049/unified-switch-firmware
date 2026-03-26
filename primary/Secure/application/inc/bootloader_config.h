@@ -15,6 +15,11 @@
 #include "bootloader.h"
 
 
+/* Imported linker symbols */
+extern uint32_t __LOG_NS_START__;
+extern uint32_t __LOG_NS_SIZE__;
+
+
 /* ---------------------------------------------------------------------------- */
 /* General Config */
 /* ---------------------------------------------------------------------------- */
@@ -25,10 +30,10 @@
 /* Logging Config */
 /* ---------------------------------------------------------------------------- */
 
-#define LOG_BASE            (SRAM1_BASE_NS)
-#define LOG_BUFFER_SIZE     (128 * 1024) // TODO: Move to config or generate from linker (preferred)
+#define LOG_BASE            ((uint32_t) &__LOG_NS_START__)
+#define LOG_BUFFER_SIZE     ((uint32_t) &__LOG_NS_SIZE__)
 
-#define UART_LOGGING_ENABLE (DEBUG == 1)
+#define UART_LOGGING_ENABLE (DEBUG != 0)
 
 /* ---------------------------------------------------------------------------- */
 /* Flash Config (must be updated if the linker file is changed) */

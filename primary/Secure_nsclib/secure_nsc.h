@@ -7,7 +7,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2026 STMicroelectronics.
+ * Copyright (c) 2025 STMicroelectronics.
  * All rights reserved.
  *
  * This software is licensed under terms that can be found in the LICENSE file
@@ -19,7 +19,35 @@
 /* USER CODE END Header */
 
 /* USER CODE BEGIN Non_Secure_CallLib_h */
-/* This is just a wrapper, the actual NSC files are in the secure bootloader */
-#include "bootloader/inc/secure_nsc.h"
-/* USER CODE END Non_Secure_CallLib_h */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef SECURE_NSC_H
+#define SECURE_NSC_H
 
+/* Includes ------------------------------------------------------------------*/
+#include "stdint.h"
+
+/* Exported types ------------------------------------------------------------*/
+
+/**
+ * @brief  non-secure callback ID enumeration definition
+ */
+typedef enum {
+    SECURE_FAULT_CB_ID = 0x00U, /*!< System secure fault callback ID */
+    GTZC_ERROR_CB_ID   = 0x01U  /*!< GTZC secure error callback ID */
+} SECURE_CallbackIDTypeDef;
+
+/* Exported constants ------------------------------------------------------- */
+
+/* Exported macro ----------------------------------------------------------- */
+
+/* Exported functions ------------------------------------------------------- */
+
+void SECURE_RegisterCallback(SECURE_CallbackIDTypeDef CallbackId, void *func);
+
+void s_background_task(void);
+int  s_write_user_storage(uint16_t addr, const uint8_t *data, uint16_t size);
+int  s_read_user_storage(uint16_t addr, uint8_t *data, uint16_t size);
+
+
+#endif /* SECURE_NSC_H */
+/* USER CODE END Non_Secure_CallLib_h */
