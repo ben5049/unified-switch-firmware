@@ -50,6 +50,6 @@ All partially used flash sections should be padded. (Note: do not pad unused "2"
 
 When placing variables in a specific place in RAM, the `NOLOAD` linker keyword must be used:
 
-```.BACKUP_Section (NOLOAD):```
+```.BACKUP (NOLOAD):```
 
 I found this out the hard way

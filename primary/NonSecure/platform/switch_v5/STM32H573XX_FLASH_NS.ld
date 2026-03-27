@@ -283,6 +283,7 @@ KEEP (*(.LOG))
 
 /*end of MX sections*/}
 
+/* Symbols added by linker_tools.py START */
 
 __RAM_START__ = ORIGIN(RAM);
 __RAM_END__   = ORIGIN(RAM) + LENGTH(RAM);
@@ -313,3 +314,4 @@ __LOG_START__ = ORIGIN(LOG);
 __LOG_END__   = ORIGIN(LOG) + LENGTH(LOG);
 __LOG_SIZE__  = LENGTH(LOG);
 
+/* Symbols added by linker_tools.py END */

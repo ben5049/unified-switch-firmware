@@ -282,3 +282,36 @@ KEEP (*(.LOG))
 } >LOG
 
 /*end of MX sections*/}
+
+/* Symbols added by linker_tools.py START */
+
+__RAM_START__ = ORIGIN(RAM);
+__RAM_END__   = ORIGIN(RAM) + LENGTH(RAM);
+__RAM_SIZE__  = LENGTH(RAM);
+
+
+__FLASH_START__ = ORIGIN(FLASH);
+__FLASH_END__   = ORIGIN(FLASH) + LENGTH(FLASH);
+__FLASH_SIZE__  = LENGTH(FLASH);
+
+
+__ETH_START__ = ORIGIN(ETH);
+__ETH_END__   = ORIGIN(ETH) + LENGTH(ETH);
+__ETH_SIZE__  = LENGTH(ETH);
+
+
+__TRACE_START__ = ORIGIN(TRACE);
+__TRACE_END__   = ORIGIN(TRACE) + LENGTH(TRACE);
+__TRACE_SIZE__  = LENGTH(TRACE);
+
+
+__FLASH2_START__ = ORIGIN(FLASH2);
+__FLASH2_END__   = ORIGIN(FLASH2) + LENGTH(FLASH2);
+__FLASH2_SIZE__  = LENGTH(FLASH2);
+
+
+__LOG_START__ = ORIGIN(LOG);
+__LOG_END__   = ORIGIN(LOG) + LENGTH(LOG);
+__LOG_SIZE__  = LENGTH(LOG);
+
+/* Symbols added by linker_tools.py END */

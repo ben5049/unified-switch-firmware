@@ -1,5 +1,5 @@
 /*
- * app_setup.c
+ * app.c
  *
  *  Created on: 17 Aug 2025
  *      Author: bens1
@@ -125,7 +125,7 @@ static bool test_nvm() {
     if (test_failed) return false;
 
     if (test_read != test_write) test_failed = true;
-    if (test_failed) return false;
+    return !test_failed;
 }
 
 

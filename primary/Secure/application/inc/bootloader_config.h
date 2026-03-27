@@ -18,6 +18,18 @@
 /* Imported linker symbols */
 extern uint32_t __LOG_NS_START__;
 extern uint32_t __LOG_NS_SIZE__;
+extern uint32_t __FLASH_START__;
+extern uint32_t __FLASH_END__;
+extern uint32_t __FLASH_SIZE__;
+extern uint32_t __FLASH_NSC_START__;
+extern uint32_t __FLASH_NSC_END__;
+extern uint32_t __FLASH_NSC_SIZE__;
+extern uint32_t __FLASH2_START__;
+extern uint32_t __FLASH2_END__;
+extern uint32_t __FLASH2_SIZE__;
+extern uint32_t __FLASH_NSC2_START__;
+extern uint32_t __FLASH_NSC2_END__;
+extern uint32_t __FLASH_NSC2_SIZE__;
 
 
 /* ---------------------------------------------------------------------------- */
@@ -39,20 +51,23 @@ extern uint32_t __LOG_NS_SIZE__;
 /* Flash Config (must be updated if the linker file is changed) */
 /* ---------------------------------------------------------------------------- */
 
-#define FLASH_S_BANK1_BASE_ADDR  (FLASH_BASE_S)
-#define FLASH_S_BANK2_BASE_ADDR  (FLASH_BASE_S + (FLASH_SIZE_DEFAULT >> 1))
+#define FLASH_S_REGION_START    ((uint32_t) &__FLASH_START__)
+#define FLASH_S_REGION_SIZE     ((uint32_t) &__FLASH_SIZE__) /* In bytes */
 
-#define FLASH_NS_BANK1_BASE_ADDR (FLASH_BASE_NS)
-#define FLASH_NS_BANK2_BASE_ADDR (FLASH_BASE_NS + (FLASH_SIZE_DEFAULT >> 1))
+#define FLASH_NSC_REGION_START  ((uint32_t) &__FLASH_NSC_START__)
+#define FLASH_NSC_REGION_SIZE   ((uint32_t) &__FLASH_NSC_SIZE__) /* In bytes */
 
-#define FLASH_S_REGION_OFFSET    (0x00000000)
-#define FLASH_S_REGION_SIZE      (152 * 1024)                                      /* In bytes */
+#define FLASH2_S_REGION_START   ((uint32_t) &__FLASH2_START__)
+#define FLASH2_S_REGION_SIZE    ((uint32_t) &__FLASH2_SIZE__) /* In bytes */
 
-#define FLASH_NSC_REGION_OFFSET  (FLASH_S_REGION_OFFSET + FLASH_S_REGION_SIZE)     /* = 0x00026000 */
-#define FLASH_NSC_REGION_SIZE    (8 * 1024)                                        /* In bytes */
+#define FLASH_NSC2_REGION_START ((uint32_t) &__FLASH_NSC2_START__)
+#define FLASH_NSC2_REGION_SIZE  ((uint32_t) &__FLASH_NSC2_SIZE__) /* In bytes */
 
-#define FLASH_NS_REGION_OFFSET   (FLASH_NSC_REGION_OFFSET + FLASH_NSC_REGION_SIZE) /* = 0x00028000 */
-#define FLASH_NS_REGION_SIZE     (864 * 1024)                                      /* In bytes */
+#define FLASH_NS_REGION_START   ((((uint32_t) &__FLASH_NSC_END__) - FLASH_BASE_S) + FLASH_BASE_NS)
+#define FLASH_NS_REGION_SIZE    (864 * 1024) /* In bytes */
+
+#define FLASH2_NS_REGION_START  ((((uint32_t) &__FLASH_NSC2_END__) - FLASH_BASE_S) + FLASH_BASE_NS)
+#define FLASH2_NS_REGION_SIZE   (FLASH_NS_REGION_SIZE) /* In bytes */
 
 
 #endif /* INC_BOOTLOADER_CONFIG_H_ */

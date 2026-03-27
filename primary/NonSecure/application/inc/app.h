@@ -1,12 +1,12 @@
 /*
- * app_setup.h
+ * app.h
  *
  *  Created on: 17 Aug 2025
  *      Author: bens1
  */
 
-#ifndef INC_APP_SETUP_H_
-#define INC_APP_SETUP_H_
+#ifndef INC_APP_H_
+#define INC_APP_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,4 +30,4 @@ extern log_handle_t* loggers[];
 }
 #endif
 
-#endif /* INC_APP_SETUP_H_ */
+#endif /* INC_APP_H_ */

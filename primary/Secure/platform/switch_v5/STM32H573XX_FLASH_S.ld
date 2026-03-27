@@ -299,6 +299,7 @@ KEEP (*(.LOG_NS))
 
 /*end of MX sections*/}
 
+/* Symbols added by linker_tools.py START */
 
 __RAM_START__ = ORIGIN(RAM);
 __RAM_END__   = ORIGIN(RAM) + LENGTH(RAM);
@@ -339,3 +340,4 @@ __LOG_NS_START__ = ORIGIN(LOG_NS);
 __LOG_NS_END__   = ORIGIN(LOG_NS) + LENGTH(LOG_NS);
 __LOG_NS_SIZE__  = LENGTH(LOG_NS);
 
+/* Symbols added by linker_tools.py END */

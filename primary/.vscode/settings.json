@@ -16,4 +16,5 @@
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "STMicroelectronics.stm32cube-ide-clangd",
     "stm32cube-ide-clangd.enableFormatting": true,
+    "memory-view.showMemoryPanel": true,
 }

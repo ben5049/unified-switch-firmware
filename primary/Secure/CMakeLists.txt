@@ -79,38 +79,22 @@ math(EXPR HW_VERSION_INT "${HW_VERSION}")
 #                  Re-Regenerate CubeMX Files                 #
 ###############################################################
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/cmake/cubemx-tools.cmake")
 
-# Verify the path to the script actually exists before running
-set(SCRIPT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/bin/move_generated_files.py")
-if(NOT EXISTS "${SCRIPT_PATH}")
-    message(FATAL_ERROR "Script not found at: ${SCRIPT_PATH}")
-endif()
-
-execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}" "${PLATFORM}_v${HW_VERSION}"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    RESULT_VARIABLE script_res
-    OUTPUT_VARIABLE script_out
-    ERROR_VARIABLE  script_err
-)
-
-message(STATUS "Moving CubeMX generated files")
-message(STATUS "${script_out}")
-message(STATUS "Moved CubeMX generated files")
-
-# Check the result
-if(NOT "${script_res}" STREQUAL "0")
-    message(FATAL_ERROR "Python script failed!\nResult: ${script_res}\nSTDOUT: ${script_out}\nSTDERR: ${script_err}")
-endif()
+cubemx_move_generated_to_platform("${CMAKE_CURRENT_SOURCE_DIR}" "${PLATFORM}_v${HW_VERSION}")
 
 ###############################################################
 #                           Linker                            #
 ###############################################################
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/cmake/linker-tools.cmake")
+
 #Linker options
 set(STM32_LINKER_SCRIPT "platform/${PLATFORM}_v${HW_VERSION}/STM32H573XX_FLASH_S.ld")
 set(STM32_LINKER_OPTION  -Wl,--cmse-implib\ -Wl,--out-implib="${CMAKE_CURRENT_SOURCE_DIR}/../Secure_nsclib/secure_nsclib.o")
+
+# Add symbols for the start, end and size of all sections
+linker_add_symbols("${CMAKE_CURRENT_SOURCE_DIR}/${STM32_LINKER_SCRIPT}")
 
 ###############################################################
 #                     Create the project                      #

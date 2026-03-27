@@ -36,6 +36,7 @@
 /* USER CODE BEGIN Includes */
 #include "error.h"
 #include "app.h"
+#include "bootloader_config.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,7 +50,7 @@
 /* USER CODE END PD */
 
 /* USER CODE BEGIN VTOR_TABLE */
-#define VTOR_TABLE_NS_START_ADDR ((uint32_t) &__FLASH_NSC_END__)
+#define VTOR_TABLE_NS_START_ADDR FLASH_NS_REGION_START
 /* USER CODE END VTOR_TABLE */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,7 +61,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern uint32_t __FLASH_NSC_END__;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
