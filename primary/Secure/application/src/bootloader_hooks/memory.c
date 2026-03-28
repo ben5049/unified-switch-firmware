@@ -11,6 +11,7 @@
 
 #include "app.h"
 #include "bootloader.h"
+#include "log_tools.h"
 
 
 uint8_t bootloader_get_bl_image() {
@@ -50,8 +51,8 @@ bootloader_status_t bootloader_program_flash(uint32_t to_addr, uint32_t from_add
 
         /* Program the quadword */
         if (HAL_FLASH_Program(secure ? FLASH_TYPEPROGRAM_QUADWORD : FLASH_TYPEPROGRAM_QUADWORD_NS, to_addr + offset, from_addr + offset) != HAL_OK) {
-            status = MEM_PROGRAM_ERROR;
-            LOG_ERROR_NO_CHECK("Failed to write to flash address 0x%08lx\n", to_addr + i);
+            status = BL_MEM_PROGRAM_ERROR;
+            LOG_ERROR_NO_CHECK("Failed to write to flash address 0x%08lx\n", to_addr + offset);
             goto end;
         }
     }
@@ -98,9 +99,6 @@ bootloader_status_t bootloader_erase_ram(bootloader_erase_ram_t erase) {
 
         default:
             status = HAL_ERROR;
-#if DEBUG
-            __BKPT(0);
-#endif
             break;
     }
 
@@ -109,10 +107,6 @@ bootloader_status_t bootloader_erase_ram(bootloader_erase_ram_t erase) {
 
 
 void bootloader_jump_to_bootloader(uint8_t image) {
-
-#if DEBUG
-    __BKPT(0);
-#endif
 
     if (image != bootloader_get_bl_image()) {
         // TODO: swap banks and reboot
@@ -129,18 +123,9 @@ void bootloader_jump_to_bootloader(uint8_t image) {
 
 void bootloader_jump_to_application(uint8_t image) {
 
-#if DEBUG
-    __BKPT(0);
-#endif
-
     if (image != bootloader_get_bl_image()) {
         // TODO: swap banks and reboot
     }
-
-    /* In debug mode don't actually jump */
-#if DEBUG
-    while (1);
-#endif
 
     /* Shouldn't return */
     nonsecure_init();

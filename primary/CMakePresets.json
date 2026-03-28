@@ -38,10 +38,30 @@
             }
         },
         {
+            "name": "switch-v4-release",
+            "description": "Build for switch v4 hardware with release symbols",
+            "inherits": [
+                "Release"
+            ],
+            "environment": {
+                "HW_VERSION": "4"
+            }
+        },
+        {
             "name": "switch-v5-debug",
             "description": "Build for switch v5 hardware with debug symbols",
             "inherits": [
                 "Debug"
+            ],
+            "environment": {
+                "HW_VERSION": "5"
+            }
+        },
+        {
+            "name": "switch-v5-release",
+            "description": "Build for switch v5 hardware with release symbols",
+            "inherits": [
+                "Release"
             ],
             "environment": {
                 "HW_VERSION": "5"
@@ -54,8 +74,16 @@
             "configurePreset": "switch-v4-debug"
         },
         {
+            "name": "switch-v4-release",
+            "configurePreset": "switch-v4-release"
+        },
+        {
             "name": "switch-v5-debug",
             "configurePreset": "switch-v5-debug"
+        },
+        {
+            "name": "switch-v5-release",
+            "configurePreset": "switch-v5-release"
         }
     ]
 }

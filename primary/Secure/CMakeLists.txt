@@ -174,9 +174,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     bootloader
 )
 
-target_link_libraries(bootloader PUBLIC stm32cubemx)      # bootloader depends on stm32cubemx
-target_link_libraries(system_handlers PUBLIC stm32cubemx) # system_handlers depends on stm32cubemx
-
 ###############################################################
 #                      Finishing Touches                      #
 ###############################################################
