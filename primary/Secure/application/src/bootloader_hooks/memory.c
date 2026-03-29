@@ -46,7 +46,7 @@ bootloader_status_t bootloader_program_flash(uint32_t to_addr, uint32_t from_add
     HAL_FLASH_Unlock();
 
     /* Write the data */
-    if (LOG_INFO_NO_CHECK("Writing %luKiB to flash address 0x%08lx", size >> 10, to_addr) != LOG_OK) goto end; /* NO_CHECK since flash must be locked */
+    if (LOG_INFO_NO_CHECK("Writing %luKiB to flash address 0x%08lx", size >> 10, to_addr) != LOGGING_OK) goto end; /* NO_CHECK since flash must be locked */
     for (uint_fast32_t offset = 0; offset < size; offset += 16) {
 
         /* Program the quadword */

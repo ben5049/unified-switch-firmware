@@ -16,6 +16,7 @@ extern "C" {
 #include "main.h"
 #include "config.h"
 #include "logging.h"
+#include "error.h"
 
 
 void mpu_config(void);

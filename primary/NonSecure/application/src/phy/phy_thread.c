@@ -7,14 +7,13 @@
 
 #include "stdint.h"
 #include "hal.h"
-#include "main.h"
 
+#include "app.h"
 #include "88q211x.h"
 #include "lan867x.h"
 #include "phy_thread.h"
 #include "phy_callbacks.h"
 #include "utils.h"
-#include "config.h"
 #include "tx_app.h"
 
 
@@ -46,13 +45,13 @@ void phy_thread_entry(uint32_t initial_input) {
 
     /* Initialise PHYs */
     phy_status = phys_init();
-    if (phy_status != PHY_OK) Error_Handler();
+    if (phy_status != PHY_OK) error_handler();
 
     /* Check if any links are up (this calls the corresponding link state change callback which
      * is needed because the link can go up before the interrupt is enabled) */
     for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
         phy_status = PHY_GetLinkState(phy_handles[i], NULL);
-        if (phy_status != PHY_OK) Error_Handler();
+        if (phy_status != PHY_OK) error_handler();
     }
 
     /* Setup timing control variables (done in ms) */
@@ -67,12 +66,12 @@ void phy_thread_entry(uint32_t initial_input) {
 
             /* Wait for an interrupt */
             tx_status = tx_event_flags_get(&phy_events_handle, PHY_ALL_EVENTS, TX_OR_CLEAR, (ULONG *) &event_flags, MS_TO_TICKS(next_wake_time - current_time));
-            if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) Error_Handler();
+            if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
 
             /* Process any interrupts */
             if (event_flags && (tx_status != TX_NO_EVENTS)) {
                 phy_status = phy_process_interrupts(event_flags);
-                if (phy_status != PHY_OK) Error_Handler();
+                if (phy_status != PHY_OK) error_handler();
 
                 /* Go to the start of the loop and go back to sleep if necessary */
                 continue;
@@ -86,16 +85,14 @@ void phy_thread_entry(uint32_t initial_input) {
 
         /* Read temperatures */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            phy_status = PHY_ReadTemperature(&(phy_handles[i]), &(phy_temperatures[1]), &(phy_temperatures_valid[1]));
-            if (phy_status != PHY_OK) Error_Handler();
+            phy_status = PHY_ReadTemperature(&(phy_handles[i]), &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
+            if (phy_status != PHY_OK) error_handler();
         }
 
         /* Poll link states in case an interrupt is missed */
-        // bool
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            bool
-                phy_status = PHY_GetLinkState(&(phy_handles[i]), &link_up);
-            if (phy_status != PHY_OK) Error_Handler();
+            phy_status = PHY_GetLinkState(&(phy_handles[i]), &link_up);
+            if (phy_status != PHY_OK) error_handler();
         }
     }
 }

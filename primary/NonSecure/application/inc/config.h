@@ -152,7 +152,7 @@ extern uint32_t __LOG_SIZE__;
 #define NUM_PHYS                      ((HW_VERSION == 4) ? 4 : 7)
 #define PHY_TIMEOUT_MS                (100) /* Default timeout for PHY operations in ms */
 
-#define PHY_THREAD_STACK_SIZE         (1024)
+#define PHY_THREAD_STACK_SIZE         (2 * 1024)
 #define PHY_THREAD_PRIORITY           (15)
 #define PHY_THREAD_PREMPTION_PRIORITY (15)
 #define PHY_THREAD_INTERVAL           (300) /* TODO: Execute once per second (1000) when PHY interrupts work  */

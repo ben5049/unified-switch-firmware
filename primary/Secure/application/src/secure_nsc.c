@@ -58,3 +58,14 @@ CMSE_NS_ENTRY int s_read_user_storage(uint16_t addr, uint8_t *data, uint16_t siz
 
     return (status == BL_OK) ? size : -1;
 }
+
+
+/* Called by the application when it reaches an unrecoverable state */
+CMSE_NS_ENTRY void s_error_handler() {
+
+    enable_tick();
+
+    app_crashed();
+
+    disable_tick();
+}

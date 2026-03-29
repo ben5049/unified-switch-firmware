@@ -77,7 +77,7 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 _sstack = _estack - _Min_Stack_Size;
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x400;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+_Min_Stack_Size = 0x800; /* required amount of stack */
 
 /* Define output sections */
 SECTIONS
@@ -273,7 +273,7 @@ KEEP (*(.BACKUP))
 . = ALIGN(4);
 } >BACKUP
 
-.TRACE_NS :
+.TRACE_NS (NOLOAD):
 {. = ALIGN(4);
 KEEP (*(.TRACE_NS))
 . = ALIGN(4);
@@ -291,7 +291,7 @@ KEEP (*(.FLASH_NSC2))
 . = ALIGN(4);
 } >FLASH_NSC2
 
-.LOG_NS :
+.LOG_NS (NOLOAD):
 {. = ALIGN(4);
 KEEP (*(.LOG_NS))
 . = ALIGN(4);

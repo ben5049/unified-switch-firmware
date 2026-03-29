@@ -74,7 +74,7 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 _sstack = _estack - _Min_Stack_Size;
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x400;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+_Min_Stack_Size = 0x800; /* required amount of stack */
 
 /* Define output sections */
 SECTIONS
@@ -263,7 +263,7 @@ KEEP (*(.ETH))
 . = ALIGN(4);
 } >ETH
 
-.TRACE :
+.TRACE (NOLOAD):
 {. = ALIGN(4);
 KEEP (*(.TRACE))
 . = ALIGN(4);
@@ -275,7 +275,7 @@ KEEP (*(.FLASH2))
 . = ALIGN(4);
 } >FLASH2
 
-.LOG :
+.LOG (NOLOAD):
 {. = ALIGN(4);
 KEEP (*(.LOG))
 . = ALIGN(4);

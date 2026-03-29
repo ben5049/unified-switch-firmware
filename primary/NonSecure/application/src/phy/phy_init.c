@@ -16,28 +16,142 @@
 
 
 #if HW_VERSION == 4
-phy_handle_88q211x_t        hphy0;
-static phy_config_88q211x_t phy_config_0;
+
+phy_handle_88q211x_t              hphy0;
+static const phy_config_88q211x_t phy_config_0 = {
+    .variant               = PHY_VARIANT_88Q2112,
+    .phy_addr              = 0x00,
+    .c45_en                = true,
+    .timeout               = PHY_TIMEOUT_MS,
+    .interface             = PHY_INTERFACE_RGMII,
+    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS),
+    .default_role          = PHY_ROLE_SLAVE,
+    .tx_clk_internal_delay = true,
+    .rx_clk_internal_delay = true,
+    .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
+};
+
 #elif HW_VERSION == 5
-phy_handle_dp83867_t        hphy0;
-static phy_config_dp83867_t phy_config_0;
+
+phy_handle_dp83867_t              hphy0;
+static const phy_config_dp83867_t phy_config_0 = {
+    .variant       = PHY_VARIANT_DP83867,
+    .phy_addr      = 0x03,
+    .c45_en        = false,
+    .timeout       = PHY_TIMEOUT_MS,
+    .interface     = PHY_INTERFACE_RGMII,
+    .default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS),
+    .default_role  = PHY_ROLE_MASTER,
+};
+
 #endif
-phy_handle_88q211x_t        hphy1;
-static phy_config_88q211x_t phy_config_1;
-phy_handle_88q211x_t        hphy2;
-static phy_config_88q211x_t phy_config_2;
+
+phy_handle_88q211x_t              hphy1;
+static const phy_config_88q211x_t phy_config_1 = {
+    .variant = PHY_VARIANT_88Q2112,
 #if HW_VERSION == 4
-phy_handle_lan867x_t        hphy3;
-static phy_config_lan867x_t phy_config_3;
+    .phy_addr = 0x01,
 #elif HW_VERSION == 5
-phy_handle_88q211x_t        hphy3;
-static phy_config_88q211x_t phy_config_3;
-phy_handle_88q211x_t        hphy4;
-static phy_config_88q211x_t phy_config_4;
-phy_handle_88q211x_t        hphy5;
-static phy_config_88q211x_t phy_config_5;
-phy_handle_lan867x_t        hphy6;
-static phy_config_lan867x_t phy_config_6;
+    .phy_addr = 0x00,
+#endif
+    .c45_en                = true,
+    .timeout               = PHY_TIMEOUT_MS,
+    .interface             = PHY_INTERFACE_RGMII,
+    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT1_SPEED_MBPS),
+    .default_role          = PHY_ROLE_MASTER,
+    .tx_clk_internal_delay = true,
+    .rx_clk_internal_delay = true,
+    .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
+};
+
+phy_handle_88q211x_t              hphy2;
+static const phy_config_88q211x_t phy_config_2 = {
+    .variant = PHY_VARIANT_88Q2112,
+#if HW_VERSION == 4
+    .phy_addr = 0x02,
+#elif HW_VERSION == 5
+    .phy_addr = 0x00,
+#endif
+    .c45_en                = true,
+    .timeout               = PHY_TIMEOUT_MS,
+    .interface             = PHY_INTERFACE_RGMII,
+    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT2_SPEED_MBPS),
+    .default_role          = PHY_ROLE_MASTER,
+    .tx_clk_internal_delay = true,
+    .rx_clk_internal_delay = true,
+    .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
+};
+
+#if HW_VERSION == 4
+
+phy_handle_lan867x_t              hphy3;
+static const phy_config_lan867x_t phy_config_3 = {
+    .variant         = PHY_VARIANT_LAN8671,
+    .phy_addr        = 0x08,
+    .c45_en          = false,
+    .timeout         = PHY_TIMEOUT_MS,
+    .interface       = PHY_INTERFACE_RMII,
+    .plca_enabled    = true,
+    .plca_id         = PHY_PLCA_COORDINATOR_ID,
+    .plca_node_count = PHY_PLCA_DEFAULT_NODE_COUNT, /* Maximum of 16 devices on the bus by default, all devices must have the same node count setting. */
+};
+
+#elif HW_VERSION == 5
+
+phy_handle_88q211x_t              hphy3;
+static const phy_config_88q211x_t phy_config_3 = {
+    .variant               = PHY_VARIANT_88Q2112,
+    .phy_addr              = 0x00,
+    .c45_en                = true,
+    .timeout               = PHY_TIMEOUT_MS,
+    .interface             = PHY_INTERFACE_RGMII,
+    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT3_SPEED_MBPS),
+    .default_role          = PHY_ROLE_MASTER,
+    .tx_clk_internal_delay = true,
+    .rx_clk_internal_delay = true,
+    .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
+};
+
+phy_handle_88q211x_t              hphy4;
+static const phy_config_88q211x_t phy_config_4 = {
+    .variant               = PHY_VARIANT_88Q2112,
+    .phy_addr              = 0x00,
+    .c45_en                = true,
+    .timeout               = PHY_TIMEOUT_MS,
+    .interface             = PHY_INTERFACE_RGMII,
+    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT4_SPEED_MBPS),
+    .default_role          = PHY_ROLE_MASTER,
+    .tx_clk_internal_delay = true,
+    .rx_clk_internal_delay = true,
+    .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
+};
+
+phy_handle_88q211x_t              hphy5;
+static const phy_config_88q211x_t phy_config_5 = {
+    .variant               = PHY_VARIANT_88Q2112,
+    .phy_addr              = 0x00,
+    .c45_en                = true,
+    .timeout               = PHY_TIMEOUT_MS,
+    .interface             = PHY_INTERFACE_RGMII,
+    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT5_SPEED_MBPS),
+    .default_role          = PHY_ROLE_MASTER,
+    .tx_clk_internal_delay = true,
+    .rx_clk_internal_delay = true,
+    .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
+};
+
+phy_handle_lan867x_t              hphy6;
+static const phy_config_lan867x_t phy_config_6 = {
+    .variant         = PHY_VARIANT_LAN8671,
+    .phy_addr        = 0x08,
+    .c45_en          = false,
+    .timeout         = PHY_TIMEOUT_MS,
+    .interface       = PHY_INTERFACE_RMII,
+    .plca_enabled    = true,
+    .plca_id         = PHY_PLCA_COORDINATOR_ID,
+    .plca_node_count = PHY_PLCA_DEFAULT_NODE_COUNT, /* Maximum of 16 devices on the bus by default, all devices must have the same node count setting. */
+};
+
 #endif
 
 void *phy_handles[NUM_PHYS] = {
@@ -52,7 +166,7 @@ void *phy_handles[NUM_PHYS] = {
 #endif
 };
 
-static void *phy_configs[NUM_PHYS] = {
+static const void *phy_configs[NUM_PHYS] = {
     &phy_config_0,
     &phy_config_1,
     &phy_config_2,
@@ -110,92 +224,6 @@ phy_status_t phys_init() {
     memset(&hphy6, 0, sizeof(hphy6));
 #endif
 
-    phy_config_0.variant       = PHY_VARIANT_DP83867;
-    phy_config_0.phy_addr      = 0x03;
-    phy_config_0.c45_en        = false;
-    phy_config_0.timeout       = PHY_TIMEOUT_MS;
-    phy_config_0.interface     = PHY_INTERFACE_RGMII;
-    phy_config_0.default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS);
-    phy_config_0.default_role  = PHY_ROLE_MASTER;
-
-    phy_config_1.variant               = PHY_VARIANT_88Q2112;
-    phy_config_1.phy_addr              = 0x00;
-    phy_config_1.c45_en                = true;
-    phy_config_1.timeout               = PHY_TIMEOUT_MS;
-    phy_config_1.interface             = PHY_INTERFACE_RGMII;
-    phy_config_1.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT1_SPEED_MBPS);
-    phy_config_1.default_role          = PHY_ROLE_MASTER;
-    phy_config_1.tx_clk_internal_delay = true;
-    phy_config_1.rx_clk_internal_delay = true;
-    phy_config_1.fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB;
-
-    phy_config_2.variant               = PHY_VARIANT_88Q2112;
-    phy_config_2.phy_addr              = 0x00;
-    phy_config_2.c45_en                = true;
-    phy_config_2.timeout               = PHY_TIMEOUT_MS;
-    phy_config_2.interface             = PHY_INTERFACE_RGMII;
-    phy_config_2.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT2_SPEED_MBPS);
-    phy_config_2.default_role          = PHY_ROLE_MASTER;
-    phy_config_2.tx_clk_internal_delay = true;
-    phy_config_2.rx_clk_internal_delay = true;
-    phy_config_2.fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB;
-
-#if HW_VERSION == 4
-
-    phy_config_3.variant         = PHY_VARIANT_LAN8671;
-    phy_config_3.phy_addr        = 0x08;
-    phy_config_3.c45_en          = false;
-    phy_config_3.timeout         = PHY_TIMEOUT_MS;
-    phy_config_3.interface       = PHY_INTERFACE_RMII;
-    phy_config_3.plca_enabled    = true;
-    phy_config_3.plca_id         = PHY_PLCA_COORDINATOR_ID;
-    phy_config_3.plca_node_count = PHY_PLCA_DEFAULT_NODE_COUNT; /* Maximum of 16 devices on the bus by default, all devices must have the same node count setting. */
-
-#elif HW_VERSION == 5
-
-    phy_config_3.variant               = PHY_VARIANT_88Q2112;
-    phy_config_3.phy_addr              = 0x00;
-    phy_config_3.c45_en                = true;
-    phy_config_3.timeout               = PHY_TIMEOUT_MS;
-    phy_config_3.interface             = PHY_INTERFACE_RGMII;
-    phy_config_3.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT3_SPEED_MBPS);
-    phy_config_3.default_role          = PHY_ROLE_MASTER;
-    phy_config_3.tx_clk_internal_delay = true;
-    phy_config_3.rx_clk_internal_delay = true;
-    phy_config_3.fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB;
-
-    phy_config_4.variant               = PHY_VARIANT_88Q2112;
-    phy_config_4.phy_addr              = 0x00;
-    phy_config_4.c45_en                = true;
-    phy_config_4.timeout               = PHY_TIMEOUT_MS;
-    phy_config_4.interface             = PHY_INTERFACE_RGMII;
-    phy_config_4.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT4_SPEED_MBPS);
-    phy_config_4.default_role          = PHY_ROLE_MASTER;
-    phy_config_4.tx_clk_internal_delay = true;
-    phy_config_4.rx_clk_internal_delay = true;
-    phy_config_4.fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB;
-
-    phy_config_5.variant               = PHY_VARIANT_88Q2112;
-    phy_config_5.phy_addr              = 0x00;
-    phy_config_5.c45_en                = true;
-    phy_config_5.timeout               = PHY_TIMEOUT_MS;
-    phy_config_5.interface             = PHY_INTERFACE_RGMII;
-    phy_config_5.default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT5_SPEED_MBPS);
-    phy_config_5.default_role          = PHY_ROLE_MASTER;
-    phy_config_5.tx_clk_internal_delay = true;
-    phy_config_5.rx_clk_internal_delay = true;
-    phy_config_5.fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB;
-
-    phy_config_6.variant         = PHY_VARIANT_LAN8671;
-    phy_config_6.phy_addr        = 0x08;
-    phy_config_6.c45_en          = false;
-    phy_config_6.timeout         = PHY_TIMEOUT_MS;
-    phy_config_6.interface       = PHY_INTERFACE_RMII;
-    phy_config_6.plca_enabled    = true;
-    phy_config_6.plca_id         = PHY_PLCA_COORDINATOR_ID;
-    phy_config_6.plca_node_count = PHY_PLCA_DEFAULT_NODE_COUNT; /* Maximum of 16 devices on the bus by default, all devices must have the same node count setting. */
-#endif
-
     /* Set pins to a known state */
     HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(PHY_WAKE_GPIO_Port, PHY_WAKE_Pin, GPIO_PIN_SET);
@@ -223,6 +251,13 @@ phy_status_t phys_init() {
             Error_Handler();
         }
     }
+
+    /* Clear the interrupt flags since the LAN8671 init contains a software reset
+     * that triggers a non-maskable interrupt. While it is internally cleared
+     * in the driver, the GPIO interrupt handler will have fired, and when we
+     * try to process the interrupt, the source won't be found. */
+    if (tx_event_flags_set(&phy_events_handle, 0, TX_AND) != TX_SUCCESS) status = PHY_ERROR;
+    if (status != PHY_OK) return status;
 
     /* Less critical setup: interrupts & temperature sensors */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
