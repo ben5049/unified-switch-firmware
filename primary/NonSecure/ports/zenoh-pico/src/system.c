@@ -17,9 +17,10 @@
 #include "zenoh-pico/utils/logging.h"
 
 #include "app.h"
-#include "tx_app.h"
 #include "utils.h"
+#include "tx_app.h"
 #include "comms_thread.h"
+#include "secure_nsc.h"
 
 
 /*------------------ Random ------------------*/
@@ -27,7 +28,7 @@ uint8_t z_random_u8(void) { return z_random_u32(); }
 
 uint16_t z_random_u16(void) { return z_random_u32(); }
 
-uint32_t z_random_u32(void) { return random(); }
+uint32_t z_random_u32(void) { return s_random_u32(); }
 
 uint64_t z_random_u64(void) {
     uint64_t ret  = 0;
@@ -61,7 +62,17 @@ void *z_realloc(void *ptr, size_t size) {
 }
 
 void z_free(void *ptr) {
-    tx_byte_release(ptr);
+
+    tx_status_t status = TX_SUCCESS;
+
+    /* In POSIX free(NULL) is safe and results in a NOP */
+    if (ptr == NULL) {
+        return;
+    }
+
+    /* Free the pointer */
+    status = tx_byte_release(ptr);
+    if (status != TX_SUCCESS) Error_Handler();
 }
 
 void z_free_with_context(void *data, void *context) {
@@ -333,7 +344,7 @@ z_result_t z_sleep_s(size_t time) {
 void __z_clock_gettime(z_clock_t *ts) {
     uint64_t ms    = tx_time_get_ms();
     ts->second_low = ms / (uint64_t) 1000;
-    ts->nanosecond = (ms % (uint64_t) 1000) * (uint64_t) 1000;
+    ts->nanosecond = (ms % (uint64_t) 1000) * (uint64_t) 1000000;
 }
 
 z_clock_t z_clock_now(void) {

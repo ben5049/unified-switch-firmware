@@ -10,15 +10,15 @@
 
 #include "hal.h"
 #include "tx_api.h"
-#include "main.h"
 
+#include "app.h"
+#include "tx_app.h"
 #include "88q211x.h"
 #include "lan867x.h"
 #include "phy_callbacks.h"
 #include "phy_thread.h"
 #include "stp_thread.h"
 #include "utils.h"
-#include "tx_app.h"
 #include "phy_platform.h"
 
 
@@ -363,11 +363,11 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 #endif
 
         default:
-            Error_Handler();
+            error_handler();
             break;
     }
 
     /* Set the flag */
     status = tx_event_flags_set(&phy_events_handle, flags_to_set, TX_OR);
-    if (status != TX_SUCCESS) Error_Handler();
+    if (status != TX_SUCCESS) error_handler();
 }

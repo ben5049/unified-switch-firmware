@@ -9,15 +9,14 @@
 #include "tx_api.h"
 #include "nx_api.h"
 #include "nx_stm32_eth_config.h"
-#include "main.h"
 
 #include "pb_encode.h"
 #include "heartbeat.pb.h"
 
+#include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
 #include "utils.h"
-#include "config.h"
 #include "encodings.h"
 #include "zenoh-pico.h"
 #include "zenoh_cleanup.h"
@@ -124,21 +123,21 @@ void comms_thread_entry(uint32_t initial_input) {
 
         /* Initialise the byte pool */
         tx_status = tx_byte_pool_create(&zenoh_byte_pool, "Zenoh Pico memory pool", zenoh_byte_pool_buffer, ZENOH_MEM_POOL_SIZE);
-        if (tx_status != TX_SUCCESS) Error_Handler();
+        if (tx_status != TX_SUCCESS) error_handler();
 
         /* Read and apply the config */
         z_owned_config_t config;
         z_status = z_config_default(&config);
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
         z_status = zp_config_insert(z_loan_mut(config), Z_CONFIG_MODE_KEY, ZENOH_MODE);
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
         if (strcmp(ZENOH_LOCATOR, "") != 0) {
             if (strcmp(ZENOH_MODE, Z_CONFIG_MODE_CLIENT) == 0) {
                 z_status = zp_config_insert(z_loan_mut(config), Z_CONFIG_CONNECT_KEY, ZENOH_LOCATOR);
-                if (z_status < Z_OK) Error_Handler();
+                if (z_status < Z_OK) error_handler();
             } else {
                 z_status = zp_config_insert(z_loan_mut(config), Z_CONFIG_LISTEN_KEY, ZENOH_LOCATOR);
-                if (z_status < Z_OK) Error_Handler();
+                if (z_status < Z_OK) error_handler();
             }
         }
 
@@ -182,7 +181,7 @@ void comms_thread_entry(uint32_t initial_input) {
 
             /* Unhandled error */
             else {
-                Error_Handler();
+                error_handler();
             }
 
         } while (z_status < Z_OK);
@@ -194,33 +193,33 @@ void comms_thread_entry(uint32_t initial_input) {
         z_view_keyexpr_t  stats_pub_view_key;
         z_view_keyexpr_from_str(&stats_pub_view_key, ZENOH_PUB_STATS_KEYEXPR);
         z_status = z_declare_keyexpr(z_loan(session), &stats_pub_key, z_loan(stats_pub_view_key));
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
         z_status = z_declare_publisher(z_loan(session), &stats_pub, z_loan(stats_pub_key), NULL);
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
 
         /* Declare heartbeat publisher */
         z_owned_keyexpr_t heartbeat_pub_key;
         z_view_keyexpr_t  heartbeat_pub_view_key;
         z_view_keyexpr_from_str(&heartbeat_pub_view_key, ZENOH_PUB_HEARTBEAT_KEYEXPR);
         z_status = z_declare_keyexpr(z_loan(session), &heartbeat_pub_key, z_loan(heartbeat_pub_view_key));
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
         z_status = z_declare_publisher(z_loan(session), &heartbeat_pub, z_loan(heartbeat_pub_key), &heartbeat_pub_options);
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
 
         /* Declare heartbeat background subscriber */
         z_owned_keyexpr_t heartbeat_sub_key;
         z_view_keyexpr_t  heartbeat_sub_view_key;
         z_view_keyexpr_from_str(&heartbeat_sub_view_key, ZENOH_SUB_HEARTBEAT_KEYEXPR);
         z_status = z_declare_keyexpr(z_loan(session), &heartbeat_sub_key, z_loan(heartbeat_sub_view_key));
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
         z_owned_closure_sample_t heartbeat_closure;
         z_closure(&heartbeat_closure, heartbeat_sub_callback, NULL, NULL);
         z_status = z_declare_background_subscriber(z_loan(session), z_loan(heartbeat_sub_key), z_move(heartbeat_closure), NULL);
-        if (z_status < Z_OK) Error_Handler();
+        if (z_status < Z_OK) error_handler();
 
         /* Notify the state machine that we are connected and ready to communicate */
         tx_status = zenoh_connected(true);
-        if (tx_status != TX_SUCCESS) Error_Handler();
+        if (tx_status != TX_SUCCESS) error_handler();
 
         LOG_INFO("Entering main loop");
 
@@ -249,7 +248,7 @@ void comms_thread_entry(uint32_t initial_input) {
             heartbeat.uptime         = current_time;
             heartbeat.error_code     = 0;                /* TODO: Send error code */
             heartbeat.has_error_code = false;            /* TODO: Send error code */
-            if (!pb_encode(&heartbeat_stream, Heartbeat_fields, &heartbeat)) Error_Handler();
+            if (!pb_encode(&heartbeat_stream, Heartbeat_fields, &heartbeat)) error_handler();
             z_owned_bytes_t payload;
             z_status = z_bytes_from_static_buf(&payload, heartbeat_producer_buffer, heartbeat_stream.bytes_written);
             if (z_status < Z_OK) goto restart;
@@ -258,7 +257,7 @@ void comms_thread_entry(uint32_t initial_input) {
             z_publisher_put_options_t options;
             z_publisher_put_options_default(&options);
             z_status = z_encoding_from_str(&heartbeat_encoding, ENCODING_HEARTBEAT);
-            if (z_status < Z_OK) Error_Handler();
+            if (z_status < Z_OK) error_handler();
             options.encoding = z_move(heartbeat_encoding);
             z_status         = z_publisher_put(z_loan(heartbeat_pub), z_move(payload), &options);
             if (z_status < Z_OK) goto restart;
@@ -273,7 +272,7 @@ void comms_thread_entry(uint32_t initial_input) {
                 LOG_INFO("Received disconnect event");
                 goto restart;
             } else if (tx_status != TX_NO_EVENTS) {
-                Error_Handler();
+                error_handler();
             }
             session_open = !z_session_is_closed(z_loan(session));
         }
@@ -295,7 +294,7 @@ void comms_thread_entry(uint32_t initial_input) {
 
         /* Notify the state machine */
         tx_status = zenoh_disconnected(true);
-        if (tx_status != TX_SUCCESS) Error_Handler();
+        if (tx_status != TX_SUCCESS) error_handler();
 
     /* An error occured while connecting */
     retry:
@@ -314,7 +313,7 @@ void comms_thread_entry(uint32_t initial_input) {
 
         /* Delete the byte pool */
         tx_status = tx_byte_pool_delete(&zenoh_byte_pool);
-        if (tx_status != TX_SUCCESS) Error_Handler();
+        if (tx_status != TX_SUCCESS) error_handler();
 
         LOG_INFO("Terminated");
 

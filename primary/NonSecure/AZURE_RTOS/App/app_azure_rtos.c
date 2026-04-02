@@ -22,7 +22,7 @@
 #include "app_azure_rtos.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "tx_app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,21 +96,18 @@ VOID tx_application_define(VOID *first_unused_memory)
 
     /* USER CODE END TX_Byte_Pool_Success */
 
-    memory_ptr = (VOID *)&tx_app_byte_pool;
-    status = App_ThreadX_Init(memory_ptr);
-    if (status != TX_SUCCESS)
-    {
-      /* USER CODE BEGIN  App_ThreadX_Init_Error */
-      while(1)
-      {
-      }
-      /* USER CODE END  App_ThreadX_Init_Error */
+        memory_ptr = (VOID *) &tx_app_byte_pool;
+        status     = App_ThreadX_Init(memory_ptr);
+        if (status != TX_SUCCESS) {
+            /* USER CODE BEGIN  App_ThreadX_Init_Error */
+            while (1) {
+            }
+            /* USER CODE END  App_ThreadX_Init_Error */
+        }
+        /* USER CODE BEGIN  App_ThreadX_Init_Success */
+        tx_setup(memory_ptr);
+        /* USER CODE END  App_ThreadX_Init_Success */
     }
-    /* USER CODE BEGIN  App_ThreadX_Init_Success */
-
-    /* USER CODE END  App_ThreadX_Init_Success */
-
-  }
 
   if (tx_byte_pool_create(&nx_app_byte_pool, "Nx App memory pool", nx_byte_pool_buffer, NX_APP_MEM_POOL_SIZE) != TX_SUCCESS)
   {

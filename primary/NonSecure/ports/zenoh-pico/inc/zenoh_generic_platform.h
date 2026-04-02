@@ -79,6 +79,8 @@ typedef ULONG       z_time_t;
 typedef struct {
     bool     _err;
     uint32_t timeout;
+
+    /* These must be pointers because some functions pass the socket as a copy */
     union {
 #if Z_FEATURE_LINK_TCP == 1
         NX_TCP_SOCKET *tcp_socket;

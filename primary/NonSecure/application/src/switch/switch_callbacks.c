@@ -99,12 +99,12 @@ static void sja1105_write_cs_pin(sja1105_pinstate_t state, void *context) {
 
     /* Invalid switch */
     else {
-        Error_Handler();
+        error_handler();
     }
 
     /* Both switches shouldn't be selected at the same time */
 #if DEBUG
-    if (sw0_sel && sw1_sel) Error_Handler();
+    if (sw0_sel && sw1_sel) error_handler();
 #endif
 }
 

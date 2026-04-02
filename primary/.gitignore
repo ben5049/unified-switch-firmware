@@ -14,5 +14,8 @@ Secure/mx-generated.cmake
 
 Secure_nsclib/secure_nsclib.o
 
+# This file should be renamed for each config (e.g. primary-v4.cmake) and be included by the main CMakeLists.txt
+mx-generated.cmake
+
 .vscode/c_cpp_properties.json
 .clangd

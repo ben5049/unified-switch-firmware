@@ -85,13 +85,13 @@ void phy_thread_entry(uint32_t initial_input) {
 
         /* Read temperatures */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            phy_status = PHY_ReadTemperature(&(phy_handles[i]), &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
+            phy_status = PHY_ReadTemperature(phy_handles[i], &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
             if (phy_status != PHY_OK) error_handler();
         }
 
         /* Poll link states in case an interrupt is missed */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            phy_status = PHY_GetLinkState(&(phy_handles[i]), &link_up);
+            phy_status = PHY_GetLinkState(phy_handles[i], &link_up);
             if (phy_status != PHY_OK) error_handler();
         }
     }
@@ -157,29 +157,29 @@ static phy_status_t phy_process_interrupts(uint32_t event_flags) {
 // phy_status         = PHY_88Q211X_CheckFaults(&hphy2, &fault2);
 //        if (fault != PHY_FAULT_NONE) {
 //            phy_status = PHY_88Q211X_Start100MBIST(&hphy0);
-//            if (phy_status != PHY_OK) Error_Handler();
+//            if (phy_status != PHY_OK) error_handler();
 //            phy_status = PHY_88Q211X_Get100MBISTResults(&hphy0, &error);
-//            if (phy_status != PHY_OK) Error_Handler();
+//            if (phy_status != PHY_OK) error_handler();
 //        }
 
 /* TODO: Move VCT to after a timeout if there is no link (to prioritise startup speed), also the PHY probably needs to be reset after due to magic numbers in undocumented registers */
 // /* Start the virtual cable tests (this can take up to 500ms) */
 // status = PHY_88Q211X_StartVCT(&hphy0);
-// if (status != PHY_OK) Error_Handler();
+// if (status != PHY_OK) error_handler();
 // status = PHY_88Q211X_StartVCT(&hphy1);
-// if (status != PHY_OK) Error_Handler();
+// if (status != PHY_OK) error_handler();
 // status = PHY_88Q211X_StartVCT(&hphy2);
-// if (status != PHY_OK) Error_Handler();
+// if (status != PHY_OK) error_handler();
 
 // /* Get the VCT results */
 // tx_thread_sleep_ms(500);
 // uint32_t                  maximum_peak_distance;
 // status = PHY_88Q211X_GetVCTResults(&hphy0, &cable_state, &maximum_peak_distance);
-// if (status != PHY_OK) Error_Handler();
+// if (status != PHY_OK) error_handler();
 // status = PHY_88Q211X_GetVCTResults(&hphy1, &cable_state, &maximum_peak_distance);
-// if (status != PHY_OK) Error_Handler();
+// if (status != PHY_OK) error_handler();
 // status = PHY_88Q211X_GetVCTResults(&hphy2, &cable_state, &maximum_peak_distance);
-// if (status != PHY_OK) Error_Handler();
+// if (status != PHY_OK) error_handler();
 
 
 /* TODO: If the current thread holds the phy mutex when it shouldn't report an error */

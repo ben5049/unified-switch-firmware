@@ -177,7 +177,7 @@ extern uint32_t __LOG_SIZE__;
 
 #define ZENOH_MEM_POOL_SIZE                 (1024 * 32)
 #define ZENOH_OPEN_SESSION_INTERVAL         (200) /* ms, time between attempts to open a session */
-#define ZENOH_MAX_RETRIES_BEFORE_LONG_PAUSE (5)   /* After this number of failed attempts to open a session pause for Z_TRANSPORT_LEASE to reset any leases on remote devices */
+#define ZENOH_MAX_RETRIES_BEFORE_LONG_PAUSE (50)  /* After this number of failed attempts to open a session pause for Z_TRANSPORT_LEASE to reset any leases on remote devices */
 
 #define ZENOH_MODE                          Z_CONFIG_MODE_CLIENT
 #define ZENOH_LOCATOR                       ""                  /* Empty means it will scout. Otherwise: "udp/192.168.50.2:7447" */
@@ -189,7 +189,7 @@ extern uint32_t __LOG_SIZE__;
 #define ZENOH_PUB_STDOUT_KEYEXPR            NODE_ID "/stdout"
 #define ZENOH_PUB_STDERR_KEYEXPR            NODE_ID "/stderr"
 
-#define ZENOH_PUB_STATS_KEYEXPR             NODE_ID "/switch-stats" /* The topic to publish switch stats to */
+#define ZENOH_PUB_STATS_KEYEXPR             NODE_ID "/switch/stats" /* The topic to publish switch stats to */
 
 #define HEARTBEAT_INTERVAL                  (500)                   /* ms */
 #define HEARTBEAT_MISS_TIMEOUT              (2000)                  /* ms, if the time between heartbeats is larger than this value then assume the producer has disconnected */

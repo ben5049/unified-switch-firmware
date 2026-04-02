@@ -2082,7 +2082,7 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth) {
     //        CLEAR_BIT(heth->DMAErrorCode, (ETH_DMACSR_RBU | ETH_DMACSR_AIS));
     //    }
 
-    //    Error_Handler();
+    //    error_handler();
 }
 
 /****** DRIVER SPECIFIC ****** Start of part/vendor specific internal driver functions.  */

@@ -10,8 +10,8 @@
 #include "tx_mutex.h"
 #include "tx_semaphore.h"
 #include "nx_api.h"
-#include "main.h"
 
+#include "app.h"
 #include "zenoh_cleanup.h"
 #include "comms_thread.h"
 #include "tx_app.h"
@@ -32,9 +32,9 @@ void zenoh_cleanup_tx() {
         do {
             if (((uint8_t *) current_thread >= zenoh_byte_pool_buffer) && ((uint8_t *) current_thread < (zenoh_byte_pool_buffer + ZENOH_MEM_POOL_SIZE))) {
                 status = tx_thread_terminate(current_thread);
-                if (status != TX_SUCCESS) Error_Handler();
+                if (status != TX_SUCCESS) error_handler();
                 status = tx_thread_delete(current_thread);
-                if (status != TX_SUCCESS) Error_Handler();
+                if (status != TX_SUCCESS) error_handler();
             }
             current_thread = next_thread;
             next_thread    = current_thread->tx_thread_created_next;
@@ -47,7 +47,7 @@ void zenoh_cleanup_tx() {
         do {
             if (((uint8_t *) current_mutex >= zenoh_byte_pool_buffer) && ((uint8_t *) current_mutex < (zenoh_byte_pool_buffer + ZENOH_MEM_POOL_SIZE))) {
                 status = tx_mutex_delete(current_mutex);
-                if (status != TX_SUCCESS) Error_Handler();
+                if (status != TX_SUCCESS) error_handler();
             }
             current_mutex = next_mutex;
             next_mutex    = current_mutex->tx_mutex_created_next;
@@ -60,7 +60,7 @@ void zenoh_cleanup_tx() {
         do {
             if (((uint8_t *) current_semaphore >= zenoh_byte_pool_buffer) && ((uint8_t *) current_semaphore < (zenoh_byte_pool_buffer + ZENOH_MEM_POOL_SIZE))) {
                 status = tx_semaphore_delete(current_semaphore);
-                if (status != TX_SUCCESS) Error_Handler();
+                if (status != TX_SUCCESS) error_handler();
             }
             current_semaphore = next_semaphore;
             next_semaphore    = current_semaphore->tx_semaphore_created_next;
@@ -77,7 +77,7 @@ void zenoh_cleanup_nx() {
     for (uint_fast8_t i = 0; i < NX_MAX_MULTICAST_GROUPS; i++) {
         if (!zenoh_udp_multicast_groups_valid[i]) continue;
         status = nx_ipv4_multicast_interface_leave(&nx_ip_instance, zenoh_udp_multicast_groups_list[i], PRIMARY_INTERFACE);
-        if (status != NX_SUCCESS) Error_Handler();
+        if (status != NX_SUCCESS) error_handler();
         zenoh_udp_multicast_groups_valid[i] = false;
     }
 
@@ -88,9 +88,9 @@ void zenoh_cleanup_nx() {
         do {
             if (((uint8_t *) current_udp_socket >= zenoh_byte_pool_buffer) && ((uint8_t *) current_udp_socket < (zenoh_byte_pool_buffer + ZENOH_MEM_POOL_SIZE))) {
                 status = nx_udp_socket_unbind(current_udp_socket);
-                if ((status != NX_SUCCESS) && (status != NX_NOT_BOUND)) Error_Handler();
+                if ((status != NX_SUCCESS) && (status != NX_NOT_BOUND)) error_handler();
                 status = nx_udp_socket_delete(current_udp_socket);
-                if (status != NX_SUCCESS) Error_Handler();
+                if (status != NX_SUCCESS) error_handler();
             }
             current_udp_socket = next_udp_socket;
             next_udp_socket    = current_udp_socket->nx_udp_socket_created_next;

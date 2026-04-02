@@ -248,7 +248,7 @@ phy_status_t phys_init() {
         status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], (void *) i);
         if (status != PHY_OK) {
             LOG_ERROR("Failed to initialise PHY %d", i);
-            Error_Handler();
+            error_handler();
         }
     }
 
@@ -262,9 +262,9 @@ phy_status_t phys_init() {
     /* Less critical setup: interrupts & temperature sensors */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         status = PHY_EnableInterrupts(phy_handles[i]);
-        if (status != PHY_OK) Error_Handler();
+        if (status != PHY_OK) error_handler();
         status = PHY_EnableTemperatureSensor(phy_handles[i]);
-        if (status != PHY_OK) Error_Handler();
+        if (status != PHY_OK) error_handler();
     }
 
     /* TODO: Perform other configuration */

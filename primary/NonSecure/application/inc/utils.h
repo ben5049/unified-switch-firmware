@@ -22,7 +22,7 @@ extern "C" {
 #include "tx_thread.h"
 #include "tx_initialize.h"
 
-#include "logging.h"
+#include "app.h"
 
 
 /* Because of the multiply, care should be taken when putting large values into these functions (>4,000,000) to make sure the don't overflow */
@@ -37,7 +37,7 @@ extern "C" {
 #define LOG_INFO(format, ...)                                           \
     ({                                                                  \
         log_status_t _s = _LOG(LOG_TYPE_INFO, (format), ##__VA_ARGS__); \
-        if (_s != LOGGING_OK) Error_Handler();                          \
+        if (_s != LOGGING_OK) error_handler();                          \
         _s;                                                             \
     })
 #define LOG_INFO_NO_CHECK(format, ...) _LOG(LOG_TYPE_INFO, (format), ##__VA_ARGS__)
@@ -46,7 +46,7 @@ extern "C" {
 #define LOG_WARNING(format, ...)                                           \
     ({                                                                     \
         log_status_t _s = _LOG(LOG_TYPE_WARNING, (format), ##__VA_ARGS__); \
-        if (_s != LOGGING_OK) Error_Handler();                             \
+        if (_s != LOGGING_OK) error_handler();                             \
         _s;                                                                \
     })
 #define LOG_WARNING_NO_CHECK(format, ...) _LOG(LOG_TYPE_WARNING, (format), ##__VA_ARGS__)
@@ -55,7 +55,7 @@ extern "C" {
 #define LOG_ERROR(format, ...)                                           \
     ({                                                                   \
         log_status_t _s = _LOG(LOG_TYPE_ERROR, (format), ##__VA_ARGS__); \
-        if (_s != LOGGING_OK) Error_Handler();                           \
+        if (_s != LOGGING_OK) error_handler();                           \
         _s;                                                              \
     })
 #define LOG_ERROR_NO_CHECK(format, ...) _LOG(LOG_TYPE_ERROR, (format), ##__VA_ARGS__)
@@ -68,8 +68,8 @@ extern "C" {
     })
 
 
-void write_mac_addr(uint8_t* buf);
-bool compare_mac_addrs_with_mask(const uint8_t* addr1, const uint8_t* addr2, const uint8_t* mask);
+void write_mac_addr(uint8_t *buf);
+bool compare_mac_addrs_with_mask(const uint8_t *addr1, const uint8_t *addr2, const uint8_t *mask);
 
 uint32_t tx_thread_sleep_ms(uint32_t ms);
 uint32_t tx_time_get_ms();
@@ -78,8 +78,8 @@ void delay_ns(uint32_t ns);
 
 void set_3v3_regulator_to_FPWM(void);
 
-log_handle_t* get_logger(void);
-void          log_info(const char* format, ...);
+log_handle_t *get_logger(void);
+void          log_info(const char *format, ...);
 
 
 #ifdef __cplusplus

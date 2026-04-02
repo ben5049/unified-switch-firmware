@@ -48,7 +48,7 @@ void switch_thread_entry(uint32_t initial_input) {
     LOG_INFO("Starting switch thread");
 
     status = init_switch_diagnostics();
-    if (status != SJA1105_OK) Error_Handler();
+    if (status != SJA1105_OK) error_handler();
 
     while (1) {
 
@@ -60,21 +60,21 @@ void switch_thread_entry(uint32_t initial_input) {
 
             /* Make sure local copies of tables match the copy on the switch chip (this doesn't check for differences, it only updates the internal copy) */
             status = SJA1105_ReadAllTables(&hsw0);
-            if (status != SJA1105_OK) Error_Handler();
+            if (status != SJA1105_OK) error_handler();
 
             /* Check the status registers for issues */
             status = SJA1105_CheckStatusRegisters(&hsw0); // TODO: look into buffer shifting issue
-            if (status != SJA1105_OK) Error_Handler();
+            if (status != SJA1105_OK) error_handler();
 
             /* Free any management routes that have been used */
             status = SJA1105_ManagementRouteFree(&hsw0, false);
-            if (status != SJA1105_OK) Error_Handler();
+            if (status != SJA1105_OK) error_handler();
 
             /* TODO: Occasionally check no important MAC addresses have been learned by accident (PTP, STP, etc) */
 
             /* Read the temperature */
             status = SJA1105_ReadTemperature(&hsw0, &switch_temperature);
-            if (status != SJA1105_OK) Error_Handler();
+            if (status != SJA1105_OK) error_handler();
             switch_temperature_valid = true;
         }
 
@@ -84,7 +84,7 @@ void switch_thread_entry(uint32_t initial_input) {
 
             /* Attempt to publish the diagnostics */
             status = publish_switch_diagnostics(current_time);
-            if (status != SJA1105_OK) Error_Handler();
+            if (status != SJA1105_OK) error_handler();
         }
 
         /* Schedule the next wakeup */

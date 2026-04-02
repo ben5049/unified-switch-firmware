@@ -310,7 +310,7 @@ map configuration.
 //     <1=> Lowered to 0x04-0x07
 //   <i> Value for SCB->AIRCR register bit PRIS
 */
-#define SCB_AIRCR_PRIS_VAL          1
+#define SCB_AIRCR_PRIS_VAL 1
 
 /*
 //   <o>BusFault, HardFault, and NMI target
@@ -318,7 +318,7 @@ map configuration.
 //     <1=> Non-Secure state
 //   <i> Value for SCB->AIRCR register bit BFHFNMINS
 */
-#define SCB_AIRCR_BFHFNMINS_VAL     0
+#define SCB_AIRCR_BFHFNMINS_VAL 0
 
 /*
 // </e>
@@ -372,7 +372,7 @@ map configuration.
 /*
 //   <e>Initialize ITNS 0 (Interrupts 0..31)
 */
-#define NVIC_INIT_ITNS0    1
+#define NVIC_INIT_ITNS0 1
 
 /*
 // Interrupts 0..31
@@ -409,7 +409,7 @@ map configuration.
 //   <o.30> GPDMA1_Channel3_IRQn  <0=> Secure state
 //   <o.31> GPDMA1_Channel4_IRQn  <0=> Secure state
 */
-#define NVIC_INIT_ITNS0_VAL      0x0424F240
+#define NVIC_INIT_ITNS0_VAL 0x0424F240
 
 /*
 //   </e>
@@ -418,7 +418,7 @@ map configuration.
 /*
 //   <e>Initialize ITNS 1 (Interrupts 32..63)
 */
-#define NVIC_INIT_ITNS1    1
+#define NVIC_INIT_ITNS1 1
 
 /*
 // Interrupts 32..63
@@ -455,7 +455,7 @@ map configuration.
 //   <o.30> UART5_IRQn            <0=> Secure state
 //   <o.31> LPUART1_IRQn          <0=> Secure state
 */
-#define NVIC_INIT_ITNS1_VAL      0x01020000
+#define NVIC_INIT_ITNS1_VAL 0x01020000
 
 /*
 //   </e>
@@ -464,7 +464,7 @@ map configuration.
 /*
 //   <e>Initialize ITNS 2 (Interrupts 64..95)
 */
-#define NVIC_INIT_ITNS2    1
+#define NVIC_INIT_ITNS2 1
 
 /*
 // Interrupts 64..95
@@ -501,7 +501,7 @@ map configuration.
 //   <o.30> GPDMA2_Channel4_IRQn  <0=> Secure state
 //   <o.31> GPDMA2_Channel5_IRQn  <0=> Secure state
 */
-#define NVIC_INIT_ITNS2_VAL      0x00000020
+#define NVIC_INIT_ITNS2_VAL 0x00000020
 
 /*
 //   </e>
@@ -510,7 +510,7 @@ map configuration.
 /*
 //   <e>Initialize ITNS 3 (Interrupts 96..127)
 */
-#define NVIC_INIT_ITNS3    1
+#define NVIC_INIT_ITNS3 1
 
 /*
 // Interrupts 96..127
@@ -547,7 +547,7 @@ map configuration.
 //   <o.30> I2C4_ER_IRQn          <0=> Secure state
 //   <o.31> LPTIM3_IRQn           <0=> Secure state
 */
-#define NVIC_INIT_ITNS3_VAL      0x00120C80
+#define NVIC_INIT_ITNS3_VAL 0x00120C80
 
 /*
 //   </e>
@@ -556,7 +556,7 @@ map configuration.
 /*
 //   <e>Initialize ITNS 4 (Interrupts 128..130)
 */
-#define NVIC_INIT_ITNS4    1
+#define NVIC_INIT_ITNS4 1
 
 /*
 // Interrupts 128..130
@@ -565,7 +565,7 @@ map configuration.
 //   <o.2>  LPTIM6_IRQn          <0=> Secure state
 
 */
-#define NVIC_INIT_ITNS4_VAL      0x00000000
+#define NVIC_INIT_ITNS4_VAL 0x00000000
 
 /*
 //   </e>
@@ -691,4 +691,4 @@ __STATIC_INLINE void TZ_SAU_Setup(void) {
 #endif
 }
 /* USER CODE END 2 */
-#endif  /* PARTITION_STM32H573XX_H */
+#endif /* PARTITION_STM32H573XX_H */

@@ -72,7 +72,7 @@
 //
 //             /* ...and the previous error was NOT SOLVED: the problem is deeper, call the system error handler */
 //             else
-//                 Error_Handler();
+//                 error_handler();
 //         }
 //
 //         /* ...and the new error is DIFFERENT from the previous error... */
@@ -84,18 +84,18 @@
 //                     sja1105_error_counter--; /* Don't double count the new error */
 //                     sja1105_check_status_msg(dev, sja_status, false);
 //                 } else
-//                     Error_Handler(); /* An error occurred while checking an error that occurred while checking an error. Yikes */
+//                     error_handler(); /* An error occurred while checking an error that occurred while checking an error. Yikes */
 //             }
 //
 //             /* ...and the previous error was NOT SOLVED: the problem is deeper, call the system error handler */
 //             else
-//                 Error_Handler();
+//                 error_handler();
 //         }
 //         error_solved = true;
 //     }
 //
 //     /* Unsolved error */
-//     if (!error_solved) Error_Handler();
+//     if (!error_solved) error_handler();
 //
 //     /* All errors have now been handled, check the sja_status registers just to be safe */
 //     sja_status = SJA1105_CheckStatusRegisters(dev);

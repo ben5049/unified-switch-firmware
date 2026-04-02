@@ -20,6 +20,14 @@ void mpu_config() {
     MPU_Config();
 }
 /* USER CODE END 0 */
+
+...
+
+void Error_Handler(void) {
+    /* USER CODE BEGIN Error_Handler_Debug */
+    error_handler();
+    /* USER CODE END Error_Handler_Debug */
+}
 ```
 
 ### Set MAC address && Ethernet DMA Descriptors
@@ -57,7 +65,7 @@ Ethernet DMA descriptors be placed in the ETH section of RAM (marked by the MPU 
 
 ### ThreadX init
 
-`Core/Src/app_threadx.c`:
+`app_azure_rtos.c`:
 
 ```C
 /* USER CODE BEGIN Includes */
@@ -66,9 +74,9 @@ Ethernet DMA descriptors be placed in the ETH section of RAM (marked by the MPU 
 
 ...
 
-/* USER CODE BEGIN App_ThreadX_Init */
+/* USER CODE BEGIN  App_ThreadX_Init_Success */
 tx_setup(memory_ptr);
-/* USER CODE END App_ThreadX_Init */
+/* USER CODE END  App_ThreadX_Init_Success */
 ```
 
 ### NetX init

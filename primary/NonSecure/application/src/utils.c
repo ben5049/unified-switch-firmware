@@ -112,7 +112,7 @@ void log_info(const char* format, ...) {
     va_start(args, format);
 
     status = log_vwrite(get_logger(), LOG_TYPE_INFO, 128, format, args);
-    if (status != LOGGING_OK) Error_Handler();
+    if (status != LOGGING_OK) error_handler();
 
     va_end(args);
 }

@@ -44,12 +44,12 @@ typedef enum {
 
 void SECURE_RegisterCallback(SECURE_CallbackIDTypeDef CallbackId, void *func);
 
-void s_background_task(void);
-int  s_write_user_storage(uint16_t addr, const uint8_t *data, uint16_t size);
-int  s_read_user_storage(uint16_t addr, uint8_t *data, uint16_t size);
-void s_error_handler(void);
+void     s_background_task(void);
+int      s_write_user_storage(uint16_t addr, const uint8_t *data, uint16_t size);
+int      s_read_user_storage(uint16_t addr, uint8_t *data, uint16_t size);
+void     s_error_handler(void);
+uint32_t s_random_u32(void);
 
 
 #endif /* SECURE_NSC_H */
 /* USER CODE END Non_Secure_CallLib_h */
-

@@ -83,5 +83,5 @@ void HAL_HASH_ErrorCallback(HASH_HandleTypeDef *hhash) {
         default:
             break;
     }
-    Error_Handler();
+    error_handler();
 }

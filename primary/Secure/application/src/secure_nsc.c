@@ -69,3 +69,14 @@ CMSE_NS_ENTRY void s_error_handler() {
 
     disable_tick();
 }
+
+CMSE_NS_ENTRY uint32_t s_random_u32() {
+
+    bootloader_status_t status = BL_OK;
+    uint32_t            number;
+
+    status = bootloader_get_random_u32(&number);
+    if (status != BL_OK) error_handler(status);
+
+    return number;
+}

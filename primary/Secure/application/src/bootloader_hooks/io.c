@@ -68,7 +68,7 @@ void bootloader_write_pin(bootloader_pin_t pin_name, bootloader_pinstate_t state
             pin  = FRAM_WP_Pin;
             break;
     }
-    if (port != NULL) error_handler(BL_NOT_IMPLEMENTED_ERROR);
+    if (port == NULL) error_handler(BL_NOT_IMPLEMENTED_ERROR);
 
     if (state == BL_PIN_RESET) {
         HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);

@@ -50,27 +50,27 @@ int main(void) {
     MX_GTZC_NS_Init();
 
     /* Test the non-volatile memory is working correctly */
-    if (!test_nvm()) Error_Handler();
+    if (!test_nvm()) error_handler();
 
     /* Start setup logger */
     log_status_t log_status;
     log_status = log_init(&hlog_setup, LOGGER_ID_ROOT_NS, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
     LOG_INFO("Starting non-secure firmware");
 
     /* Start other loggers */
     log_status = log_init(&hlog_generic, LOGGER_ID_0, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
     log_status = log_init(&hlog_phy, LOGGER_ID_1, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
     log_status = log_init(&hlog_sw, LOGGER_ID_2, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
     log_status = log_init(&hlog_comms, LOGGER_ID_3, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
     log_status = log_init(&hlog_system, LOGGER_ID_4, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
     log_status = log_init(&hlog_network, LOGGER_ID_5, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) Error_Handler();
+    if (log_status != LOGGING_OK) error_handler();
 
     /* Initialise important peripherals */
     MX_GPIO_Init();
@@ -85,7 +85,7 @@ int main(void) {
 
     /* Initialise the switch */
     sja1105_status_t switch_status = switch_init();
-    if (switch_status != SJA1105_OK) Error_Handler();
+    if (switch_status != SJA1105_OK) error_handler();
     LOG_INFO("SJA1105 Initialised");
 
     /* Ethernet MAC can now be initialised (requires switch REFCLK) */
@@ -107,23 +107,29 @@ int main(void) {
 /* Test the non-volatile memory is working. This is accessessed via the secure firmware */
 static bool test_nvm() {
 
-    bool                  test_failed = false;
-    static const uint32_t test_write  = 0xaa55aa55;
-    uint32_t              test_read   = 0;
-    int                   bytes_written;
-    int                   bytes_read;
+    bool     test_failed = false;
+    uint32_t test_write;
+    uint32_t test_read;
+    int      bytes_written;
+    int      bytes_read;
 
     static_assert(sizeof(test_write) == USER_STORAGE_TEST_SIZE);
     static_assert(sizeof(test_read) == USER_STORAGE_TEST_SIZE);
 
+    /* Get a random number to test the NVM with */
+    test_write = s_random_u32();
+
+    /* Write the number */
     bytes_written = s_write_user_storage(USER_STORAGE_TEST_ADDR, (uint8_t *) &test_write, USER_STORAGE_TEST_SIZE);
     if (bytes_written != USER_STORAGE_TEST_SIZE) test_failed = true;
     if (test_failed) return false;
 
+    /* Read the number back */
     bytes_read = s_read_user_storage(USER_STORAGE_TEST_ADDR, (uint8_t *) &test_read, USER_STORAGE_TEST_SIZE);
     if (bytes_read != USER_STORAGE_TEST_SIZE) test_failed = true;
     if (test_failed) return false;
 
+    /* Check the write and read were successful */
     if (test_read != test_write) test_failed = true;
     return !test_failed;
 }

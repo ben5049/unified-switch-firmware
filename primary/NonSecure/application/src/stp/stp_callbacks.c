@@ -45,14 +45,14 @@
 //         }
 //
 //         /* If initialisation takes longer than 5 seconds (25 * 200ms) then call the error handler */
-//         if (!hsw0.initialised) Error_Handler();
+//         if (!hsw0.initialised) error_handler();
 //
 //         /* SJA1105 is now initialised, check the BPDU address is trapped by MAC filters */
 //         bool trapped    = false;
 //         bool send_meta  = false;
 //         bool incl_srcpt = false;
 //         status          = SJA1105_MACAddrTrapTest(&hsw0, bpdu_dest_address, &trapped, &send_meta, &incl_srcpt);
-//         if (status != SJA1105_OK) Error_Handler(); /* TODO: Handle this properly */
+//         if (status != SJA1105_OK) error_handler(); /* TODO: Handle this properly */
 //
 //         /* Trapped by MAC filters: success */
 //         if (trapped && incl_srcpt) {
@@ -74,7 +74,7 @@
 //         }
 //
 //         /* If deinitialisation takes longer than 5 seconds (25 * 200ms) then call the error handler */
-//         if (hsw0.initialised) Error_Handler();
+//         if (hsw0.initialised) error_handler();
 //     }
 // }
 //
@@ -85,7 +85,7 @@
 //
 //     status = SJA1105_PortSetLearning(&hsw0, portIndex, enable);
 //
-//     if (status != SJA1105_OK) Error_Handler();
+//     if (status != SJA1105_OK) error_handler();
 // }
 //
 //
@@ -95,7 +95,7 @@
 //
 //     status = SJA1105_PortSetForwarding(&hsw0, portIndex, enable);
 //
-//     if (status != SJA1105_OK) Error_Handler();
+//     if (status != SJA1105_OK) error_handler();
 // }
 //
 //
@@ -107,18 +107,18 @@
 //     }
 //
 //     /* Check the port number is valid */
-//     if (portIndex >= SJA1105_NUM_PORTS) Error_Handler();
+//     if (portIndex >= SJA1105_NUM_PORTS) error_handler();
 //
 //     /* Check the packet will fit */
 //     if (BPDU_HEADER_SIZE + bpduSize > DEFAULT_PAYLOAD_SIZE) {
-//         Error_Handler();
+//         error_handler();
 //     }
 //
 //     /* Create the management route to send the BPDU from a certain port */
-//     if (SJA1105_ManagementRouteCreate(&hsw0, bpdu_dest_address, 1 << portIndex, false, false, &nx_stp) != SJA1105_OK) Error_Handler();
+//     if (SJA1105_ManagementRouteCreate(&hsw0, bpdu_dest_address, 1 << portIndex, false, false, &nx_stp) != SJA1105_OK) error_handler();
 //
 //     /* Allocate the packet */
-//     if (nx_stp_allocate_packet() != NX_SUCCESS) Error_Handler();
+//     if (nx_stp_allocate_packet() != NX_SUCCESS) error_handler();
 //     NX_PACKET* packet_ptr = nx_stp.tx_packet_ptr;
 //     uint8_t    offset     = 0;
 //
@@ -148,7 +148,7 @@
 //     *(packet_ptr->nx_packet_prepend_ptr + offset++) = (uint8_t) (etherTypeOrSize & 0xff);
 //
 //     /* Check the size of the header is correct */
-//     if (offset != (BPDU_HEADER_SIZE - BPDU_LLC_SIZE)) Error_Handler();
+//     if (offset != (BPDU_HEADER_SIZE - BPDU_LLC_SIZE)) error_handler();
 //
 //     /* 3 bytes for the LLC field, which is normally 0x42, 0x42, 0x03 */
 //     memcpy(packet_ptr->nx_packet_append_ptr, bpdu_llc, 3);
@@ -157,7 +157,7 @@
 //
 //     /* Preemptively update the size and append pointer for the BPDU buffer */
 //     uint8_t* bpdu_buf = packet_ptr->nx_packet_append_ptr;
-//     if ((packet_ptr->nx_packet_data_end - packet_ptr->nx_packet_append_ptr) < bpduSize) Error_Handler();
+//     if ((packet_ptr->nx_packet_data_end - packet_ptr->nx_packet_append_ptr) < bpduSize) error_handler();
 //     packet_ptr->nx_packet_length     += bpduSize;
 //     packet_ptr->nx_packet_append_ptr += bpduSize;
 //
@@ -174,7 +174,7 @@
 //     tx_mutex_put(&(nx_stp.ip_ptr->nx_ip_protection));
 //
 //     status = nx_stp_send_packet();
-//     if (status != NX_STATUS_SUCCESS) Error_Handler();
+//     if (status != NX_STATUS_SUCCESS) error_handler();
 // }
 //
 //
@@ -197,7 +197,7 @@
 //     void* memory_ptr;
 //
 //     int status = tx_byte_allocate(&stp_byte_pool, &memory_ptr, size, TX_NO_WAIT);
-//     if (status != TX_SUCCESS) Error_Handler();
+//     if (status != TX_SUCCESS) error_handler();
 //
 //     memset(memory_ptr, 0, size);
 //
@@ -208,7 +208,7 @@
 // static void stp_freeMemory(void* p) {
 //
 //     if (tx_byte_release(p) != TX_SUCCESS) {
-//         Error_Handler();
+//         error_handler();
 //     }
 // }
 //

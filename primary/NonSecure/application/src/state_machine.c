@@ -5,9 +5,9 @@
  *      Author: bens1
  */
 
-#include "main.h"
-#include "eth.h"
+#include "hal.h"
 
+#include "app.h"
 #include "state_machine.h"
 #include "tx_app.h"
 #include "nx_app.h"
@@ -18,7 +18,6 @@
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp_thread.h"
-#include "config.h"
 #include "tx_port.h"
 #include "utils.h"
 
@@ -40,15 +39,15 @@ void state_machine_thread_entry(uint32_t initial_input) {
     /* Startup sequence */
 
     tx_status = tx_thread_resume(&phy_thread_handle);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("PHY Thread started");
 
     tx_status = tx_thread_resume(&nx_link_thread_handle);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("NX Link thread started");
 
     tx_status = tx_thread_resume(&switch_thread_handle);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("Switch thread started");
 
     /* -------------------- Link Up -------------------- */
@@ -56,14 +55,14 @@ void state_machine_thread_entry(uint32_t initial_input) {
     /* Wait for the link to be up (from nx_link_thread_entry) */
     LOG_INFO("Waiting for link up");
     tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_NX_LINK_UP | STATE_MACHINE_UPDATE, TX_AND, &event_flags, TX_WAIT_FOREVER);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_UPDATE, TX_AND);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("Link is up");
 
 #if ENABLE_STP_THREAD == true
     tx_status = tx_thread_resume(&stp_thread_handle);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("STP thread started");
 #endif
 
@@ -72,30 +71,30 @@ void state_machine_thread_entry(uint32_t initial_input) {
     /* Wait for the network to be initialised and an IP address assigned */
     LOG_INFO("Waiting for network up");
     tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED | STATE_MACHINE_UPDATE, TX_AND, &event_flags, TX_WAIT_FOREVER);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_UPDATE, TX_AND);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
 
     /* Print the IP address */
     nx_status = nx_ip_address_get(&nx_ip_instance, (ULONG *) &ip_address, (ULONG *) &subnet_mask);
-    if (nx_status != NX_SUCCESS) Error_Handler();
+    if (nx_status != NX_SUCCESS) error_handler();
     NX_CHANGE_ULONG_ENDIAN(ip_address);
     uint8_t *bytes = (uint8_t *) &ip_address;
     LOG_INFO("Network is up, IP Address = %u.%u.%u.%u", bytes[0], bytes[1], bytes[2], bytes[3]);
 
     /* Start the threads that require networking */
     tx_status = tx_thread_resume(&comms_thread_handle);
-    if (tx_status != TX_SUCCESS) Error_Handler();
+    if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("Comms thread started");
 
     // tx_status = tx_thread_resume(&ptp_thread_handle);
-    // if (tx_status != TX_SUCCESS) Error_Handler();
+    // if (tx_status != TX_SUCCESS) error_handler();
 
     while (1) {
 
         /* Wait for an update */
         tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_UPDATE, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
-        if (tx_status != TX_SUCCESS) Error_Handler();
+        if (tx_status != TX_SUCCESS) error_handler();
 
         /* Save the previous state */
         event_flags_previous = event_flags;
