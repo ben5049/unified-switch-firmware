@@ -231,13 +231,26 @@ static nx_status_t store_dhcp_record(NX_DHCP *client) {
     status = nx_dhcp_client_get_record(client, &record);
     if (status == NX_SUCCESS) {
 
-        /* Attempt to write the record to non-volatile storage */
-        bytes_written = s_write_user_storage(USER_STORAGE_DHCP_RECORD_ADDR, (uint8_t *) &record, USER_STORAGE_DHCP_RECORD_SIZE);
-        valid         = bytes_written == USER_STORAGE_DHCP_RECORD_SIZE;
-
-        /* If the write was successful set the valid flag */
+        /* Invalidate the old record */
+        valid = false;
         bytes_written = s_write_user_storage(USER_STORAGE_DHCP_VALID_ADDR, (uint8_t *) &valid, USER_STORAGE_DHCP_VALID_SIZE);
-        if ((bytes_written != USER_STORAGE_DHCP_VALID_SIZE) || !valid) status = NX_STATUS_DHCP_WRITE_ERROR;
+
+        /* Invalidate succeeded */
+        if (bytes_written == USER_STORAGE_DHCP_VALID_SIZE){
+
+            /* Attempt to write the record to non-volatile storage */
+            bytes_written = s_write_user_storage(USER_STORAGE_DHCP_RECORD_ADDR, (uint8_t *) &record, USER_STORAGE_DHCP_RECORD_SIZE);
+            valid         = bytes_written == USER_STORAGE_DHCP_RECORD_SIZE;
+
+            /* If the write was successful set the valid flag */
+            bytes_written = s_write_user_storage(USER_STORAGE_DHCP_VALID_ADDR, (uint8_t *) &valid, USER_STORAGE_DHCP_VALID_SIZE);
+            if ((bytes_written != USER_STORAGE_DHCP_VALID_SIZE) || !valid) status = NX_STATUS_DHCP_WRITE_ERROR;
+        }
+
+        /* Invalidate failed */
+        else {
+            status = NX_STATUS_DHCP_WRITE_ERROR;
+        }
 
         if (status == NX_STATUS_SUCCESS) {
             LOG_INFO("Successfully stored DHCP record");
