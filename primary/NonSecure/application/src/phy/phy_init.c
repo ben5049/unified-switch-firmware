@@ -262,9 +262,9 @@ phy_status_t phys_init() {
     /* Less critical setup: interrupts & temperature sensors */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         status = PHY_EnableInterrupts(phy_handles[i]);
-        if (status != PHY_OK) error_handler();
+        // if (status != PHY_OK) error_handler(); TODO: re-enable when implemented
         status = PHY_EnableTemperatureSensor(phy_handles[i]);
-        if (status != PHY_OK) error_handler();
+        // if (status != PHY_OK) error_handler(); TODO: re-enable when implemented
     }
 
     /* TODO: Perform other configuration */

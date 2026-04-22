@@ -86,7 +86,7 @@ void phy_thread_entry(uint32_t initial_input) {
         /* Read temperatures */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
             phy_status = PHY_ReadTemperature(phy_handles[i], &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
-            if (phy_status != PHY_OK) error_handler();
+            // if (phy_status != PHY_OK) error_handler(); TODO: re-enable when implemented
         }
 
         /* Poll link states in case an interrupt is missed */
