@@ -72,5 +72,11 @@ void tx_setup(void *memory_ptr) {
     comms_thread_handle.logger         = &hlog_comms;
     ptp_thread_handle.logger           = &hlog_network;
     background_thread_handle.logger    = &hlog_generic;
+
+    /* Enable tracex */
+#if TRACE_ENABLE
+    tx_trace_enable(TRACE_BUFFER_START, TRACE_BUFFER_SIZE, TRACE_REGISTRY_ENTRIES);
+#endif
 }
+
 // clang-format on

@@ -61,7 +61,7 @@ sja1105_status_t switch_init() {
     if (status != SJA1105_OK)
         return status;
 
-    /* Set the general switch parameters */
+    /* Set the general switch 0 parameters */
     sw0_conf.variant      = VARIANT_SJA1105Q;
     sw0_conf.timeout      = SWITCH_TIMEOUT_MS;
     sw0_conf.mgmt_timeout = SWITCH_MANAGMENT_ROUTE_TIMEOUT_MS;
@@ -74,7 +74,7 @@ sja1105_status_t switch_init() {
     sw0_conf.skew_clocks = true; /* Improves EMI performance */
     sw0_conf.switch_id   = 0;
 
-    /* Set the general switch parameters */
+    /* Set the general switch 1 parameters */
 #if HW_VERSION == 5
     sw1_conf.variant      = VARIANT_SJA1105Q;
     sw1_conf.timeout      = SWITCH_TIMEOUT_MS;

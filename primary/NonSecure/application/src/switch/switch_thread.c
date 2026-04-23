@@ -8,6 +8,7 @@
 #include "logging.h"
 #include "stdint.h"
 #include "stdatomic.h"
+
 #include "main.h"
 
 #include "switch_thread.h"
@@ -86,6 +87,13 @@ void switch_thread_entry(uint32_t initial_input) {
             status = publish_switch_diagnostics(current_time);
             if (status != SJA1105_OK) error_handler();
         }
+
+        // TODO: delete
+        static sja1105_statistics_t switch_stats0, switch_stats1;
+        status = SJA1105_ReadStatistics(&hsw0, &switch_stats0);
+        if (status != SJA1105_OK) error_handler();
+        status = SJA1105_ReadStatistics(&hsw1, &switch_stats1);
+        if (status != SJA1105_OK) error_handler();
 
         /* Schedule the next wakeup */
         next_wakeup = MIN(next_maintenance_time, next_publish_time);

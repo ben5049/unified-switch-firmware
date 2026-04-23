@@ -7,6 +7,7 @@
 
 #include "stdatomic.h"
 #include "stdarg.h"
+#include "stdalign.h"
 
 #include "tx_api.h"
 #include "hal.h"
@@ -18,11 +19,11 @@
 #include "sja1105.h"
 
 
-TX_MUTEX            sja1105_mutex_handle;
-static UCHAR        switch0_byte_pool_buffer[SWITCH_MEM_POOL_SIZE] __ALIGNED(32);
+TX_MUTEX sja1105_mutex_handle;
+alignas(32) static UCHAR switch0_byte_pool_buffer[SWITCH_MEM_POOL_SIZE];
 static TX_BYTE_POOL switch0_byte_pool;
 #if HW_VERSION == 5
-static UCHAR        switch1_byte_pool_buffer[SWITCH_MEM_POOL_SIZE] __ALIGNED(32);
+alignas(32) static UCHAR switch1_byte_pool_buffer[SWITCH_MEM_POOL_SIZE];
 static TX_BYTE_POOL switch1_byte_pool;
 #endif
 

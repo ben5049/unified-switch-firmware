@@ -72,8 +72,9 @@ void write_mac_addr(uint8_t *buf);
 bool compare_mac_addrs_with_mask(const uint8_t *addr1, const uint8_t *addr2, const uint8_t *mask);
 
 uint32_t tx_thread_sleep_ms(uint32_t ms);
-uint32_t tx_time_get_ms();
+uint32_t tx_time_get_ms(void);
 
+void dwt_init(void);
 void delay_ns(uint32_t ns);
 
 void set_3v3_regulator_to_FPWM(void);

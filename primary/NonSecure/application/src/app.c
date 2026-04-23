@@ -49,6 +49,9 @@ int main(void) {
     /* GTZC initialisation */
     MX_GTZC_NS_Init();
 
+    /* Enable the DWT, needed for nanosecond delay functions */
+    dwt_init();
+
     /* Test the non-volatile memory is working correctly */
     if (!test_nvm()) error_handler();
 
