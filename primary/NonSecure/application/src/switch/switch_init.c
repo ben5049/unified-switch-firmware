@@ -101,7 +101,7 @@ sja1105_status_t switch_init() {
     port_config.mode                      = SJA1105_MODE_MAC;
     port_config.speed                     = SJA1105_SPEED_1G;
     port_config.voltage                   = SJA1105_IO_1V8;
-    port_config.rgmii_id_mode             = SJA1105_RGMII_ID_TX_1NS; /* Both switches have a 1ns TX_CLK delay */
+    port_config.rgmii_id_mode             = SJA1105_RGMII_ID_TX_RX_1NS; /* Delays handled by switch 0 */
     port_config.connected_switch_port_num = SW1_PORT_SW0;
     port_config.connected_switch_handle   = &hsw1;
     status                                = SJA1105_PortConfigure(&sw0_conf, &port_config, true);
@@ -219,7 +219,7 @@ sja1105_status_t switch_init() {
     port_config.mode                      = SJA1105_MODE_MAC;
     port_config.speed                     = SJA1105_SPEED_1G;
     port_config.voltage                   = SJA1105_IO_1V8;
-    port_config.rgmii_id_mode             = SJA1105_RGMII_ID_TX_1NS; /* Both switches have a 1ns TX_CLK delay */
+    port_config.rgmii_id_mode             = SJA1105_RGMII_ID_NONE; /* Delays handled by switch 0 */
     port_config.connected_switch_port_num = SW0_PORT_SW1;
     port_config.connected_switch_handle   = &hsw0;
     status                                = SJA1105_PortConfigure(&sw1_conf, &port_config, true);
