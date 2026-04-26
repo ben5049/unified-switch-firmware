@@ -41,7 +41,7 @@ static const phy_config_dp83867_t phy_config_0 = {
     .timeout       = PHY_TIMEOUT_MS,
     .interface     = PHY_INTERFACE_RGMII,
     .default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS),
-    .default_role  = PHY_ROLE_MASTER,
+    .default_role  = PHY_ROLE_SLAVE,
 };
 
 #endif
@@ -196,10 +196,13 @@ const static phy_callbacks_t *phy_callbacks[NUM_PHYS] = {
 #endif
 };
 
+static phy_info_t phy_info[NUM_PHYS];
+
 
 phy_status_t phys_init() {
 
-    phy_status_t status = PHY_OK;
+    phy_status_t status       = PHY_OK;
+    uint32_t     current_time = tx_time_get_ms();
 
     /* Reset shared structs */
 #if NUM_PHYS > 0
@@ -224,6 +227,15 @@ phy_status_t phys_init() {
     memset(&hphy6, 0, sizeof(hphy6));
 #endif
 
+    /* Reset PHY info */
+    for (phy_index_t i = 0; i < NUM_PHYS; i++) {
+        phy_info[i].index               = i;
+        phy_info[i].connection_state    = PHY_STATE_UNINITIALISED;
+        phy_info[i].next_update_time    = current_time + (PHY_POLL_STAGGERING ? ((PHY_POLL_PERIOD / NUM_PHYS) * i) : 0);
+        phy_info[i].link_attempts       = 0;
+        phy_info[i].last_self_test_time = 0;
+    }
+
     /* Set pins to a known state */
     HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(PHY_WAKE_GPIO_Port, PHY_WAKE_Pin, GPIO_PIN_SET);
@@ -245,10 +257,14 @@ phy_status_t phys_init() {
 
     /* Initialise all PHYs, setting the callback context to the port number */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-        status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], (void *) i);
+        status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], &phy_info[i]);
         if (status != PHY_OK) {
             LOG_ERROR("Failed to initialise PHY %d", i);
+#if DEBUG
             error_handler();
+#else
+            phy_info[i].connection_state = PHY_STATE_ERROR_UNRECOVERABLE; /* Allowed to continue in degraded state */
+#endif
         }
     }
 

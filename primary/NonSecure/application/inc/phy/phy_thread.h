@@ -39,6 +39,30 @@ typedef enum {
 #endif
 } phy_index_t;
 
+typedef enum {
+    PHY_STATE_UNINITIALISED,
+    PHY_STATE_INITIALISED,
+    PHY_STATE_WAIT_FOR_LINK,
+    PHY_STATE_CONNECTED,
+    PHY_STATE_RECONNECT,
+    PHY_STATE_SLEEP_START,
+    PHY_STATE_SLEEP_STOP,
+    PHY_STATE_SELF_TEST,
+    PHY_STATE_ERROR_RECOVERABLE,
+    PHY_STATE_ERROR_UNRECOVERABLE,
+    PHY_STATE_INVALID,
+} phy_connection_state_t;
+
+/* Struct used as the PHY callback context */
+typedef struct {
+    phy_index_t index;
+
+    phy_connection_state_t connection_state;
+    uint32_t               next_update_time; /* Time */
+    uint8_t                link_attempts;
+    uint32_t               last_self_test_time;
+} phy_info_t;
+
 
 extern uint8_t   phy_thread_stack[PHY_THREAD_STACK_SIZE];
 extern TX_THREAD phy_thread_handle;
@@ -60,6 +84,8 @@ extern bool  phy_temperatures_valid[NUM_PHYS];
 /* Exported functions*/
 phy_status_t phys_init(void);
 void         phy_thread_entry(uint32_t initial_input);
+phy_status_t phy_state_update_poll(phy_handle_base_t *hphy, uint32_t current_time);
+phy_status_t phy_state_update_interrupt(phy_handle_base_t *hphy, uint32_t current_time);
 
 
 #ifdef __cplusplus

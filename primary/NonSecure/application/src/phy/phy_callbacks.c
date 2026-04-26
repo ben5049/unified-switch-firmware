@@ -100,7 +100,7 @@ static phy_status_t phy_88q2112_callback_read_reg(uint8_t phy_addr, uint8_t mmd_
 
     /* Select the PHY */
 #if HW_VERSION == 5
-    status = select_phy((phy_index_t) context, &preamble);
+    status = select_phy(((phy_info_t *) context)->index, &preamble);
     PHY_CHECK_RET(status);
 #endif
 
@@ -134,7 +134,7 @@ static phy_status_t phy_88q2112_callback_write_reg(uint8_t phy_addr, uint8_t mmd
 
     /* Select the PHY */
 #if HW_VERSION == 5
-    status = select_phy((phy_index_t) context, &preamble);
+    status = select_phy(((phy_info_t *) context)->index, &preamble);
     PHY_CHECK_RET(status);
 #endif
 
@@ -240,7 +240,7 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
 
             tx_status_t tx_status = TX_SUCCESS;
 
-            // TODO: context is the PHY number not handle
+#error "TODO: context is the PHY number not handle"
             if (context == &hphy0) {
                 tx_status = tx_event_flags_set(&stp_events_handle, STP_PORT0_LINK_STATE_CHANGE_EVENT, TX_OR);
             } else if (context == &hphy1) {

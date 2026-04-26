@@ -165,7 +165,23 @@ extern uint32_t __TRACE_SIZE__;
 #define PHY_THREAD_STACK_SIZE         (2 * 1024)
 #define PHY_THREAD_PRIORITY           (15)
 #define PHY_THREAD_PREMPTION_PRIORITY (15)
-#define PHY_THREAD_INTERVAL           (300) /* TODO: Execute once per second (1000) when PHY interrupts work  */
+#define PHY_THREAD_INTERVAL           (100) /* Execute frequently, work done is dependent on PHY state machines so higher frequency doesn't mean more computation */
+
+#define PHY_TEMPERATURE_READ_INTERVAL (1000)
+
+#define PHY_WAITING_FOR_LINK_INTERVAL (300)
+#define PHY_WAITING_FOR_LINK_ATTEMPTS (5)
+
+#define PHY_RECONNECT_INTERVAL        (100)
+#define PHY_RECONNECT_ATTEMPTS        (10)
+
+#define PHY_SLEEP_INTERVAL            (2500)
+
+#define PHY_SELF_TEST_ON_STARTUP      (false)                                                                                /* Note that the PHY will make one attempt at linkup first */
+#define PHY_SELF_TEST_INTERVAL        (1000 * 60 * 10)                                                                       /* Every 10 minutes */
+
+#define PHY_POLL_STAGGERING           (true)                                                                                 /* Stagger polling loops so all the PHYs don't wake up at the same time to check for links */
+#define PHY_POLL_PERIOD               ((PHY_WAITING_FOR_LINK_ATTEMPTS * PHY_WAITING_FOR_LINK_INTERVAL) + PHY_SLEEP_INTERVAL) /* The time spent for a full loop of waiting for link -> sleep -> waiting for link */
 
 /* ---------------------------------------------------------------------------- */
 /* STP Config */

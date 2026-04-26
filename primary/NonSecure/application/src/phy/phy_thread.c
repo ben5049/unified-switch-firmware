@@ -34,7 +34,6 @@ void phy_thread_entry(uint32_t initial_input) {
     tx_status_t               tx_status   = TX_SUCCESS;
     phy_cable_state_88q211x_t cable_state = PHY_CABLE_STATE_88Q211X_NOT_STARTED;
     uint32_t                  event_flags = 0;
-    bool                      link_up     = false;
 
     UNUSED(cable_state); // TODO: Use
 
@@ -47,22 +46,16 @@ void phy_thread_entry(uint32_t initial_input) {
     phy_status = phys_init();
     if (phy_status != PHY_OK) error_handler();
 
-    /* Check if any links are up (this calls the corresponding link state change callback which
-     * is needed because the link can go up before the interrupt is enabled) */
-    for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
-        phy_status = PHY_GetLinkState(phy_handles[i], NULL);
-        if (phy_status != PHY_OK) error_handler();
-    }
-
     /* Setup timing control variables (done in ms) */
     uint32_t current_time   = tx_time_get_ms();
     uint32_t next_wake_time = current_time + PHY_THREAD_INTERVAL;
+    uint32_t last_temp_read = current_time;
 
     while (1) {
 
         /* Sleep until the next wake time while also monitoring for PHY events */
         current_time = tx_time_get_ms();
-        if (current_time < next_wake_time) {
+        if ((int32_t) (current_time - next_wake_time) < 0) {
 
             /* Wait for an interrupt */
             tx_status = tx_event_flags_get(&phy_events_handle, PHY_ALL_EVENTS, TX_OR_CLEAR, (ULONG *) &event_flags, MS_TO_TICKS(next_wake_time - current_time));
@@ -84,14 +77,17 @@ void phy_thread_entry(uint32_t initial_input) {
         next_wake_time += PHY_THREAD_INTERVAL;
 
         /* Read temperatures */
-        for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            phy_status = PHY_ReadTemperature(phy_handles[i], &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
-            // if (phy_status != PHY_OK) error_handler(); TODO: re-enable when implemented
+        if ((current_time - last_temp_read) >= PHY_TEMPERATURE_READ_INTERVAL) {
+            for (phy_index_t i = 0; i < NUM_PHYS; i++) {
+                phy_status = PHY_ReadTemperature(phy_handles[i], &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
+                // if (phy_status != PHY_OK) error_handler(); TODO: re-enable when implemented
+            }
+            last_temp_read = current_time;
         }
 
-        /* Poll link states in case an interrupt is missed */
+        /* Update PHY state machines */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            phy_status = PHY_GetLinkState(phy_handles[i], &link_up);
+            phy_status = phy_state_update_poll((phy_handle_base_t *) phy_handles[i], current_time);
             if (phy_status != PHY_OK) error_handler();
         }
     }
@@ -108,11 +104,15 @@ static phy_status_t phy_process_interrupts(uint32_t event_flags) {
     if (event_flags & PHY_PHY0_EVENT) {
         status = PHY_ProcessInterrupt(&hphy0);
         if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy0, tx_time_get_ms());
+        if (status != PHY_OK) return status;
     }
 #endif
 #if NUM_PHYS > 1
     if (event_flags & PHY_PHY1_EVENT) {
         status = PHY_ProcessInterrupt(&hphy1);
+        if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy1, tx_time_get_ms());
         if (status != PHY_OK) return status;
     }
 #endif
@@ -120,11 +120,15 @@ static phy_status_t phy_process_interrupts(uint32_t event_flags) {
     if (event_flags & PHY_PHY2_EVENT) {
         status = PHY_ProcessInterrupt(&hphy2);
         if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy2, tx_time_get_ms());
+        if (status != PHY_OK) return status;
     }
 #endif
 #if NUM_PHYS > 3
     if (event_flags & PHY_PHY3_EVENT) {
         status = PHY_ProcessInterrupt(&hphy3);
+        if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy3, tx_time_get_ms());
         if (status != PHY_OK) return status;
     }
 #endif
@@ -132,17 +136,23 @@ static phy_status_t phy_process_interrupts(uint32_t event_flags) {
     if (event_flags & PHY_PHY4_EVENT) {
         status = PHY_ProcessInterrupt(&hphy4);
         if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy4, tx_time_get_ms());
+        if (status != PHY_OK) return status;
     }
 #endif
 #if NUM_PHYS > 5
     if (event_flags & PHY_PHY5_EVENT) {
         status = PHY_ProcessInterrupt(&hphy5);
         if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy5, tx_time_get_ms());
+        if (status != PHY_OK) return status;
     }
 #endif
 #if NUM_PHYS > 6
     if (event_flags & PHY_PHY6_EVENT) {
         status = PHY_ProcessInterrupt(&hphy6);
+        if (status != PHY_OK) return status;
+        status = phy_state_update_interrupt((phy_handle_base_t *) &hphy6, tx_time_get_ms());
         if (status != PHY_OK) return status;
     }
 #endif
