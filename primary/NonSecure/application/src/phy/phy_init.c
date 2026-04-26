@@ -231,7 +231,7 @@ phy_status_t phys_init() {
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         phy_info[i].index               = i;
         phy_info[i].connection_state    = PHY_STATE_UNINITIALISED;
-        phy_info[i].next_update_time    = current_time + (PHY_POLL_STAGGERING ? ((PHY_POLL_PERIOD / NUM_PHYS) * i) : 0);
+        phy_info[i].next_update_time    = current_time + (PHY_POLL_STAGGERING ? (PHY_POLL_STAGGER_TIME * i) : 0);
         phy_info[i].link_attempts       = 0;
         phy_info[i].last_self_test_time = 0;
     }
