@@ -58,3 +58,18 @@ The non-secure firmware is responsible for the following:
 - ~~[mstp-lib](https://github.com/adigostin/mstp-lib)~~
 - [Logging](https://github.com/ben5049/logging) (by me)
 - [Bootloader](https://github.com/ben5049/bootloader) (by me)
+
+
+## Functional Description
+
+### PHY State Machines
+
+Each PHY has a state machine that controls what it is currently doing starting from the UNINITIALISED state:
+
+![phy-state-transitions](/docs/images/phy-state-transitions.drawio.png)
+
+No-delay loops shouldn't be possible, but there is a limit to the number of transitions that can take place back-to-back to prevent deadlocks.
+
+The purpose of the state machine is to allow the PHY to sleep when there is no link, as well as controlling the polling rate. Interrupts are also used to asynchronously update the state. The figure below shows the timings when 5 ports are unconnected:
+
+![phy-state-timing](/docs/images/phy-state-timing.drawio.png)
