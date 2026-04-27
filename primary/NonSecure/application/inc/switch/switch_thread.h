@@ -20,6 +20,7 @@ extern "C" {
 
 #include "config.h"
 #include "sja1105.h"
+#include "phy_thread.h"
 
 
 #if HW_VERSION == 4
@@ -45,6 +46,7 @@ typedef enum {
 } switch_index_t;
 
 typedef enum {
+
 #if HW_VERSION == 4
     SW0_PORT_PHY0_88Q2112 = 0x0,
     SW0_PORT_PHY1_88Q2112 = 0x1,
@@ -82,9 +84,60 @@ extern float switch_temperature;
 extern bool  switch_temperature_valid;
 
 
-/* Exported functions*/
+/* Exported functions */
 sja1105_status_t switch_init(void);
 void             switch_thread_entry(uint32_t initial_input);
+
+
+static inline sja1105_handle_t *phy_to_switch_handle(phy_index_t i) {
+#if HW_VERSION == 4
+    return &hsw0;
+#elif HW_VERSION == 5
+    switch (i) {
+        case PHY0_DP83867:
+        case PHY1_88Q2112:
+        case PHY2_88Q2112:
+        case PHY3_88Q2112:
+            return &hsw0;
+        case PHY4_88Q2112:
+        case PHY5_88Q2112:
+        case PHY6_LAN8671:
+            return &hsw1;
+    }
+#endif
+    return NULL;
+}
+
+static inline uint8_t phy_to_switch_port(phy_index_t i) {
+    switch (i) {
+#if HW_VERSION == 4
+        case PHY0_88Q2112:
+            return SW0_PORT_PHY0_88Q2112;
+        case PHY1_88Q2112:
+            return SW0_PORT_PHY1_88Q2112;
+        case PHY2_88Q2112:
+            return SW0_PORT_PHY2_88Q2112;
+        case PHY3_LAN8671:
+            return SW0_PORT_PHY3_LAN8671;
+#elif HW_VERSION == 5
+        case PHY0_DP83867:
+            return SW1_PORT_PHY0_DP83867;
+        case PHY1_88Q2112:
+            return SW1_PORT_PHY1_88Q2112;
+        case PHY2_88Q2112:
+            return SW1_PORT_PHY2_88Q2112;
+        case PHY3_88Q2112:
+            return SW1_PORT_PHY3_88Q2112;
+        case PHY4_88Q2112:
+            return SW0_PORT_PHY4_88Q2112;
+        case PHY5_88Q2112:
+            return SW0_PORT_PHY5_88Q2112;
+        case PHY6_LAN8671:
+            return SW0_PORT_PHY6_LAN8671;
+#endif
+    }
+    return -1;
+}
 
 
 #ifdef __cplusplus

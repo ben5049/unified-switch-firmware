@@ -10,6 +10,7 @@
 
 #include "phy_thread.h"
 #include "phy_common.h"
+#include "switch_thread.h"
 #include "config.h"
 #include "utils.h"
 
@@ -91,7 +92,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                     /* Perform a self test periodically (or at startup) */
                     if ((PHY_SELF_TEST_ON_STARTUP && (PHY_LAST_TEST(hphy) == 0)) ||
                         (current_time - PHY_LAST_TEST(hphy)) > PHY_SELF_TEST_INTERVAL) {
-                        next_state = PHY_STATE_SELF_TEST;
+                        next_state = PHY_STATE_SELF_TEST_1;
                     }
 
                     /* Increment counter, wait, and try again */
@@ -120,6 +121,13 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* Still connected */
                 else {
+
+                    uint8_t sqi = PHY_SQI_INVALID;
+
+                    /* Get the signal quality index (0-100) */
+                    status = PHY_GetSQI(hphy, &sqi);
+                    if (status != PHY_OK) goto end;
+
                     next_state = current_state;
                     interval   = 1000;
                 }
@@ -160,8 +168,32 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
             /* Sleep */
             case PHY_STATE_SLEEP_START: {
+
+                /* Disable traffic to the switch port */
+                if (SJA1105_PortSetForwarding(
+                        phy_to_switch_handle(PHY_INDEX(hphy)),
+                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        false) != SJA1105_OK) {
+                    status = PHY_ERROR;
+                    goto end;
+                }
+
+                /* Let the traffic drain out */
+                tx_thread_sleep_ms(1);
+
+                /* Sleep the PHY */
                 status = PHY_Sleep(hphy);
                 if ((status != PHY_OK)) goto end;
+
+                /* Sleep the switch port (turn off clocks) */
+                // TODO: re-enable when implemented
+                // if (SJA1105_PortSleep(
+                //         phy_to_switch_handle(PHY_INDEX(hphy)),
+                //         phy_to_switch_port(PHY_INDEX(hphy))) != SJA1105_OK) {
+                //     status = PHY_ERROR;
+                //     goto end;
+                // }
+
                 next_state = PHY_STATE_SLEEP_STOP;
                 interval   = PHY_SLEEP_INTERVAL;
                 break;
@@ -169,18 +201,124 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
             /* Wake up */
             case PHY_STATE_SLEEP_STOP: {
+
+                /* Wake the switch port (turn on clocks) */
+                // TODO: re-enable when implemented
+                // if (SJA1105_PortWake(
+                //         phy_to_switch_handle(PHY_INDEX(hphy)),
+                //         phy_to_switch_port(PHY_INDEX(hphy))) != SJA1105_OK) {
+                //     status = PHY_ERROR;
+                //     goto end;
+                // }
+
+                /* Wake the PHY */
                 status = PHY_Wake(hphy);
                 if ((status != PHY_OK)) goto end;
+
+                /* Enable traffic to the switch port */
+                if (SJA1105_PortSetForwarding(
+                        phy_to_switch_handle(PHY_INDEX(hphy)),
+                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        true) != SJA1105_OK) {
+                    status = PHY_ERROR;
+                    goto end;
+                }
+
                 next_state = PHY_STATE_WAIT_FOR_LINK;
                 break;
             }
 
-            case PHY_STATE_SELF_TEST: {
+            case PHY_STATE_SELF_TEST_1: {
 
                 PHY_LAST_TEST(hphy) = current_time;
 
-                /* TODO: Perform a self test */
+                /* Tests only available on certain PHYs */
+                if ((hphy->config.variant == PHY_VARIANT_88Q2112) || (hphy->config.variant == PHY_VARIANT_88Q2110)) {
 
+                    /* Start a built-in self test (BIST) */
+                    status = PHY_88Q211X_Start1000MBIST((phy_handle_88q211x_t *) hphy);
+                    if (status != PHY_OK) goto end;
+
+                    next_state = PHY_STATE_SELF_TEST_2;
+                    interval   = 100;
+                }
+
+                /* No self test 1 available, go back to waiting for link */
+                else {
+                    next_state = PHY_STATE_WAIT_FOR_LINK;
+                    interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                }
+
+                break;
+            }
+
+            case PHY_STATE_SELF_TEST_2: {
+
+                /* Get BIST results and start a virtual cable test (VCT) */
+                if ((hphy->config.variant == PHY_VARIANT_88Q2112) || (hphy->config.variant == PHY_VARIANT_88Q2110)) {
+
+                    bool error = false;
+
+                    /* Get the BIST results (this also stops it) */
+                    status = PHY_88Q211X_Get1000MBISTResults((phy_handle_88q211x_t *) hphy, &error);
+                    if (status != PHY_OK) goto end;
+                    if (error) {
+                        next_state = PHY_STATE_ERROR_RECOVERABLE;
+                        break;
+                    }
+
+                    /* Start a virtual cable test */
+                    status = PHY_88Q211X_StartVCT((phy_handle_88q211x_t *) hphy);
+                    if ((status != PHY_OK)) goto end;
+
+                    next_state = PHY_STATE_SELF_TEST_3;
+                    interval   = PHY_88Q211X_VCT_LENGTH; /* Wait for the test to complete */
+                }
+
+                /* No self test 2 available, go back to waiting for link */
+                else {
+                    next_state = PHY_STATE_WAIT_FOR_LINK;
+                    interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                }
+
+                break;
+            }
+
+            case PHY_STATE_SELF_TEST_3: {
+
+                /* Get VCT results */
+                if ((hphy->config.variant == PHY_VARIANT_88Q2112) || (hphy->config.variant == PHY_VARIANT_88Q2110)) {
+
+                    phy_cable_state_88q211x_t cable_state           = PHY_CABLE_STATE_88Q211X_OPEN;
+                    uint32_t                  maximum_peak_distance = 0;
+
+                    /* Get the VCT results and stop the test */
+                    status = PHY_88Q211X_GetVCTResults((phy_handle_88q211x_t *) hphy, &cable_state, &maximum_peak_distance);
+                    if (status == PHY_TIMEOUT) {
+                        LOG_WARNING("PHY%d VCT Didn't finish in %d ms", PHY_INDEX(hphy), PHY_88Q211X_VCT_LENGTH);
+                    } else if (status != PHY_OK) {
+                        goto end;
+                    }
+                    status = PHY_88Q211X_StopVCT((phy_handle_88q211x_t *) hphy);
+                    if ((status != PHY_OK)) goto end;
+                }
+
+                /* All tests done, go back to waiting for link */
+                next_state = PHY_STATE_WAIT_FOR_LINK;
+                interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                break;
+            }
+
+            /* No PHYs use these states */
+            case PHY_STATE_SELF_TEST_4:
+            case PHY_STATE_SELF_TEST_5:
+            case PHY_STATE_SELF_TEST_6:
+            case PHY_STATE_SELF_TEST_7:
+            case PHY_STATE_SELF_TEST_8:
+            case PHY_STATE_SELF_TEST_9:
+            case PHY_STATE_SELF_TEST_10: {
+
+                /* Should be unreachable, go back to waiting for link */
                 next_state = PHY_STATE_WAIT_FOR_LINK;
                 interval   = PHY_WAITING_FOR_LINK_INTERVAL;
                 break;
@@ -190,7 +328,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* TODO: Attempt to recover */
 
-                next_state = PHY_STATE_WAIT_FOR_LINK;
+                next_state = PHY_STATE_ERROR_UNRECOVERABLE;
                 break;
             }
 

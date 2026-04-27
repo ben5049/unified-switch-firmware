@@ -169,16 +169,16 @@ extern uint32_t __TRACE_SIZE__;
 
 #define PHY_TEMPERATURE_READ_INTERVAL (1000)
 
-#define PHY_WAITING_FOR_LINK_INTERVAL (300)
-#define PHY_WAITING_FOR_LINK_ATTEMPTS (2)
+#define PHY_WAITING_FOR_LINK_INTERVAL (200)
+#define PHY_WAITING_FOR_LINK_ATTEMPTS (1)
 #define PHY_WAITING_FOR_LINK_TIME     (PHY_WAITING_FOR_LINK_ATTEMPTS * PHY_WAITING_FOR_LINK_INTERVAL)
 
 #define PHY_RECONNECT_INTERVAL        (100)
 #define PHY_RECONNECT_ATTEMPTS        (20)
 
-#define PHY_SLEEP_INTERVAL            (3000)
+#define PHY_SLEEP_INTERVAL            (PHY_WAITING_FOR_LINK_TIME * 9)                    /* 90% Of the time spent asleep */
 
-#define PHY_SELF_TEST_ON_STARTUP      (false)                                            /* Note that the PHY will make one attempt at linkup first */
+#define PHY_SELF_TEST_ON_STARTUP      (true)                                             /* Note that the PHY will make one attempt at linkup first */
 #define PHY_SELF_TEST_INTERVAL        (1000 * 60 * 10)                                   /* Every 10 minutes */
 
 #define PHY_POLL_STAGGERING           (true)                                             /* Stagger polling loops so all the PHYs don't wake up at the same time to check for links */
