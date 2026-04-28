@@ -61,10 +61,9 @@ UINT App_ThreadX_Init(VOID *memory_ptr)
   UINT ret = TX_SUCCESS;
   /* USER CODE BEGIN App_ThreadX_MEM_POOL */
 
-    /* USER CODE END App_ThreadX_MEM_POOL */
-
-    /* USER CODE BEGIN App_ThreadX_Init */
-    /* USER CODE END App_ThreadX_Init */
+  /* USER CODE END App_ThreadX_MEM_POOL */
+  /* USER CODE BEGIN App_ThreadX_Init */
+  /* USER CODE END App_ThreadX_Init */
 
   return ret;
 }

@@ -77,7 +77,7 @@ uint32_t tx_time_get_ms(void);
 void dwt_init(void);
 void delay_ns(uint32_t ns);
 
-void set_3v3_regulator_to_FPWM(void);
+void set_3v3_regulator_to_fpwm(void);
 
 log_handle_t *get_logger(void);
 void          log_info(const char *format, ...);

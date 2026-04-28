@@ -40,30 +40,77 @@ uint32_t tx_time_get_ms() {
 }
 
 
-void dwt_init() {
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; /* Enable the trace debug logic */
-                                                    /* DWT->LAR = 0xC5ACCE55; Sometimes a software lock needs to be disabled, but not for the STM32H5 */
-    DWT->CYCCNT  = 0;                               /* Reset the cycle counter */
-    DWT->CTRL   |= DWT_CTRL_CYCCNTENA_Msk;          /* Enable the cycle counter */
-}
-
-
 void delay_ns(uint32_t ns) {
+
+    uint32_t ticks;
+    uint32_t periods;
 
     /* Calculate the number of CPU cycles required */
     /* (ns * CPU_MHz) / 1000 = cycles */
     /* Integer division rounds down, but the function overhead ensures that a delays of 0 cycles never happens */
-    uint32_t ticks = ((ns * (SystemCoreClock / 1000000)) / 1000);
-    uint32_t start = DWT->CYCCNT;
+    ticks = ((ns * (SystemCoreClock / 1000000)) / 1000);
 
-    /* Wait */
-    while ((DWT->CYCCNT - start) < ticks) {
-        __NOP();
+    /* Use a NOP loop for shorter delays */
+    if (ticks < 50) {
+
+        /* An unrolled while loop */
+        while (ticks > 4) {
+            __NOP();
+            __NOP();
+            __NOP();
+            __NOP();
+            ticks -= 4;
+        }
+
+        /* Catch the remainder */
+        while (ticks > 0) {
+            __NOP();
+            ticks--;
+        }
+    }
+
+    /* Use TIM7 for longer delays */
+    else {
+
+        /* Setup */
+        SET_BIT(TIM7->CR1, TIM_CR1_OPM);     /* Enable one-pulse mode */
+        CLEAR_BIT(TIM7->CR1, TIM_CR1_URS);   /* Set the update request source to any */
+        TIM7->ARR = (ticks % (1 << 16)) - 1; /* Set the first threshold */
+        SET_BIT(TIM7->EGR, TIM_EGR_UG);      /* Re-initialise timer counter */
+        CLEAR_BIT(TIM7->SR, TIM_SR_UIF);     /* Clear update flag */
+        SET_BIT(TIM7->CR1, TIM_CR1_CEN);     /* Enable counting */
+
+        /* Count the number of full periods that must be elapsed (other than the one running now) */
+        periods = ticks / (1 << 16);
+
+        /* Wait for the update flag */
+        while (!(TIM7->SR & TIM_SR_UIF)) {
+            __NOP();
+        }
+
+        /* Wait for the remaining periods */
+        if (periods) {
+
+            /* Setup */
+            TIM7->ARR = (1 << 16) - 1;
+
+            for (uint_fast32_t i = 0; i < periods; i++) {
+
+                /* Start again */
+                SET_BIT(TIM7->EGR, TIM_EGR_UG); /* Re-initialise timer counter */
+                CLEAR_BIT(TIM7->SR, TIM_SR_UIF);
+                SET_BIT(TIM7->CR1, TIM_CR1_CEN);
+
+                /* Wait for the update flag */
+                while (!(TIM7->SR & TIM_SR_UIF)) {
+                    __NOP();
+                }
+            }
+        }
     }
 }
 
-
-void set_3v3_regulator_to_FPWM() {
+void set_3v3_regulator_to_fpwm() {
     __disable_irq();
     HAL_GPIO_WritePin(MODE_3V3_GPIO_Port, MODE_3V3_Pin, GPIO_PIN_RESET);
     delay_ns(500);

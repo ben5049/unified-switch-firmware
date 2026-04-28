@@ -235,6 +235,29 @@ sja1105_status_t switch_init() {
     if (status != SJA1105_OK) return status;
 #endif
 
+    /* Disable port forwarding. This will be re-enabled as PHY's links go up */
+#if HW_VERSION == 4
+    status = SJA1105_PortSetForwarding(&hsw0, SW0_PORT_PHY0_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw0, SW0_PORT_PHY1_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw0, SW0_PORT_PHY2_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+#elif HW_VERSION == 5
+    status = SJA1105_PortSetForwarding(&hsw1, SW1_PORT_PHY0_DP83867, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw1, SW1_PORT_PHY1_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw1, SW1_PORT_PHY2_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw1, SW1_PORT_PHY3_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw0, SW0_PORT_PHY4_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+    status = SJA1105_PortSetForwarding(&hsw0, SW0_PORT_PHY5_88Q2112, false);
+    if (status != SJA1105_OK) return status;
+#endif
+
     /* Set the speed of the dynamic ports. TODO: This should be after PHY auto-negotiaion */
 #if HW_VERSION == 4
     status = SJA1105_PortSetSpeed(&hsw0, SW0_PORT_PHY0_88Q2112, SJA1105_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS));

@@ -46,6 +46,7 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/rtc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/spi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/app_threadx.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/tim.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/stm32h5xx_it.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/stm32h5xx_hal_msp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/switch_v4/Core/Src/stm32h5xx_hal_timebase_tim.c

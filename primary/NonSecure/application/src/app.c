@@ -17,6 +17,7 @@
 #include "adc.h"
 #include "dts.h"
 #include "aes.h"
+#include "tim.h"
 
 #include "app.h"
 #include "switch_thread.h"
@@ -43,14 +44,13 @@ int main(void) {
     /* MPU Configuration */
     mpu_config();
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    /* Reset all peripherals, initialises the flash interface and systick. */
     HAL_Init();
 
-    /* GTZC initialisation */
+    /* Initialise very important peripherals */
     MX_GTZC_NS_Init();
-
-    /* Enable the DWT, needed for nanosecond delay functions */
-    dwt_init();
+    MX_TIM7_Init();
+    if (HAL_TIM_Base_Start(&htim7) != HAL_OK) error_handler();
 
     /* Test the non-volatile memory is working correctly */
     if (!test_nvm()) error_handler();
@@ -83,7 +83,7 @@ int main(void) {
     LOG_INFO("Peripheral group 1 initialised");
 
     /* Change to FPWM mode for more accurate 3.3V rail (needed by PHYs) */
-    set_3v3_regulator_to_FPWM();
+    set_3v3_regulator_to_fpwm();
     LOG_INFO("3V3 Regulator changed to FPWM mode");
 
     /* Initialise the switch */

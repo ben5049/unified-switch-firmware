@@ -108,6 +108,21 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
             case PHY_STATE_CONNECTED: {
 
+                /* Enable traffic through the switch port */
+                if (SJA1105_PortSetForwarding(
+                        phy_to_switch_handle(PHY_INDEX(hphy)),
+                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        true) != SJA1105_OK) {
+                    status = PHY_ERROR;
+                    goto end;
+                }
+
+                next_state = PHY_STATE_LINKUP;
+                break;
+            }
+
+            case PHY_STATE_LINKUP: {
+
                 /* Check link state in case an interrupt was missed */
                 if (hphy->linkup) {
                     status = PHY_GetLinkState(hphy, NULL);
@@ -116,7 +131,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* Link has gone down */
                 if (!hphy->linkup) {
-                    next_state = PHY_STATE_RECONNECT;
+                    next_state = PHY_STATE_DISCONNECTED;
                 }
 
                 /* Still connected */
@@ -132,6 +147,21 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                     interval   = 1000;
                 }
 
+                break;
+            }
+
+            case PHY_STATE_DISCONNECTED: {
+
+                /* Disable traffic through the switch port */
+                if (SJA1105_PortSetForwarding(
+                        phy_to_switch_handle(PHY_INDEX(hphy)),
+                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        false) != SJA1105_OK) {
+                    status = PHY_ERROR;
+                    goto end;
+                }
+
+                next_state = PHY_STATE_RECONNECT;
                 break;
             }
 
@@ -169,7 +199,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             /* Sleep */
             case PHY_STATE_SLEEP_START: {
 
-                /* Disable traffic to the switch port */
+                /* Disable traffic through the switch port */
                 if (SJA1105_PortSetForwarding(
                         phy_to_switch_handle(PHY_INDEX(hphy)),
                         phy_to_switch_port(PHY_INDEX(hphy)),
@@ -215,7 +245,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 status = PHY_Wake(hphy);
                 if ((status != PHY_OK)) goto end;
 
-                /* Enable traffic to the switch port */
+                /* Enable traffic through the switch port */
                 if (SJA1105_PortSetForwarding(
                         phy_to_switch_handle(PHY_INDEX(hphy)),
                         phy_to_switch_port(PHY_INDEX(hphy)),
@@ -345,21 +375,31 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             }
         }
 
+            /* Check for zero delay loops */
+#if DEBUG
+        if ((next_state == current_state) && (interval == 0)) {
+            status = PHY_SW_DEADLOCK;
+            goto end;
+        }
+#endif
+
         current_state = next_state;
         transitions++;
     }
 
-#if DEBUG
+    /* Check for livelocks */
     if (transitions >= MAX_TRANSITIONS) {
+        LOG_WARNING("PHY State machine detected >%d transitions back-to-back", MAX_TRANSITIONS);
+#if DEBUG
         status = PHY_SW_DEADLOCK;
         goto end;
-    }
 #endif
+    }
+
+end:
 
     PHY_STATE(hphy)       = next_state;
     PHY_NEXT_UPDATE(hphy) = current_time + interval;
-
-end:
 
     return status;
 }

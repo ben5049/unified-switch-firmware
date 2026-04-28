@@ -21,6 +21,7 @@
 #include "main.h"
 #include "adc.h"
 #include "gtzc_ns.h"
+#include "tim.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */

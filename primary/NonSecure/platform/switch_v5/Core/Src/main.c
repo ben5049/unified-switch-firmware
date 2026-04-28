@@ -27,6 +27,7 @@
 #include "gtzc_ns.h"
 #include "rtc.h"
 #include "spi.h"
+#include "tim.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
