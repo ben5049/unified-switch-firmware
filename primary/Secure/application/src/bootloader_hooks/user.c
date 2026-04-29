@@ -30,10 +30,12 @@
 
 bootloader_status_t bootloader_hardware_init() {
 
+    bootloader_status_t status = BL_OK;
+
     /* MPU Configuration */
     mpu_config();
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    /* Reset all peripherals */
     HAL_Init();
 
     /* Configure the system clock */
@@ -45,7 +47,7 @@ bootloader_status_t bootloader_hardware_init() {
     /* GTZC initialisation */
     MX_GTZC_S_Init();
 
-    /* Initialize all configured peripherals */
+    /* Initialise all configured peripherals */
     MX_GPIO_Init();
     MX_SAU_Init();
     MX_ICACHE_Init();
@@ -60,7 +62,8 @@ bootloader_status_t bootloader_hardware_init() {
     MX_UART4_Init();
 
     /* Enable the backup SRAM */
-    enable_backup_domain();
+    if (enable_backup_domain() != HAL_OK) status = BL_HAL_ERROR;
+    if (status != BL_OK) return status;
 
     return BL_OK;
 }

@@ -153,13 +153,7 @@ static uint32_t sja1105_get_time_ms(void *context) {
 }
 
 static void sja1105_delay_ms(uint32_t ms, void *context) {
-
-    /* Use kernel time if it has been started */
-    if (tx_thread_identify() == TX_NULL) {
-        HAL_Delay(ms);
-    } else {
-        tx_thread_sleep_ms(ms);
-    }
+    delay_ms(ms);
 }
 
 static void sja1105_delay_ns(uint32_t ns, void *context) {

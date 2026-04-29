@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
+#include "stdbool.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -49,8 +50,9 @@ int      s_write_user_storage(uint16_t addr, const uint8_t *data, uint16_t size)
 int      s_read_user_storage(uint16_t addr, uint8_t *data, uint16_t size);
 void     s_error_handler(void);
 uint32_t s_random_u32(void);
+int      s_write(int file, char *ptr, int len);
+bool     s_uart_logging_enabled(void);
 
 
 #endif /* SECURE_NSC_H */
 /* USER CODE END Non_Secure_CallLib_h */
-

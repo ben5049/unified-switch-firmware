@@ -6,17 +6,22 @@
  */
 
 #include "hal.h"
+#include "ramcfg.h"
+
 #include "backup.h"
 
 
-void enable_backup_domain() {
+hal_status_t enable_backup_domain() {
+
+    hal_status_t status = HAL_OK;
 
     /* Enable write access to backup domain */
-    PWR_S->DBPCR |= PWR_DBPCR_DBP; /* Disable write protection */
+    PWR_S->DBPCR |= PWR_DBPCR_DBP;
 
-    /* Enable clock to backup domain (updated __HAL_RCC_BKPRAM_CLK_ENABLE() for secure world) */
+    /* Enable clock to backup domain */
     __IO uint32_t tmpreg;
     SET_BIT(RCC_S->AHB1ENR, RCC_AHB1ENR_BKPRAMEN);
+
     /* Delay after an RCC peripheral clock enabling */
     tmpreg = READ_BIT(RCC_S->AHB1ENR, RCC_AHB1ENR_BKPRAMEN);
     UNUSED(tmpreg);
@@ -26,4 +31,17 @@ void enable_backup_domain() {
 
     /* Enable voltage and temperature monitoring. TODO: Use this? */
     // PWR_S->BDCR  |= PWR_BDCR_MONEN;
+
+    /* Check if this is a cold boot */
+    if (TAMP->BACKUP_MAGIC_REG != BACKUP_MAGIC_WORD) {
+
+        /* Erase the backup RAM to prevent ECC errors */
+        status = HAL_RAMCFG_Erase(&hramcfg_BKPRAM);
+        if (status != HAL_OK) return status;
+
+        /* Set the magic word so next boot we know BKPRAM ECC is valid */
+        TAMP->BACKUP_MAGIC_REG = BACKUP_MAGIC_WORD;
+    }
+
+    return status;
 }

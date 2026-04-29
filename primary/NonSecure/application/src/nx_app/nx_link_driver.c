@@ -38,7 +38,7 @@ int32_t nx_eth_phy_get_link_state(void) {
     /* If SJA1105 isn't initialised or none of the PHYs have links then return link down */
     phy_link_up = hphy0.linkup || hphy1.linkup || hphy2.linkup || hphy3.linkup
 #if HW_VERSION == 5
-                  || hphy4.linkup || hphy5.linkup || hphy6.linkup
+                  || hphy4.linkup || hphy5.linkup /* Note: hphy6 isn't used since its use PLCA and always counts as having its link up */
 #endif
         ;
 

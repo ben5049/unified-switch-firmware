@@ -40,75 +40,62 @@ uint32_t tx_time_get_ms() {
 }
 
 
+void delay_ms(uint32_t ms) {
+
+    /* Use kernel time if it has been started */
+    if (tx_thread_identify() == TX_NULL) {
+        HAL_Delay(ms);
+    } else {
+        tx_thread_sleep_ms(ms);
+    }
+}
+
+
+/* Required to use delay_ns before the rtos has started */
+void systick_enable_pre_rtos() {
+    SysTick->LOAD = 0x00ffffff;                                           /* Max value */
+    SysTick->VAL  = 0;
+    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk; /* Enable SysTick with processor clock, but keep TICKINT disabled to prevent jumping to RTOS interrupt handler */
+}
+
 void delay_ns(uint32_t ns) {
 
-    uint32_t ticks;
-    uint32_t periods;
+    uint32_t required_ticks;
+    uint32_t elapsed_ticks;
+    uint32_t start_val;
+    uint32_t load_val;
+    uint32_t current_val;
+
+    /* Capture start_val right at the start so the delay includes the calculation of the number of ticks to delay for */
+    start_val = SysTick->VAL;
 
     /* Calculate the number of CPU cycles required */
     /* (ns * CPU_MHz) / 1000 = cycles */
-    /* Integer division rounds down, but the function overhead ensures that a delays of 0 cycles never happens */
-    ticks = ((ns * (SystemCoreClock / 1000000)) / 1000);
+    required_ticks = (uint32_t) (((uint64_t) ns * (SystemCoreClock / 1000000)) / 1000);
+    if (required_ticks == 0) return;
 
-    /* Use a NOP loop for shorter delays */
-    if (ticks < 50) {
+    load_val      = SysTick->LOAD;
+    elapsed_ticks = 0;
 
-        /* An unrolled while loop */
-        while (ticks > 4) {
-            __NOP();
-            __NOP();
-            __NOP();
-            __NOP();
-            ticks -= 4;
+    /* Poll until delay complete */
+    while (elapsed_ticks < required_ticks) {
+
+        current_val = SysTick->VAL;
+
+        /* Normally counting down */
+        if (current_val <= start_val) {
+            elapsed_ticks += (start_val - current_val);
         }
 
-        /* Catch the remainder */
-        while (ticks > 0) {
-            __NOP();
-            ticks--;
-        }
-    }
-
-    /* Use TIM7 for longer delays */
-    else {
-
-        /* Setup */
-        SET_BIT(TIM7->CR1, TIM_CR1_OPM);     /* Enable one-pulse mode */
-        CLEAR_BIT(TIM7->CR1, TIM_CR1_URS);   /* Set the update request source to any */
-        TIM7->ARR = (ticks % (1 << 16)) - 1; /* Set the first threshold */
-        SET_BIT(TIM7->EGR, TIM_EGR_UG);      /* Re-initialise timer counter */
-        CLEAR_BIT(TIM7->SR, TIM_SR_UIF);     /* Clear update flag */
-        SET_BIT(TIM7->CR1, TIM_CR1_CEN);     /* Enable counting */
-
-        /* Count the number of full periods that must be elapsed (other than the one running now) */
-        periods = ticks / (1 << 16);
-
-        /* Wait for the update flag */
-        while (!(TIM7->SR & TIM_SR_UIF)) {
-            __NOP();
+        /* Counter hit 0 and was reloaded */
+        else {
+            elapsed_ticks += (start_val + load_val - current_val + 1);
         }
 
-        /* Wait for the remaining periods */
-        if (periods) {
-
-            /* Setup */
-            TIM7->ARR = (1 << 16) - 1;
-
-            for (uint_fast32_t i = 0; i < periods; i++) {
-
-                /* Start again */
-                SET_BIT(TIM7->EGR, TIM_EGR_UG); /* Re-initialise timer counter */
-                CLEAR_BIT(TIM7->SR, TIM_SR_UIF);
-                SET_BIT(TIM7->CR1, TIM_CR1_CEN);
-
-                /* Wait for the update flag */
-                while (!(TIM7->SR & TIM_SR_UIF)) {
-                    __NOP();
-                }
-            }
-        }
+        start_val = current_val;
     }
 }
+
 
 void set_3v3_regulator_to_fpwm() {
     __disable_irq();

@@ -47,6 +47,8 @@ void nx_link_thread_entry(uint32_t thread_input) {
     uint32_t    current_time;
 #if ENABLE_DHCP_RESTORE
     uint32_t dhcp_record_next_save_time = 0;
+#else
+    UNUSED(current_time);
 #endif
 
     /* Register the IP address change callback */
@@ -232,11 +234,11 @@ static nx_status_t store_dhcp_record(NX_DHCP *client) {
     if (status == NX_SUCCESS) {
 
         /* Invalidate the old record */
-        valid = false;
+        valid         = false;
         bytes_written = s_write_user_storage(USER_STORAGE_DHCP_VALID_ADDR, (uint8_t *) &valid, USER_STORAGE_DHCP_VALID_SIZE);
 
         /* Invalidate succeeded */
-        if (bytes_written == USER_STORAGE_DHCP_VALID_SIZE){
+        if (bytes_written == USER_STORAGE_DHCP_VALID_SIZE) {
 
             /* Attempt to write the record to non-volatile storage */
             bytes_written = s_write_user_storage(USER_STORAGE_DHCP_RECORD_ADDR, (uint8_t *) &record, USER_STORAGE_DHCP_RECORD_SIZE);

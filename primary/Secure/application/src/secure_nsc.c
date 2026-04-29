@@ -13,6 +13,7 @@
 #include "error.h"
 #include "logging.h"
 #include "utils.h"
+#include "bootloader_config.h"
 
 
 /* Call this function from a thread in ThreadX at 1Hz to do background work in the secure world */
@@ -70,7 +71,10 @@ CMSE_NS_ENTRY void s_error_handler() {
     disable_tick();
 }
 
+
 CMSE_NS_ENTRY uint32_t s_random_u32() {
+
+    enable_tick();
 
     bootloader_status_t status = BL_OK;
     uint32_t            number;
@@ -78,5 +82,30 @@ CMSE_NS_ENTRY uint32_t s_random_u32() {
     status = bootloader_get_random_u32(&number);
     if (status != BL_OK) error_handler(status);
 
+    disable_tick();
+
     return number;
+}
+
+
+extern int _write(int file, char *ptr, int len);
+
+CMSE_NS_ENTRY int s_write(int file, char *ptr, int len) {
+
+    enable_tick();
+
+    int ret = 0;
+
+#if UART_LOGGING_ENABLE
+    _write(file, ptr, len);
+#endif
+
+    disable_tick();
+
+    return ret;
+}
+
+
+CMSE_NS_ENTRY bool s_uart_logging_enabled(void) {
+    return UART_LOGGING_ENABLE;
 }

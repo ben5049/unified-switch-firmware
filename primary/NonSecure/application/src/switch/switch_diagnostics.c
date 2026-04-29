@@ -99,8 +99,8 @@ sja1105_status_t publish_switch_diagnostics(uint32_t current_time) {
         switch_diag.timestamp.seconds     = current_time / 1000;             /* TODO: Get from PTP */
         switch_diag.timestamp.nanoseconds = (current_time % 1000) * 1000000; /* TODO: Get from PTP */
         switch_diag.has_timestamp         = true;
-        switch_diag.temp                  = switch_temperature;
-        switch_diag.has_temp              = switch_temperature_valid;
+        switch_diag.temp                  = switch_temperatures[0];
+        switch_diag.has_temp              = switch_temperatures_valid[0];
 
         /* Encode the message */
         if (!pb_encode(&stream, SwitchDiag_fields, &switch_diag)) {

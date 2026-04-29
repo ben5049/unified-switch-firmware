@@ -82,7 +82,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 }
 
                 /* No link and we have run out of attempts */
-                else if (PHY_LINK_ATTEMPTS(hphy) > PHY_WAITING_FOR_LINK_ATTEMPTS) {
+                else if (PHY_LINK_ATTEMPTS(hphy) >= PHY_WAITING_FOR_LINK_ATTEMPTS) {
                     next_state              = PHY_STATE_SLEEP_START;
                     PHY_LINK_ATTEMPTS(hphy) = 0; /* Reset the counter */
                 }
@@ -122,6 +122,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             }
 
             case PHY_STATE_LINKUP: {
+
+                // TODO: get the PHY speed and set the switch port to that speed
 
                 /* Check link state in case an interrupt was missed */
                 if (hphy->linkup) {
@@ -181,7 +183,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 }
 
                 /* No link and we have run out of reconnect attempts */
-                else if (PHY_LINK_ATTEMPTS(hphy) > PHY_RECONNECT_ATTEMPTS) {
+                else if (PHY_LINK_ATTEMPTS(hphy) >= PHY_RECONNECT_ATTEMPTS) {
                     next_state              = PHY_STATE_WAIT_FOR_LINK;
                     PHY_LINK_ATTEMPTS(hphy) = 0; /* Reset the counter */
                 }

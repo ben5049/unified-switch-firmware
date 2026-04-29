@@ -7,7 +7,7 @@
 
 #include "main.h"
 #include "app_threadx.h"
-#include "main.h"
+#include "hal.h"
 #include "gtzc_ns.h"
 #include "gpio.h"
 #include "rtc.h"
@@ -17,7 +17,7 @@
 #include "adc.h"
 #include "dts.h"
 #include "aes.h"
-#include "tim.h"
+#include "secure_nsc.h"
 
 #include "app.h"
 #include "switch_thread.h"
@@ -49,8 +49,7 @@ int main(void) {
 
     /* Initialise very important peripherals */
     MX_GTZC_NS_Init();
-    MX_TIM7_Init();
-    if (HAL_TIM_Base_Start(&htim7) != HAL_OK) error_handler();
+    systick_enable_pre_rtos();
 
     /* Test the non-volatile memory is working correctly */
     if (!test_nvm()) error_handler();
@@ -75,6 +74,10 @@ int main(void) {
     log_status = log_init(&hlog_network, LOGGER_ID_5, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
     if (log_status != LOGGING_OK) error_handler();
 
+#if UART_LOGGING_ENABLE
+    if (!s_uart_logging_enabled()) LOG_WARNING("UART Logging not enabled in secure firmware");
+#endif
+
     /* Initialise important peripherals */
     MX_GPIO_Init();
     MX_RTC_Init();
@@ -89,7 +92,7 @@ int main(void) {
     /* Initialise the switch */
     sja1105_status_t switch_status = switch_init();
     if (switch_status != SJA1105_OK) error_handler();
-    LOG_INFO("SJA1105 Initialised");
+    LOG_INFO("SJA1105(s) initialised");
 
     /* Ethernet MAC can now be initialised (requires switch REFCLK) */
     MX_ETH_Init();
@@ -146,4 +149,8 @@ static uint32_t logging_timestamp_callback(void *context) {
     } else {
         return tx_time_get_ms();
     }
+}
+
+int _write(int file, char *ptr, int len) {
+    return s_write(file, ptr, len);
 }

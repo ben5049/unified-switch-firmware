@@ -52,7 +52,7 @@ int main(void) {
 
         .app_erase_ram_on_boot = true,
         .disable_tick_in_app   = false,
-        .enable_uart_logging   = false,
+        .enable_uart_logging   = UART_LOGGING_ENABLE,
         .dual_banks            = true,
         .secure_bootloader     = true,
         .secure_app            = false,

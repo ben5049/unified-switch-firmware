@@ -40,10 +40,12 @@ extern uint32_t __TRACE_SIZE__;
 /* Logging Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_LOGGERS     (7)
-#define LOG_BASE        ((uint32_t) &__LOG_START__)
-#define LOG_BUFFER_SIZE ((uint32_t) &__LOG_SIZE__)
-#define LOG_TIMEOUT     (100) /* ms */
+#define NUM_LOGGERS         (7)
+#define LOG_BASE            ((uint32_t) &__LOG_START__)
+#define LOG_BUFFER_SIZE     ((uint32_t) &__LOG_SIZE__)
+#define LOG_TIMEOUT         (100)  /* ms */
+
+#define UART_LOGGING_ENABLE (true) /* Note: must alse be enabled in secure firmware config */
 
 /* ---------------------------------------------------------------------------- */
 /* Trace Config */
@@ -143,6 +145,8 @@ extern uint32_t __TRACE_SIZE__;
 /* Switch Config */
 /* ---------------------------------------------------------------------------- */
 
+#define NUM_SWITCHES                      ((HW_VERSION == 4) ? 1 : 2)
+
 #define SWITCH_TIMEOUT_MS                 (100)  /* Default timeout for switch operations in ms */
 #define SWITCH_MANAGMENT_ROUTE_TIMEOUT_MS (1000) /* The time after allocating a management route when that route can be freed if not used */
 
@@ -170,13 +174,13 @@ extern uint32_t __TRACE_SIZE__;
 #define PHY_TEMPERATURE_READ_INTERVAL (1000)
 
 #define PHY_WAITING_FOR_LINK_INTERVAL (200)
-#define PHY_WAITING_FOR_LINK_ATTEMPTS (1)
+#define PHY_WAITING_FOR_LINK_ATTEMPTS (2)
 #define PHY_WAITING_FOR_LINK_TIME     (PHY_WAITING_FOR_LINK_ATTEMPTS * PHY_WAITING_FOR_LINK_INTERVAL)
 
 #define PHY_RECONNECT_INTERVAL        (100)
 #define PHY_RECONNECT_ATTEMPTS        (20)
 
-#define PHY_SLEEP_INTERVAL            (PHY_WAITING_FOR_LINK_TIME * 9)                    /* 90% Of the time spent asleep */
+#define PHY_SLEEP_INTERVAL            (PHY_WAITING_FOR_LINK_TIME * 4)                    /* 80% Of the time spent asleep */
 
 #define PHY_SELF_TEST_ON_STARTUP      (true)                                             /* Note that the PHY will make one attempt at linkup first */
 #define PHY_SELF_TEST_INTERVAL        (1000 * 60 * 10)                                   /* Every 10 minutes */

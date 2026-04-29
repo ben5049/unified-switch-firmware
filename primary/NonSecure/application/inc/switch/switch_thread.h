@@ -80,9 +80,8 @@ extern sja1105_handle_t     hsw0;
 #if HW_VERSION == 5
 extern sja1105_handle_t hsw1;
 #endif
-extern float switch_temperature;
-extern bool  switch_temperature_valid;
-
+extern float switch_temperatures[NUM_SWITCHES];
+extern bool  switch_temperatures_valid[NUM_SWITCHES];
 
 /* Exported functions */
 sja1105_status_t switch_init(void);
