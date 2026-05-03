@@ -24,6 +24,7 @@ extern "C" {
 #define SWCH_POOL1 (1 << 1)
 #endif
 
+
 /* Imported variables */
 extern SPI_HandleTypeDef SWCH_SPI;
 extern CRC_HandleTypeDef SWCH_CRC;

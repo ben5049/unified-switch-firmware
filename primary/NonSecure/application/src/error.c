@@ -16,10 +16,6 @@ void error_handler() {
 
     // TODO: Handle errors
 
-#if DEBUG
-    while (1);
-#endif
-
     /* Call the secure error handler if no solution could be found
      * This will log the crash and reboot the device. Potentially
      * using an older (stable) version of the firmware if one can

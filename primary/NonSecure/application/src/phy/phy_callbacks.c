@@ -80,7 +80,7 @@ static phy_status_t select_phy(phy_index_t phy_num, bool *switchover) {
             break;
 
         default:
-            status = PHY_PARAMETER_ERROR; /* Only 88Q2112 PHYs are MUX'd */
+            status = PHY_PARAMETER_ERROR; /* Only 88Q2112 PHYs are muxed */
             break;
     }
 
@@ -229,8 +229,14 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
     phy_status_t status = PHY_OK;
 
     switch (event) {
+
         case PHY_EVENT_LINK_UP:
+            LOG_INFO("PHY%d Event: link up", ((phy_info_t *) context)->index);
+            break;
+
         case PHY_EVENT_LINK_DOWN:
+            LOG_INFO("PHY%d Event: link down", ((phy_info_t *) context)->index);
+            break;
 
 /* Notify the STP thread */
 #if ENABLE_STP_THREAD == true
@@ -258,9 +264,8 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
                 status = PHY_OK;
             }
 
-#endif
-
             break;
+#endif
 
         default:
             break;
@@ -324,36 +329,43 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 
     switch (GPIO_Pin) {
 
+#if NUM_PHYS > 0
         case (PHY0_INT_Pin):
             flags_to_set |= PHY_PHY0_EVENT;
             break;
-
+#endif
+#if NUM_PHYS > 1
         case (PHY1_INT_Pin):
             flags_to_set |= PHY_PHY1_EVENT;
             break;
-
+#endif
+#if NUM_PHYS > 2
         case (PHY2_INT_Pin):
             flags_to_set |= PHY_PHY2_EVENT;
             break;
-
+#endif
+#if NUM_PHYS > 3
         case (PHY3_INT_Pin):
             flags_to_set |= PHY_PHY3_EVENT;
             break;
-
-#if HW_VERSION == 5
-
+#endif
+#if NUM_PHYS > 4
         case (PHY4_INT_Pin):
             flags_to_set |= PHY_PHY4_EVENT;
             break;
-
+#endif
+#if NUM_PHYS > 5
         case (PHY5_INT_Pin):
             flags_to_set |= PHY_PHY5_EVENT;
             break;
-
+#endif
+#if NUM_PHYS > 6
         case (PHY6_INT_Pin):
             flags_to_set |= PHY_PHY6_EVENT;
             break;
-
+#endif
+#if NUM_PHYS > 7
+#error "Unsupported number of PHYs"
 #endif
 
         default:

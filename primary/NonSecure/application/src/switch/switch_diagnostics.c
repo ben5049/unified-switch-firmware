@@ -30,43 +30,43 @@ static SwitchDiag         switch_diag = SwitchDiag_init_default;
 bool switch_stats_port_callback(pb_ostream_t *stream, const pb_field_t *field, void * const *arg) {
 
     // TODO: This function needs a complete rework to handle the cascaded setup
-    error_handler();
+    // error_handler();
 
-    /* Read the port high level statistics counters from the switch chip */
-    sja1105_statistics_t switch_stats;
-    if (SJA1105_ReadStatistics(&hsw0, &switch_stats) != SJA1105_OK) error_handler();
+    // /* Read the port high level statistics counters from the switch chip */
+    // sja1105_statistics_t switch_stats;
+    // if (SJA1105_ReadStatistics(&hsw0, &switch_stats) != SJA1105_OK) error_handler();
 
-    /* Go through each port */
-    for (uint_fast8_t port_index = 0; port_index < SJA1105_NUM_PORTS; port_index++) {
+    // /* Go through each port */
+    // for (uint_fast8_t port_index = 0; port_index < SJA1105_NUM_PORTS; port_index++) {
 
-        /* Create the struct to store the port stats */
-        PortDiag port       = PortDiag_init_default;
-        bool     forwarding = false;
+    //     /* Create the struct to store the port stats */
+    //     PortDiag port       = PortDiag_init_default;
+    //     bool     forwarding = false;
 
-        /* Assign the port high level statistics */
-        port.rx_bytes           = switch_stats.rx_bytes[port_index];
-        port.has_rx_bytes       = true;
-        port.tx_bytes           = switch_stats.tx_bytes[port_index];
-        port.has_tx_bytes       = true;
-        port.dropped_frames     = switch_stats.dropped_frames[port_index];
-        port.has_dropped_frames = true;
+    //     /* Assign the port high level statistics */
+    //     port.rx_bytes           = switch_stats.rx_bytes[port_index];
+    //     port.has_rx_bytes       = true;
+    //     port.tx_bytes           = switch_stats.tx_bytes[port_index];
+    //     port.has_tx_bytes       = true;
+    //     port.dropped_frames     = switch_stats.dropped_frames[port_index];
+    //     port.has_dropped_frames = true;
 
-        /* Get and assign the port state */
-        if (SJA1105_PortGetForwarding(&hsw0, port_index, &forwarding) != SJA1105_OK) error_handler();
-        port.state = forwarding ? PortState_FORWARDING : PortState_DISABLED;
+    //     /* Get and assign the port state */
+    //     if (SJA1105_PortGetForwarding(&hsw0, port_index, &forwarding) != SJA1105_OK) error_handler();
+    //     port.state = forwarding ? PortState_FORWARDING : PortState_DISABLED;
 
-        /* Assign the PHY temperature */
-        if (port_index == SW0_PORT_HOST) {
-            port.has_phy_temp = false; /* TODO: Get this value from the DTS */
-        } else {
-            port.phy_temp     = phy_temperatures[port_index];
-            port.has_phy_temp = phy_temperatures_valid[port_index];
-        }
+    //     /* Assign the PHY temperature */
+    //     if (port_index == SW0_PORT_HOST) {
+    //         port.has_phy_temp = false; /* TODO: Get this value from the DTS */
+    //     } else {
+    //         port.phy_temp     = phy_temperatures[port_index];
+    //         port.has_phy_temp = phy_temperatures_valid[port_index];
+    //     }
 
-        /* Encode this sub message */
-        if (!pb_encode_tag_for_field(stream, field)) error_handler();
-        if (!pb_encode_submessage(stream, PortDiag_fields, &port)) error_handler();
-    }
+    //     /* Encode this sub message */
+    //     if (!pb_encode_tag_for_field(stream, field)) error_handler();
+    //     if (!pb_encode_submessage(stream, PortDiag_fields, &port)) error_handler();
+    // }
 
     return true;
 }

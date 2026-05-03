@@ -69,9 +69,10 @@ typedef struct {
     phy_index_t index;
 
     phy_connection_state_t connection_state;
-    uint32_t               next_update_time; /* Time */
+    uint32_t               next_update_time;
     uint8_t                link_attempts;
     uint32_t               last_self_test_time;
+    uint8_t                sqi;
 } phy_info_t;
 
 

@@ -28,9 +28,21 @@
 uint8_t   switch_thread_stack[SWITCH_THREAD_STACK_SIZE];
 TX_THREAD switch_thread_handle;
 
+sja1105_handle_t *switch_handles[NUM_SWITCHES] = {
+    &hsw0,
+#if HW_VERSION == 5
+    &hsw1,
+#endif
+};
+
 atomic_uint_fast32_t sja1105_error_counter = 0;
 float                switch_temperatures[NUM_SWITCHES];
 bool                 switch_temperatures_valid[NUM_SWITCHES];
+
+// sja1105_stats_summary_t_t stats[NUM_SWITCHES];
+#if SWITCH_GET_EXTENDED_STATS
+sja1105_stats_detailed_t stats_ext[NUM_SWITCHES];
+#endif
 
 
 /* This thread perform regular maintenance for the switch and publishes periodic diagnostic messages */
@@ -43,10 +55,13 @@ void switch_thread_entry(uint32_t initial_input) {
     uint32_t next_maintenance_time = current_time;
     uint32_t next_wakeup           = 0;
 
-    /* Clear temperature variables */
+    /* Clear variables */
     for (uint_fast8_t i = 0; i < NUM_SWITCHES; i++) {
         switch_temperatures[i]       = 0.0;
         switch_temperatures_valid[i] = false;
+#if SWITCH_GET_EXTENDED_STATS
+        memset(&(stats_ext[i]), 0, sizeof(sja1105_stats_detailed_t));
+#endif
     }
 
     LOG_INFO("Starting switch thread");
@@ -61,48 +76,35 @@ void switch_thread_entry(uint32_t initial_input) {
         /* Check if maintenance is necessary */
         if (current_time >= next_maintenance_time) {
             next_maintenance_time += SWITCH_MAINTENANCE_INTERVAL;
+            for (uint_fast8_t i = 0; i < NUM_SWITCHES; i++) {
 
-            /* Make sure local copies of tables match the copy on the switch chip (this doesn't check for differences, it only updates the internal copy) */
-            status = SJA1105_ReadAllTables(&hsw0);
-            if (status != SJA1105_OK) error_handler();
-#if HW_VERSION == 5
-            status = SJA1105_ReadAllTables(&hsw1);
-            if (status != SJA1105_OK) error_handler();
+                /* Make sure local copies of tables match the copy on the switch chip (this doesn't check for differences, it only updates the internal copy) */
+                status = SJA1105_ReadAllTables(switch_handles[i]);
+                if (status != SJA1105_OK) error_handler();
+
+                /* Check the status registers for issues */
+                status = SJA1105_CheckStatusRegisters(switch_handles[i]);
+                if (status != SJA1105_OK) error_handler();
+
+                /* Check the status registers for issues */
+                // status = SJA1105_ReadStatsSummary(switch_handles[i], &(stats[i]));
+                // if (status != SJA1105_OK) error_handler();
+#if SWITCH_GET_EXTENDED_STATS
+                status = SJA1105_ReadStatsDetailed(switch_handles[i], &(stats_ext[i]));
+                if (status != SJA1105_OK) error_handler();
 #endif
 
-            /* Check the status registers for issues */
-            status = SJA1105_CheckStatusRegisters(&hsw0); // TODO: look into buffer shifting issue
-            if (status != SJA1105_OK) error_handler();
-#if HW_VERSION == 5
-            status = SJA1105_CheckStatusRegisters(&hsw1);
-            if (status != SJA1105_OK) error_handler();
-#endif
+                /* Free any management routes that have been used */
+                status = SJA1105_ManagementRouteFree(switch_handles[i], false);
+                if (status != SJA1105_OK) error_handler();
 
-            sja1105_statistics_t stats0, stats1;
-            status = SJA1105_ReadStatistics(&hsw0, &stats0);
-            if (status != SJA1105_OK) error_handler();
-            status = SJA1105_ReadStatistics(&hsw1, &stats1);
-            if (status != SJA1105_OK) error_handler();
+                /* TODO: Occasionally check no important MAC addresses have been learned by accident? (PTP, STP, etc) */
 
-            /* Free any management routes that have been used */
-            status = SJA1105_ManagementRouteFree(&hsw0, false);
-            if (status != SJA1105_OK) error_handler();
-#if HW_VERSION == 5
-            status = SJA1105_ManagementRouteFree(&hsw1, false);
-            if (status != SJA1105_OK) error_handler();
-#endif
-
-            /* TODO: Occasionally check no important MAC addresses have been learned by accident (PTP, STP, etc) */
-
-            /* Read the temperature */
-            status = SJA1105_ReadTemperature(&hsw0, &(switch_temperatures[0]));
-            if (status != SJA1105_OK) error_handler();
-            switch_temperatures_valid[0] = true;
-#if HW_VERSION == 5
-            status = SJA1105_ReadTemperature(&hsw1, &(switch_temperatures[1]));
-            if (status != SJA1105_OK) error_handler();
-            switch_temperatures_valid[1] = true;
-#endif
+                /* Read the temperature */
+                status = SJA1105_ReadTemperature(switch_handles[i], &(switch_temperatures[0]));
+                if (status != SJA1105_OK) error_handler();
+                switch_temperatures_valid[0] = true;
+            }
         }
 
         /* Check if publishing diagnostics is necessary */

@@ -22,6 +22,35 @@
 #define PHY_NEXT_UPDATE(h)   (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->next_update_time)
 #define PHY_LINK_ATTEMPTS(h) (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->link_attempts)
 #define PHY_LAST_TEST(h)     (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->last_self_test_time)
+#define PHY_SQI(h)           (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->sqi)
+
+
+/* Update the switch port speed from the PHY speed */
+static phy_status_t phy_update_switch_port_speed(phy_index_t phy) {
+
+    phy_status_t      status = PHY_OK;
+    phy_speed_t       speed;
+    sja1105_handle_t *switch_handle = phy_to_switch_handle(phy);
+    uint8_t           switch_port   = phy_to_switch_port(phy);
+
+    /* For dynamic speed ports get the PHY speed and set the switch port to that speed */
+    if (switch_handle->config->ports[switch_port].speed == SJA1105_SPEED_DYNAMIC) {
+
+        /* Get PHY speed */
+        status = PHY_GetSpeed(phy_handles[phy], &speed);
+        // if (status != PHY_OK) goto end; TODO: re-enable when implemented
+
+        /* Set switch port speed */
+        if (SJA1105_PortSetSpeed(
+                switch_handle,
+                switch_port,
+                SJA1105_SPEED_MBPS_TO_ENUM(PHY_SPEED_ENUM_TO_MBPS(speed))) != SJA1105_OK) status = PHY_ERROR;
+    }
+
+end:
+
+    return status;
+}
 
 
 static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_time) {
@@ -31,6 +60,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
     phy_connection_state_t next_state    = current_state;
     uint32_t               interval      = 0; /* How long to spend in next_state before updating again */
     uint8_t                transitions   = 0;
+    phy_index_t            phy           = PHY_INDEX(hphy);
 
     /* Process state machine transitions, if the interval between transitions is 0 ms then process them back to back */
     while ((interval == 0) && (transitions < MAX_TRANSITIONS)) {
@@ -108,10 +138,14 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
             case PHY_STATE_CONNECTED: {
 
+                /* Update the port speed */
+                status = phy_update_switch_port_speed(phy);
+                if (status != PHY_OK) goto end;
+
                 /* Enable traffic through the switch port */
                 if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(PHY_INDEX(hphy)),
-                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        phy_to_switch_handle(phy),
+                        phy_to_switch_port(phy),
                         true) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
@@ -122,8 +156,6 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             }
 
             case PHY_STATE_LINKUP: {
-
-                // TODO: get the PHY speed and set the switch port to that speed
 
                 /* Check link state in case an interrupt was missed */
                 if (hphy->linkup) {
@@ -139,10 +171,12 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Still connected */
                 else {
 
-                    uint8_t sqi = PHY_SQI_INVALID;
+                    /* Make sure the port speed is correct */
+                    status = phy_update_switch_port_speed(phy);
+                    if (status != PHY_OK) goto end;
 
                     /* Get the signal quality index (0-100) */
-                    status = PHY_GetSQI(hphy, &sqi);
+                    status = PHY_GetSQI(hphy, &PHY_SQI(hphy));
                     if (status != PHY_OK) goto end;
 
                     next_state = current_state;
@@ -156,8 +190,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* Disable traffic through the switch port */
                 if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(PHY_INDEX(hphy)),
-                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        phy_to_switch_handle(phy),
+                        phy_to_switch_port(phy),
                         false) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
@@ -203,8 +237,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* Disable traffic through the switch port */
                 if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(PHY_INDEX(hphy)),
-                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        phy_to_switch_handle(phy),
+                        phy_to_switch_port(phy),
                         false) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
@@ -220,8 +254,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Sleep the switch port (turn off clocks) */
                 // TODO: re-enable when implemented
                 // if (SJA1105_PortSleep(
-                //         phy_to_switch_handle(PHY_INDEX(hphy)),
-                //         phy_to_switch_port(PHY_INDEX(hphy))) != SJA1105_OK) {
+                //         phy_to_switch_handle(phy),
+                //         phy_to_switch_port(phy)) != SJA1105_OK) {
                 //     status = PHY_ERROR;
                 //     goto end;
                 // }
@@ -237,8 +271,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Wake the switch port (turn on clocks) */
                 // TODO: re-enable when implemented
                 // if (SJA1105_PortWake(
-                //         phy_to_switch_handle(PHY_INDEX(hphy)),
-                //         phy_to_switch_port(PHY_INDEX(hphy))) != SJA1105_OK) {
+                //         phy_to_switch_handle(phy),
+                //         phy_to_switch_port(phy)) != SJA1105_OK) {
                 //     status = PHY_ERROR;
                 //     goto end;
                 // }
@@ -249,8 +283,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* Enable traffic through the switch port */
                 if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(PHY_INDEX(hphy)),
-                        phy_to_switch_port(PHY_INDEX(hphy)),
+                        phy_to_switch_handle(phy),
+                        phy_to_switch_port(phy),
                         true) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
@@ -327,7 +361,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                     /* Get the VCT results and stop the test */
                     status = PHY_88Q211X_GetVCTResults((phy_handle_88q211x_t *) hphy, &cable_state, &maximum_peak_distance);
                     if (status == PHY_TIMEOUT) {
-                        LOG_WARNING("PHY%d VCT Didn't finish in %d ms", PHY_INDEX(hphy), PHY_88Q211X_VCT_LENGTH);
+                        LOG_WARNING("PHY%d VCT Didn't finish in %d ms", phy, PHY_88Q211X_VCT_LENGTH);
                     } else if (status != PHY_OK) {
                         goto end;
                     }
@@ -353,6 +387,9 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Should be unreachable, go back to waiting for link */
                 next_state = PHY_STATE_WAIT_FOR_LINK;
                 interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+#if DEBUG
+                error_handler();
+#endif
                 break;
             }
 
@@ -367,6 +404,9 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_ERROR_UNRECOVERABLE: {
                 next_state = current_state;
                 interval   = 60000; /* Large number: don't need to bother checking again since this state is a dead end */
+#if DEBUG
+                error_handler();
+#endif
                 break;
             }
 

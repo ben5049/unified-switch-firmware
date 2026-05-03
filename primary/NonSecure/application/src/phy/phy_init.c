@@ -226,6 +226,9 @@ phy_status_t phys_init() {
 #if NUM_PHYS > 6
     memset(&hphy6, 0, sizeof(hphy6));
 #endif
+#if NUM_PHYS > 7
+#error "Unsupported number of PHYs"
+#endif
 
     /* Reset PHY info */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {

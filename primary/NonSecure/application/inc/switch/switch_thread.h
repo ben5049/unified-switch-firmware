@@ -97,15 +97,16 @@ static inline sja1105_handle_t *phy_to_switch_handle(phy_index_t i) {
         case PHY1_88Q2112:
         case PHY2_88Q2112:
         case PHY3_88Q2112:
-            return &hsw0;
+            return &hsw1;
         case PHY4_88Q2112:
         case PHY5_88Q2112:
         case PHY6_LAN8671:
-            return &hsw1;
+            return &hsw0;
     }
 #endif
     return NULL;
 }
+
 
 static inline uint8_t phy_to_switch_port(phy_index_t i) {
     switch (i) {

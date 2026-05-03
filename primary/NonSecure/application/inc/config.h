@@ -156,6 +156,7 @@ extern uint32_t __TRACE_SIZE__;
 
 #define SWITCH_MAINTENANCE_INTERVAL       (500)                     /* Time between performing switch maintenance operations in ms */
 #define SWITCH_PUBLISH_STATS_INTERVAL     (1000)                    /* Time between publishing switch statistic in ms */
+#define SWITCH_GET_EXTENDED_STATS         (DEBUG == 1)              /* Get the extented statistics too (uses lots of stack) */
 
 #define SWITCH_MEM_POOL_SIZE              (1024 * sizeof(uint32_t)) /* 1024 Words should be enough for most variable length tables. TODO: Check */
 
