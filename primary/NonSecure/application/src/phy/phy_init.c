@@ -11,6 +11,7 @@
 
 #include "phy_thread.h"
 #include "phy_callbacks.h"
+#include "phy_utils.h"
 #include "config.h"
 #include "utils.h"
 
@@ -235,7 +236,7 @@ phy_status_t phys_init() {
         phy_info[i].index               = i;
         phy_info[i].connection_state    = PHY_STATE_UNINITIALISED;
         phy_info[i].next_update_time    = current_time;
-        phy_info[i].link_attempts       = MIN((PHY_POLL_STAGGER_TIME * i) / PHY_RECONNECT_INTERVAL, PHY_RECONNECT_ATTEMPTS);
+        phy_info[i].link_attempts       = ((PHY_POLL_STAGGER_TIME * i) / PHY_RECONNECT_INTERVAL) % PHY_RECONNECT_ATTEMPTS;
         phy_info[i].last_self_test_time = 0;
         phy_info[i].sqi                 = 0;
     }
@@ -247,9 +248,8 @@ phy_status_t phys_init() {
 
     /* Select PHY 1 to start */
 #if HW_VERSION == 5
-    HAL_GPIO_WritePin(SMI_SEL1_GPIO_Port, SMI_SEL1_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(SMI_SEL2_GPIO_Port, SMI_SEL2_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(SMI_SEL3_GPIO_Port, SMI_SEL3_Pin, GPIO_PIN_SET);
+    status = select_phy(PHY1_88Q2112, NULL);
+    if (status != PHY_OK) return status;
 #endif
 
     /* Hardware reset all PHYs (TODO: Reduce times) */

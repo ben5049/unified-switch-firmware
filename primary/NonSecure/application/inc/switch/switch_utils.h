@@ -122,8 +122,11 @@ static inline sja1105_status_t switch_update_speed(phy_index_t phy, uint16_t spe
 }
 
 
+phy_status_t switch_update_speed_from_phy(phy_index_t phy);
+
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* INC_SWITCH_THREAD_H_ */
+#endif /* INC_SWITCH_UTILS_H_ */
