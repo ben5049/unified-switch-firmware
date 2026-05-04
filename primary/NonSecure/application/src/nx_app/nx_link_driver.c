@@ -23,7 +23,7 @@ int32_t nx_eth_phy_init(void) {
     int32_t ret = ETH_PHY_STATUS_OK;
 
     /* Check the switch initialised flag */
-    if (!hsw0.initialised) ret = ETH_PHY_STATUS_ERROR;
+    if (!switch_handles[0].initialised) ret = ETH_PHY_STATUS_ERROR;
 
     return ret;
 }
@@ -33,27 +33,28 @@ int32_t nx_eth_phy_get_link_state(void) {
 
     int32_t linkstate           = ETH_PHY_STATUS_LINK_ERROR;
     bool    phy_link_up         = false;
-    bool    external_connection = false;
+    bool    external_connection = true;
 
-    /* If SJA1105 isn't initialised or none of the PHYs have links then return link down */
-    phy_link_up = hphy0.linkup || hphy1.linkup || hphy2.linkup || hphy3.linkup
+    /* If SJA1105 isn't initialised or none of the PHYs have links then return link down
+     * Note: v4 hphy3 and v5 hphy6 aren't used since they use PLCA and always counts as having their links up */
+    phy_link_up = hphy0.linkup || hphy1.linkup || hphy2.linkup
 #if HW_VERSION == 5
-                  || hphy4.linkup || hphy5.linkup /* Note: hphy6 isn't used since its use PLCA and always counts as having its link up */
+                  || hphy3.linkup || hphy4.linkup || hphy5.linkup
 #endif
         ;
 
-    external_connection = hsw0.initialised
-#if HW_VERSION == 5
-                          && hsw1.initialised
-#endif
-                          && (phy_link_up || !PHY_LINK_REQUIRED_FOR_NX_LINK);
+    /* AND reduction of switch statuses and other requirements */
+    for (switch_index_t i = 0; i < NUM_SWITCHES; i++) {
+        external_connection = external_connection && switch_handles[i].initialised;
+    }
+    external_connection = external_connection && (phy_link_up || !PHY_LINK_REQUIRED_FOR_NX_LINK);
 
     if (!external_connection) {
         linkstate = ETH_PHY_STATUS_LINK_DOWN;
         return linkstate;
     }
 
-    switch (hsw0.config->ports[SW0_PORT_HOST].speed) {
+    switch (switch_handles[0].config->ports[SW0_PORT_HOST].speed) {
         case SJA1105_SPEED_10M:
             linkstate = ETH_PHY_STATUS_10MBITS_FULLDUPLEX;
             break;

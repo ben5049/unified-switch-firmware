@@ -68,7 +68,7 @@ sja1105_status_t switch_byte_pool_init(uint8_t pool) {
 
 static void sja1105_write_cs_pin(sja1105_pinstate_t state, void *context) {
 
-    switch_index_t switch_num = (switch_index_t) context;
+    switch_index_t switch_num = ((switch_info_t *) context)->index;
     static bool    sw0_sel    = false;
     static bool    sw1_sel    = false;
 
@@ -195,10 +195,26 @@ static sja1105_status_t sja1105_give_mutex(void *context) {
     return status;
 }
 
+static void sja1105_enter_critical(void *context) {
+    if (tx_thread_identify() != TX_NULL) {
+        TX_INTERRUPT_SAVE_AREA;
+        TX_DISABLE;
+        ((switch_info_t *) context)->interrupt_save = interrupt_save;
+    }
+}
+
+static void sja1105_exit_critical(void *context) {
+    if (tx_thread_identify() != TX_NULL) {
+        TX_INTERRUPT_SAVE_AREA;
+        interrupt_save = ((switch_info_t *) context)->interrupt_save;
+        TX_RESTORE;
+    }
+}
+
 static sja1105_status_t sja1105_allocate(uint32_t **memory_ptr, uint32_t size, void *context) {
 
     sja1105_status_t status     = SJA1105_OK;
-    switch_index_t   switch_num = (switch_index_t) context;
+    switch_index_t   switch_num = ((switch_info_t *) context)->index;
 
     /* Allocate bytes from pool 0 */
     if (switch_num == SWITCH0) {
@@ -243,7 +259,7 @@ static sja1105_status_t sja1105_free(uint32_t *memory_ptr, void *context) {
 static sja1105_status_t sja1105_free_all(void *context) {
 
     sja1105_status_t status     = SJA1105_OK;
-    switch_index_t   switch_num = (switch_index_t) context;
+    switch_index_t   switch_num = ((switch_info_t *) context)->index;
 
     /* Don't free memory if the kernel hasn't started */
     if (tx_thread_identify() == TX_NULL) return status;
@@ -303,7 +319,7 @@ static sja1105_status_t sja1105_crc_accumulate(const uint32_t *buffer, uint32_t 
 #if defined(DEBUG) && (HW_VERSION == 5)
 
     /* Make sure the other switch isn't using the CRC */
-    switch_index_t switch_num      = (switch_index_t) context;
+    switch_index_t switch_num      = ((switch_info_t *) context)->index;
     crc_owner_t    crc_owner_local = atomic_load_explicit(&crc_owner, memory_order_acquire);
 
     if (((switch_num == SWITCH0) && (crc_owner_local == CRC_OWNER_SW1)) ||
@@ -333,6 +349,8 @@ const sja1105_callbacks_t sja1105_callbacks = {
     .callback_delay_ns             = &sja1105_delay_ns,
     .callback_take_mutex           = &sja1105_take_mutex,
     .callback_give_mutex           = &sja1105_give_mutex,
+    .callback_enter_critical       = &sja1105_enter_critical,
+    .callback_exit_critical        = &sja1105_exit_critical,
     .callback_allocate             = &sja1105_allocate,
     .callback_free                 = &sja1105_free,
     .callback_free_all             = &sja1105_free_all,

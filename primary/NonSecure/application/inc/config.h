@@ -190,6 +190,14 @@ extern uint32_t __TRACE_SIZE__;
 #define PHY_POLL_PERIOD               ((PHY_WAITING_FOR_LINK_TIME) + PHY_SLEEP_INTERVAL) /* The time spent for a full loop of waiting for link -> sleep -> waiting for link */
 #define PHY_POLL_STAGGER_TIME         (MIN(PHY_POLL_PERIOD / NUM_PHYS, PHY_WAITING_FOR_LINK_TIME))
 
+#if HW_VERSION == 4
+#define PHY_T_RESET_WIDTH (MAX(PHY_88Q211X_T_RESET, PHY_LAN867X_T_RSTIA))
+#define PHY_T_RESET_MDIO  (MAX(PHY_88Q211X_T_RESET_MDIO, PHY_LAN867X_T_CSH))
+#elif HW_VERSION == 5
+#define PHY_T_RESET_WIDTH (MAX3(PHY_88Q211X_T_RESET, PHY_LAN867X_T_RSTIA, PHY_DP83867_RST_T4))
+#define PHY_T_RESET_MDIO  (MAX3(PHY_88Q211X_T_RESET_MDIO, PHY_LAN867X_T_CSH, PHY_DP83867_RST_T1))
+#endif
+
 /* ---------------------------------------------------------------------------- */
 /* STP Config */
 /* ---------------------------------------------------------------------------- */

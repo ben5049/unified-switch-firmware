@@ -83,14 +83,13 @@ _Min_Stack_Size = 0x800; /* required amount of stack */
 SECTIONS
 {
   /* The startup code goes first into FLASH */
-  .isr_vector :
-  {
-    . = ALIGN(4);
-    KEEP(*(.isr_vector)) /* Startup code */
-    . = ALIGN(4);
-  } >FLASH
-
-  /* The program code and other data goes into FLASH */
+.isr_vector :
+{
+. = ALIGN(8);
+KEEP(*(.isr_vector)) /* Startup code */
+. = ALIGN(8);
+} >FLASH
+/* The program code and other data goes into FLASH */
   .text :
   {
     . = ALIGN(4);

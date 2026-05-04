@@ -32,6 +32,7 @@ extern "C" {
 
 #define MIN(a, b)                 ((a) < (b) ? (a) : (b))
 #define MAX(a, b)                 ((a) > (b) ? (a) : (b))
+#define MAX3(a, b, c)             (MAX(MAX((a), (b)), (c)))
 #define CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
 

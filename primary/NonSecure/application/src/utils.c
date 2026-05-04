@@ -58,16 +58,28 @@ void systick_enable_pre_rtos() {
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk; /* Enable SysTick with processor clock, but keep TICKINT disabled to prevent jumping to RTOS interrupt handler */
 }
 
+/* Accurate to within 1us (at lowest optimisation level) */
 void delay_ns(uint32_t ns) {
+
+    TX_INTERRUPT_SAVE_AREA;
 
     uint32_t required_ticks;
     uint32_t elapsed_ticks;
     uint32_t start_val;
     uint32_t load_val;
     uint32_t current_val;
+    uint16_t ms;
 
     /* Capture start_val right at the start so the delay includes the calculation of the number of ticks to delay for */
     start_val = SysTick->VAL;
+
+    /* For large delays use delay ms */
+    ms = ns / 1000000;
+    if (ms) {
+        delay_ms(ms);
+        ns        -= ms * 1000000;
+        start_val  = SysTick->VAL;
+    }
 
     /* Calculate the number of CPU cycles required */
     /* (ns * CPU_MHz) / 1000 = cycles */
@@ -76,6 +88,9 @@ void delay_ns(uint32_t ns) {
 
     load_val      = SysTick->LOAD;
     elapsed_ticks = 0;
+
+    /* Disable RTOS for accurate timing */
+    TX_DISABLE;
 
     /* Poll until delay complete */
     while (elapsed_ticks < required_ticks) {
@@ -94,6 +109,8 @@ void delay_ns(uint32_t ns) {
 
         start_val = current_val;
     }
+
+    TX_RESTORE;
 }
 
 

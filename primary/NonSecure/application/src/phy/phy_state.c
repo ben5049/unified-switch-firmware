@@ -11,6 +11,7 @@
 #include "phy_thread.h"
 #include "phy_common.h"
 #include "switch_thread.h"
+#include "switch_utils.h"
 #include "config.h"
 #include "utils.h"
 
@@ -26,25 +27,23 @@
 
 
 /* Update the switch port speed from the PHY speed */
-static phy_status_t phy_update_switch_port_speed(phy_index_t phy) {
+static phy_status_t switch_update_speed_from_phy(phy_index_t phy) {
 
-    phy_status_t      status = PHY_OK;
-    phy_speed_t       speed;
-    sja1105_handle_t *switch_handle = phy_to_switch_handle(phy);
-    uint8_t           switch_port   = phy_to_switch_port(phy);
+    phy_status_t status = PHY_OK;
+    phy_speed_t  speed;
 
     /* For dynamic speed ports get the PHY speed and set the switch port to that speed */
-    if (switch_handle->config->ports[switch_port].speed == SJA1105_SPEED_DYNAMIC) {
+    if (switch_port_dynamic(phy)) {
 
         /* Get PHY speed */
         status = PHY_GetSpeed(phy_handles[phy], &speed);
-        // if (status != PHY_OK) goto end; TODO: re-enable when implemented
+        if ((status != PHY_OK) && (status != PHY_NOT_IMPLEMENTED_ERROR)) goto end; // TODO: remove PHY_NOT_IMPLEMENTED_ERROR when implemented
 
         /* Set switch port speed */
-        if (SJA1105_PortSetSpeed(
-                switch_handle,
-                switch_port,
-                SJA1105_SPEED_MBPS_TO_ENUM(PHY_SPEED_ENUM_TO_MBPS(speed))) != SJA1105_OK) status = PHY_ERROR;
+        if (switch_update_speed(phy, PHY_SPEED_ENUM_TO_MBPS(speed)) != SJA1105_OK) {
+            status = PHY_ERROR;
+            goto end;
+        }
     }
 
 end:
@@ -139,14 +138,11 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_CONNECTED: {
 
                 /* Update the port speed */
-                status = phy_update_switch_port_speed(phy);
+                status = switch_update_speed_from_phy(phy);
                 if (status != PHY_OK) goto end;
 
                 /* Enable traffic through the switch port */
-                if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(phy),
-                        phy_to_switch_port(phy),
-                        true) != SJA1105_OK) {
+                if (switch_enable_forwarding(phy) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
                 }
@@ -172,7 +168,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 else {
 
                     /* Make sure the port speed is correct */
-                    status = phy_update_switch_port_speed(phy);
+                    status = switch_update_speed_from_phy(phy);
                     if (status != PHY_OK) goto end;
 
                     /* Get the signal quality index (0-100) */
@@ -189,10 +185,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_DISCONNECTED: {
 
                 /* Disable traffic through the switch port */
-                if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(phy),
-                        phy_to_switch_port(phy),
-                        false) != SJA1105_OK) {
+                if (switch_disable_forwarding(phy) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
                 }
@@ -236,10 +229,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_SLEEP_START: {
 
                 /* Disable traffic through the switch port */
-                if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(phy),
-                        phy_to_switch_port(phy),
-                        false) != SJA1105_OK) {
+                if (switch_disable_forwarding(phy) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
                 }
@@ -282,10 +272,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 if ((status != PHY_OK)) goto end;
 
                 /* Enable traffic through the switch port */
-                if (SJA1105_PortSetForwarding(
-                        phy_to_switch_handle(phy),
-                        phy_to_switch_port(phy),
-                        true) != SJA1105_OK) {
+                if (switch_enable_forwarding(phy) != SJA1105_OK) {
                     status = PHY_ERROR;
                     goto end;
                 }

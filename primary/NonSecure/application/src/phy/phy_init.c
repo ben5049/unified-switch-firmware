@@ -234,9 +234,10 @@ phy_status_t phys_init() {
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         phy_info[i].index               = i;
         phy_info[i].connection_state    = PHY_STATE_UNINITIALISED;
-        phy_info[i].next_update_time    = current_time + (PHY_POLL_STAGGERING ? (PHY_POLL_STAGGER_TIME * i) : 0);
-        phy_info[i].link_attempts       = 0;
+        phy_info[i].next_update_time    = current_time;
+        phy_info[i].link_attempts       = MIN((PHY_POLL_STAGGER_TIME * i) / PHY_RECONNECT_INTERVAL, PHY_RECONNECT_ATTEMPTS);
         phy_info[i].last_self_test_time = 0;
+        phy_info[i].sqi                 = 0;
     }
 
     /* Set pins to a known state */
@@ -252,13 +253,13 @@ phy_status_t phys_init() {
 #endif
 
     /* Hardware reset all PHYs (TODO: Reduce times) */
-    tx_thread_sleep_ms(2);
+    tx_thread_sleep_ms(1);
     HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_RESET);
-    tx_thread_sleep_ms(10); /* 10ms required by 88Q2112 */
+    delay_ns(PHY_T_RESET_WIDTH);
     HAL_GPIO_WritePin(PHY_RST_GPIO_Port, PHY_RST_Pin, GPIO_PIN_SET);
-    tx_thread_sleep_ms(2);
+    delay_ns(PHY_T_RESET_MDIO);
 
-    /* Initialise all PHYs, setting the callback context to the port number */
+    /* Initialise all PHYs */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], &phy_info[i]);
         if (status != PHY_OK) {
@@ -281,9 +282,9 @@ phy_status_t phys_init() {
     /* Less critical setup: interrupts & temperature sensors */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         status = PHY_EnableInterrupts(phy_handles[i]);
-        // if (status != PHY_OK) error_handler(); TODO: re-enable when implemented
+        if ((status != PHY_OK) && (status != PHY_NOT_IMPLEMENTED_ERROR)) error_handler(); // TODO: re-enable when implemented
         status = PHY_EnableTemperatureSensor(phy_handles[i]);
-        // if (status != PHY_OK) error_handler(); TODO: re-enable when implemented
+        if ((status != PHY_OK) && (status != PHY_NOT_IMPLEMENTED_ERROR)) error_handler(); // TODO: re-enable when implemented
     }
 
     /* TODO: Perform other configuration */
