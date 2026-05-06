@@ -280,5 +280,10 @@ sja1105_status_t switch_init() {
         if (status != SJA1105_OK) return status;
     }
 
+#if HW_VERSION == 5
+    status = SJA1105_SyncTimestamps(&switch_handles[0], &switch_handles[1]);
+    if (status != SJA1105_OK) return status;
+#endif
+
     return status;
 }
