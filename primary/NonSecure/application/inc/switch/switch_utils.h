@@ -109,7 +109,6 @@ static inline bool switch_port_dynamic(phy_index_t phy) {
 static inline sja1105_status_t switch_update_speed(phy_index_t phy, uint16_t speed) {
 
     if (switch_port_dynamic(phy)) {
-
         return SJA1105_PortSetSpeed(
             phy_to_switch_handle(phy),
             phy_to_switch_port(phy),

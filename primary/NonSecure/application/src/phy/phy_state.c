@@ -18,12 +18,13 @@
 
 #define MAX_TRANSITIONS      (10) /* Used to break livelocks with a 0 latency loop in the state machine (shouldn't be possible) */
 
-#define PHY_INDEX(h)         (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->index)
-#define PHY_STATE(h)         (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->connection_state)
-#define PHY_NEXT_UPDATE(h)   (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->next_update_time)
-#define PHY_LINK_ATTEMPTS(h) (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->link_attempts)
-#define PHY_LAST_TEST(h)     (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->last_self_test_time)
-#define PHY_SQI(h)           (((phy_info_t *) (((phy_handle_base_t *) (h))->callback_context))->sqi)
+#define PHY_INDEX(h)         (((phy_info_t *) ((h)->callback_context))->index)
+#define PHY_STATE(h)         (((phy_info_t *) ((h)->callback_context))->connection_state)
+#define PHY_NEXT_UPDATE(h)   (((phy_info_t *) ((h)->callback_context))->next_update_time)
+#define PHY_WAIT_INTERVAL(h) (((phy_info_t *) ((h)->callback_context))->wait_for_link_interval)
+#define PHY_LINK_ATTEMPTS(h) (((phy_info_t *) ((h)->callback_context))->link_attempts)
+#define PHY_LAST_TEST(h)     (((phy_info_t *) ((h)->callback_context))->last_self_test_time)
+#define PHY_SQI(h)           (((phy_info_t *) ((h)->callback_context))->sqi)
 
 
 static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_time) {
@@ -101,7 +102,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                     /* Increment counter, wait, and try again */
                     else {
                         next_state               = current_state;
-                        interval                 = PHY_WAITING_FOR_LINK_INTERVAL;
+                        interval                 = PHY_WAIT_INTERVAL(hphy);
                         PHY_LINK_ATTEMPTS(hphy) += 1;
                     }
                 }
@@ -273,7 +274,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* No self test 1 available, go back to waiting for link */
                 else {
                     next_state = PHY_STATE_WAIT_FOR_LINK;
-                    interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                    interval   = PHY_WAIT_INTERVAL(hphy);
                 }
 
                 break;
@@ -305,7 +306,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* No self test 2 available, go back to waiting for link */
                 else {
                     next_state = PHY_STATE_WAIT_FOR_LINK;
-                    interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                    interval   = PHY_WAIT_INTERVAL(hphy);
                 }
 
                 break;
@@ -332,7 +333,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* All tests done, go back to waiting for link */
                 next_state = PHY_STATE_WAIT_FOR_LINK;
-                interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                interval   = PHY_WAIT_INTERVAL(hphy);
                 break;
             }
 
@@ -347,7 +348,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
                 /* Should be unreachable, go back to waiting for link */
                 next_state = PHY_STATE_WAIT_FOR_LINK;
-                interval   = PHY_WAITING_FOR_LINK_INTERVAL;
+                interval   = PHY_WAIT_INTERVAL(hphy);
 #if DEBUG
                 error_handler();
 #endif
@@ -385,6 +386,10 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             goto end;
         }
 #endif
+
+        if (PHY_INDEX(hphy) == PHY0_DP83867) {
+            LOG_INFO("phy0 next state = %d", next_state);
+        }
 
         current_state = next_state;
         transitions++;

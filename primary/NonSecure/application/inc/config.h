@@ -164,31 +164,32 @@ extern uint32_t __TRACE_SIZE__;
 /* PHY Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_PHYS                      ((HW_VERSION == 4) ? 4 : 7)
-#define PHY_TIMEOUT_MS                (100) /* Default timeout for PHY operations in ms */
+#define NUM_PHYS                              ((HW_VERSION == 4) ? 4 : 7)
+#define PHY_TIMEOUT_MS                        (100) /* Default timeout for PHY operations in ms */
 
-#define PHY_THREAD_STACK_SIZE         (2 * 1024)
-#define PHY_THREAD_PRIORITY           (15)
-#define PHY_THREAD_PREMPTION_PRIORITY (15)
-#define PHY_THREAD_INTERVAL           (100) /* Execute frequently, work done is dependent on PHY state machines so higher frequency doesn't mean more computation */
+#define PHY_THREAD_STACK_SIZE                 (2 * 1024)
+#define PHY_THREAD_PRIORITY                   (15)
+#define PHY_THREAD_PREMPTION_PRIORITY         (15)
+#define PHY_THREAD_INTERVAL                   (100) /* Execute frequently, work done is dependent on PHY state machines so higher frequency doesn't mean more computation */
 
-#define PHY_TEMPERATURE_READ_INTERVAL (1000)
+#define PHY_TEMPERATURE_READ_INTERVAL         (1000)
 
-#define PHY_WAITING_FOR_LINK_INTERVAL (200)
-#define PHY_WAITING_FOR_LINK_ATTEMPTS (2)
-#define PHY_WAITING_FOR_LINK_TIME     (PHY_WAITING_FOR_LINK_ATTEMPTS * PHY_WAITING_FOR_LINK_INTERVAL)
+#define PHY_WAITING_FOR_LINK_INTERVAL         (200)
+#define PHY_WAITING_FOR_LINK_INTERVAL_AUTONEG (2500) /* Auto-negotiation takes a reallly long time */
+#define PHY_WAITING_FOR_LINK_ATTEMPTS         (2)
+#define PHY_WAITING_FOR_LINK_TIME             (PHY_WAITING_FOR_LINK_ATTEMPTS * PHY_WAITING_FOR_LINK_INTERVAL)
 
-#define PHY_RECONNECT_INTERVAL        (100)
-#define PHY_RECONNECT_ATTEMPTS        (20)
+#define PHY_RECONNECT_INTERVAL                (100)
+#define PHY_RECONNECT_ATTEMPTS                (20)
 
-#define PHY_SLEEP_INTERVAL            (PHY_WAITING_FOR_LINK_TIME * 4)                    /* 80% Of the time spent asleep */
+#define PHY_SLEEP_INTERVAL                    (PHY_WAITING_FOR_LINK_TIME * 4)                    /* 80% Of the time spent asleep */
 
-#define PHY_SELF_TEST_ON_STARTUP      (true)                                             /* Note that the PHY will make one attempt at linkup first */
-#define PHY_SELF_TEST_INTERVAL        (1000 * 60 * 10)                                   /* Every 10 minutes */
+#define PHY_SELF_TEST_ON_STARTUP              (true)                                             /* Note that the PHY will make one attempt at linkup first */
+#define PHY_SELF_TEST_INTERVAL                (1000 * 60 * 10)                                   /* Every 10 minutes */
 
-#define PHY_POLL_STAGGERING           (true)                                             /* Stagger polling loops so all the PHYs don't wake up at the same time to check for links */
-#define PHY_POLL_PERIOD               ((PHY_WAITING_FOR_LINK_TIME) + PHY_SLEEP_INTERVAL) /* The time spent for a full loop of waiting for link -> sleep -> waiting for link */
-#define PHY_POLL_STAGGER_TIME         (MIN(PHY_POLL_PERIOD / NUM_PHYS, PHY_WAITING_FOR_LINK_TIME))
+#define PHY_POLL_STAGGERING                   (true)                                             /* Stagger polling loops so all the PHYs don't wake up at the same time to check for links */
+#define PHY_POLL_PERIOD                       ((PHY_WAITING_FOR_LINK_TIME) + PHY_SLEEP_INTERVAL) /* The time spent for a full loop of waiting for link -> sleep -> waiting for link */
+#define PHY_POLL_STAGGER_TIME                 (MIN(PHY_POLL_PERIOD / NUM_PHYS, PHY_WAITING_FOR_LINK_TIME))
 
 #if HW_VERSION == 4
 #define PHY_T_RESET_WIDTH (MAX(PHY_88Q211X_T_RESET, PHY_LAN867X_T_RSTIA))

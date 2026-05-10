@@ -98,6 +98,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *
 
         /* Set clock time */
         case NX_PTP_CLIENT_CLOCK_SET: {
+
             /* Can't set the nanoseconds to a negative number */
             if (time_ptr->nanosecond < 0) status = NX_STATUS_NOT_SUPPORTED;
             if (status != NX_STATUS_SUCCESS) return status;
@@ -237,20 +238,20 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
     switch (event) {
         case NX_PTP_CLIENT_EVENT_MASTER: {
             ptp_event_counters.new_master++;
-//            printf("new MASTER clock!\r\n");
+            //            printf("new MASTER clock!\r\n");
             break;
         }
 
         case NX_PTP_CLIENT_EVENT_SYNC: {
             ptp_event_counters.sync++;
             nx_ptp_client_sync_info_get((NX_PTP_CLIENT_SYNC *) event_data, NX_NULL, &ptp_utc_offset);
-//            printf("SYNC event: utc offset=%d\r\n", ptp_utc_offset);
+            //            printf("SYNC event: utc offset=%d\r\n", ptp_utc_offset);
             break;
         }
 
         case NX_PTP_CLIENT_EVENT_TIMEOUT: {
             ptp_event_counters.master_timeout++;
-//            printf("Master clock TIMEOUT!\r\n");
+            //            printf("Master clock TIMEOUT!\r\n");
             break;
         }
         default: {

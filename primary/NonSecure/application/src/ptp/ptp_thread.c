@@ -29,6 +29,7 @@ uint8_t   ptp_thread_stack[PTP_THREAD_STACK_SIZE];
 TX_QUEUE ptp_tx_queue_handle; /* Stores the timestamps and pointers to sent packets */
 uint8_t  ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * sizeof(nx_ptp_tx_info_t)];
 
+
 /* This Thread starts the PTP client, processes transmitted timestamps, and prints status information */
 void ptp_thread_entry(uint32_t initial_input) {
 

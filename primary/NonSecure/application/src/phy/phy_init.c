@@ -43,6 +43,7 @@ static const phy_config_dp83867_t phy_config_0 = {
     .interface     = PHY_INTERFACE_RGMII,
     .default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS),
     .default_role  = PHY_ROLE_SLAVE,
+    .clk125        = false,
 };
 
 #endif
@@ -155,27 +156,27 @@ static const phy_config_lan867x_t phy_config_6 = {
 
 #endif
 
-void *phy_handles[NUM_PHYS] = {
-    &hphy0,
-    &hphy1,
-    &hphy2,
-    &hphy3,
+phy_handle_base_t *phy_handles[NUM_PHYS] = {
+    (phy_handle_base_t *) &hphy0,
+    (phy_handle_base_t *) &hphy1,
+    (phy_handle_base_t *) &hphy2,
+    (phy_handle_base_t *) &hphy3,
 #if HW_VERSION == 5
-    &hphy4,
-    &hphy5,
-    &hphy6
+    (phy_handle_base_t *) &hphy4,
+    (phy_handle_base_t *) &hphy5,
+    (phy_handle_base_t *) &hphy6
 #endif
 };
 
-static const void *phy_configs[NUM_PHYS] = {
-    &phy_config_0,
-    &phy_config_1,
-    &phy_config_2,
-    &phy_config_3,
+static const phy_config_base_t *phy_configs[NUM_PHYS] = {
+    (phy_config_base_t *) &phy_config_0,
+    (phy_config_base_t *) &phy_config_1,
+    (phy_config_base_t *) &phy_config_2,
+    (phy_config_base_t *) &phy_config_3,
 #if HW_VERSION == 5
-    &phy_config_4,
-    &phy_config_5,
-    &phy_config_6
+    (phy_config_base_t *) &phy_config_4,
+    (phy_config_base_t *) &phy_config_5,
+    (phy_config_base_t *) &phy_config_6
 #endif
 };
 
@@ -233,12 +234,13 @@ phy_status_t phys_init() {
 
     /* Reset PHY info */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-        phy_info[i].index               = i;
-        phy_info[i].connection_state    = PHY_STATE_UNINITIALISED;
-        phy_info[i].next_update_time    = current_time;
-        phy_info[i].link_attempts       = ((PHY_POLL_STAGGER_TIME * i) / PHY_RECONNECT_INTERVAL) % PHY_RECONNECT_ATTEMPTS;
-        phy_info[i].last_self_test_time = 0;
-        phy_info[i].sqi                 = 0;
+        phy_info[i].index                  = i;
+        phy_info[i].connection_state       = PHY_STATE_UNINITIALISED;
+        phy_info[i].next_update_time       = current_time;
+        phy_info[i].wait_for_link_interval = PHY_WAITING_FOR_LINK_INTERVAL;
+        phy_info[i].link_attempts          = ((PHY_POLL_STAGGER_TIME * i) / PHY_RECONNECT_INTERVAL) % PHY_RECONNECT_ATTEMPTS;
+        phy_info[i].last_self_test_time    = 0;
+        phy_info[i].sqi                    = 0;
     }
 
     /* Set pins to a known state */
@@ -290,6 +292,11 @@ phy_status_t phys_init() {
     /* TODO: Perform other configuration */
 
     /* TODO: Enable End to End Transparent Clock and PTP hardware acceleration */
+
+    /* Update PHY info with info from initialisation */
+    for (phy_index_t i = 0; i < NUM_PHYS; i++) {
+        phy_info[i].wait_for_link_interval = phy_handles[i]->autoneg ? PHY_WAITING_FOR_LINK_INTERVAL_AUTONEG : PHY_WAITING_FOR_LINK_INTERVAL;
+    }
 
     return status;
 }

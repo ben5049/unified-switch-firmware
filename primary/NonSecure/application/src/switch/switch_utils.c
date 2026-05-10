@@ -22,7 +22,7 @@ phy_status_t switch_update_speed_from_phy(phy_index_t phy) {
 
         /* Get PHY speed */
         status = PHY_GetSpeed(phy_handles[phy], &speed);
-        if ((status != PHY_OK) && (status != PHY_NOT_IMPLEMENTED_ERROR)) goto end; // TODO: remove PHY_NOT_IMPLEMENTED_ERROR when implemented
+        if (status != PHY_OK) goto end;
 
         /* Set switch port speed */
         if (switch_update_speed(phy, PHY_SPEED_ENUM_TO_MBPS(speed)) != SJA1105_OK) {

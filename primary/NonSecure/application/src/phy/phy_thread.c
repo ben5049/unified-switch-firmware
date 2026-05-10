@@ -30,12 +30,9 @@ bool  phy_temperatures_valid[NUM_PHYS];
 
 void phy_thread_entry(uint32_t initial_input) {
 
-    phy_status_t              phy_status  = PHY_OK;
-    tx_status_t               tx_status   = TX_SUCCESS;
-    phy_cable_state_88q211x_t cable_state = PHY_CABLE_STATE_88Q211X_NOT_STARTED;
-    uint32_t                  event_flags = 0;
-
-    UNUSED(cable_state); // TODO: Use
+    phy_status_t phy_status  = PHY_OK;
+    tx_status_t  tx_status   = TX_SUCCESS;
+    uint32_t     event_flags = 0;
 
     /* Initialise structs */
     memset((bool *) &phy_temperatures_valid, 0, sizeof(phy_temperatures_valid));
@@ -78,7 +75,7 @@ void phy_thread_entry(uint32_t initial_input) {
 
         /* Update PHY state machines */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
-            phy_status = phy_state_update_poll((phy_handle_base_t *) phy_handles[i], current_time);
+            phy_status = phy_state_update_poll(phy_handles[i], current_time);
             if (phy_status != PHY_OK) error_handler();
         }
 
@@ -86,7 +83,7 @@ void phy_thread_entry(uint32_t initial_input) {
         if ((current_time - last_temp_read) >= PHY_TEMPERATURE_READ_INTERVAL) {
             for (phy_index_t i = 0; i < NUM_PHYS; i++) {
                 phy_status = PHY_ReadTemperature(phy_handles[i], &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
-                // if (phy_status != PHY_OK) error_handler(); TODO: re-enable when implemented
+                if (phy_status != PHY_OK) error_handler();
             }
             last_temp_read = current_time;
         }
@@ -103,7 +100,7 @@ static phy_status_t phy_process_interrupts(uint32_t event_flags) {
         if (event_flags & (PHY_PHY0_EVENT << i)) {
             status = PHY_ProcessInterrupt(phy_handles[i]);
             if (status != PHY_OK) return status;
-            status = phy_state_update_interrupt((phy_handle_base_t *) phy_handles[i], tx_time_get_ms());
+            status = phy_state_update_interrupt(phy_handles[i], tx_time_get_ms());
             if (status != PHY_OK) return status;
         }
     }

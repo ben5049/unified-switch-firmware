@@ -70,6 +70,7 @@ typedef struct {
 
     phy_connection_state_t connection_state;
     uint32_t               next_update_time;
+    uint32_t               wait_for_link_interval;
     uint8_t                link_attempts;
     uint32_t               last_self_test_time;
     uint8_t                sqi;
@@ -88,9 +89,9 @@ extern phy_handle_88q211x_t hphy1, hphy2, hphy3, hphy4, hphy5;
 extern phy_handle_lan867x_t hphy6;
 #endif
 
-extern void *phy_handles[NUM_PHYS];
-extern float phy_temperatures[NUM_PHYS];
-extern bool  phy_temperatures_valid[NUM_PHYS];
+extern phy_handle_base_t *phy_handles[NUM_PHYS];
+extern float              phy_temperatures[NUM_PHYS];
+extern bool               phy_temperatures_valid[NUM_PHYS];
 
 
 /* Exported functions*/
