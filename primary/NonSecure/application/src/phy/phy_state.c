@@ -387,10 +387,6 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
         }
 #endif
 
-        if (PHY_INDEX(hphy) == PHY0_DP83867) {
-            LOG_INFO("phy0 next state = %d", next_state);
-        }
-
         current_state = next_state;
         transitions++;
     }

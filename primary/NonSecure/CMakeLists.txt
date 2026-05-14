@@ -152,9 +152,9 @@ list(FILTER APP_SRCS EXCLUDE REGEX "nx_stm32_phy_custom_driver\\.c$")
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES SOURCES "${APP_SRCS}")
 
 # Remove NetXDuo source files
-get_target_property(NETX_SRCS NetXDuo SOURCES)
-list(FILTER NETX_SRCS EXCLUDE REGEX "nx_stm32_eth_driver\\.c$")
-set_target_properties(NetXDuo PROPERTIES SOURCES "${NETX_SRCS}")
+# get_target_property(NETX_SRCS NetXDuo SOURCES)
+# list(FILTER NETX_SRCS EXCLUDE REGEX "nx_stm32_eth_driver\\.c$")
+# set_target_properties(NetXDuo PROPERTIES SOURCES "${NETX_SRCS}")
 
 # Add NetXDuo source files
 target_sources(NetXDuo PRIVATE
@@ -162,11 +162,11 @@ target_sources(NetXDuo PRIVATE
 )
 
 # Add STM32CubeMX source files
-target_sources(stm32cubemx PRIVATE
+# target_sources(stm32cubemx PRIVATE
 
-    # This used to be in NetXDuo but has a dependency on the rest of the application
-    application/src/nx_app/nx_stm32_eth_driver.c
-)
+#     # This used to be in NetXDuo but has a dependency on the rest of the application
+#     application/src/nx_app/nx_stm32_eth_driver.c
+# )
 
 # Add STM32CubeMX includes
 target_include_directories(stm32cubemx INTERFACE
@@ -177,6 +177,7 @@ target_include_directories(stm32cubemx INTERFACE
 # Add STM32CubeMX symbols (macros)
 target_compile_definitions(stm32cubemx INTERFACE
     HAL_ETH_USE_PTP
+    NX_DRIVER_ENABLE_PTP
 )
 
 ###############################################################
@@ -272,6 +273,8 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     SERVER_ID="${SERVER_ID}"
 
     HAL_ETH_USE_PTP
+    NX_DRIVER_ENABLE_PTP
+
     TX_THREAD_SECURE_STACK_MAXIMUM=4096
 
     ZENOH_GENERIC

@@ -89,6 +89,11 @@ void state_machine_thread_entry(uint32_t initial_input) {
 
     // tx_status = tx_thread_resume(&ptp_thread_handle);
     // if (tx_status != TX_SUCCESS) error_handler();
+    // LOG_INFO("Comms thread started");
+
+    tx_status = tx_thread_resume(&ptp_thread_handle);
+    if (tx_status != TX_SUCCESS) error_handler();
+    LOG_INFO("PTP thread started");
 
     while (1) {
 

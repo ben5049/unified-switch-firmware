@@ -1,13 +1,13 @@
-/**************************************************************************/
-/*                                                                        */
-/*       Copyright (c) Microsoft Corporation. All rights reserved.        */
-/*                                                                        */
-/*       This software is licensed under the Microsoft Software License   */
-/*       Terms for Microsoft Azure RTOS. Full text of the license can be  */
-/*       found in the LICENSE file at https://aka.ms/AzureRTOS_EULA       */
-/*       and in the root directory of this software.                      */
-/*                                                                        */
-/**************************************************************************/
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2025-present Eclipse ThreadX Contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
 
 /**************************************************************************/
 /**************************************************************************/
@@ -24,7 +24,7 @@
 /*  APPLICATION INTERFACE DEFINITION                       RELEASE        */
 /*                                                                        */
 /*    nxd_ptp_client.h                                    PORTABLE C      */
-/*                                                           6.4.0        */
+/*                                                           6.4.3        */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Yuxin Zhou, Microsoft Corporation                                   */
@@ -33,16 +33,6 @@
 /*                                                                        */
 /*    This file defines the NetX Precision Time Protocol (PTP)            */
 /*    Client component, including all data types and external references. */
-/*                                                                        */
-/*  RELEASE HISTORY                                                       */
-/*                                                                        */
-/*    DATE              NAME                      DESCRIPTION             */
-/*                                                                        */
-/*  12-31-2020     Yuxin Zhou               Initial Version 6.1.3         */
-/*  12-31-2023     Tiejun Zhou              Modified comment(s), and      */
-/*                                            supported gPTP profile,     */
-/*                                            supported master clock,     */
-/*                                            resulting in version 6.4.0  */
 /*                                                                        */
 /**************************************************************************/
 
@@ -82,7 +72,7 @@ extern "C" {
  * NX_PTP_CLIENT_ROLE_MASTER_ONLY
  * NX_PTP_CLIENT_ROLE_SLAVE_AND_MASTER */
 
-#define NX_PTP_ENABLE_MASTER
+// #define NX_PTP_ENABLE_MASTER
 
 
 /* Disable PTP slave feature. Only master can be supported.  */
@@ -92,9 +82,9 @@ extern "C" {
 
 /* Enable sending reverse sync when the role of PTP clock becomes slave. This will allow master clock
    to be aware of the offset from slave to master. Reverse SYNC may be ignored by master clock.  */
-
-// #define NX_PTP_ENABLE_REVERSE_SYNC
-
+/*
+#define NX_PTP_ENABLE_REVERSE_SYNC
+*/
 
 /* PTP Client packet type. By default, UDP is used as transport.  */
 #ifndef NX_PTP_CLIENT_TRANSPORT_UDP

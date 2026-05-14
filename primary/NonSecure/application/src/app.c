@@ -41,6 +41,9 @@ int main(void) {
     /* Static assertions */
     CHECK_BASIC_TYPES();
 
+    /* Enable peripheral clocks */
+    periph_common_clock_config();
+
     /* MPU Configuration */
     mpu_config();
 
@@ -95,6 +98,7 @@ int main(void) {
     LOG_INFO("SJA1105(s) initialised");
 
     /* Ethernet MAC can now be initialised (requires switch REFCLK) */
+    SET_BIT(RCC->PLL1CFGR, RCC_PLL1CFGR_PLL1QEN); /* Enable ptp_clk_i*/
     MX_ETH_Init();
     LOG_INFO("ETH Peripheral initialised");
 

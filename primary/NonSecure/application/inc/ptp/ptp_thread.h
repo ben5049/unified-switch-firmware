@@ -28,11 +28,13 @@ extern "C" {
         (into).second_high = (from).second_high; \
     } while (0)
 
+#define PTP_MSG_SIZE_WORDS (sizeof(ptp_event_t) / sizeof(uint32_t))
+
 
 typedef struct {
-    NX_PACKET  *packet_ptr;
-    NX_PTP_TIME timestamp;
-} nx_ptp_tx_info_t;
+    uint32_t event;
+    void    *event_data;
+} ptp_event_t;
 
 
 extern SHORT ptp_utc_offset;
@@ -43,7 +45,7 @@ extern TX_THREAD ptp_thread_handle;
 extern uint8_t   ptp_thread_stack[PTP_THREAD_STACK_SIZE];
 
 extern TX_QUEUE ptp_tx_queue_handle;
-extern uint8_t  ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * sizeof(nx_ptp_tx_info_t)];
+extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 void ptp_thread_entry(uint32_t initial_input);
 

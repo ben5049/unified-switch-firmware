@@ -16,52 +16,74 @@
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp_thread.h"
+#include "ptp_callbacks.h"
 #include "state_machine.h"
 #include "background_thread.h"
 #include "utils.h"
 
 
-/* TODO: Check all function return values */
-
 /* This function should be called once in App_ThreadX_Init */
 // clang-format off
 void tx_setup(void *memory_ptr) {
 
-    uint8_t thread_number = 1;
+    tx_status_t status        = TX_SUCCESS;
+    uint8_t     thread_number = 1;
 
     /* Create mutexes */
-    tx_mutex_create(&sja1105_mutex_handle, "sja1105_mutex", TX_INHERIT);
-    tx_mutex_create(&phy_mutex_handle,     "phy_mutex",     TX_INHERIT);
+    status = tx_mutex_create(&sja1105_mutex_handle, "sja1105_mutex", TX_INHERIT);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_mutex_create(&phy_mutex_handle,     "phy_mutex",     TX_INHERIT);
+    if (status != TX_SUCCESS) error_handler();
 
     /* Create semaphores */
 
     /* Create event flags */
-    tx_event_flags_create(&state_machine_events_handle, "state_machine_events_handle");
-//    tx_event_flags_create(&stp_events_handle,           "stp_events_handle");
-    tx_event_flags_create(&phy_events_handle,           "phy_events_handle");
+    status = tx_event_flags_create(&state_machine_events_handle, "state_machine_events_handle");
+    if (status != TX_SUCCESS) error_handler();
+    // status = tx_event_flags_create(&stp_events_handle,           "stp_events_handle");
+    // if (status != TX_SUCCESS) error_handler();
+    status = tx_event_flags_create(&phy_events_handle,           "phy_events_handle");
+    if (status != TX_SUCCESS) error_handler();
 
     /* Create queues */
-    tx_queue_create(&ptp_tx_queue_handle, "ptp_tx_queue", sizeof(nx_ptp_tx_info_t), ptp_tx_queue_stack, PTP_TX_QUEUE_SIZE);
+    status = tx_queue_create(&ptp_tx_queue_handle, "ptp_tx_queue", PTP_MSG_SIZE_WORDS, ptp_tx_queue_stack, sizeof(ptp_tx_queue_stack));
+    if (status != TX_SUCCESS) error_handler();
 
     /* Create threads */
-    tx_thread_create(&state_machine_thread_handle, "state_machine_thread", (void (*)(ULONG)) state_machine_thread_entry, thread_number++, state_machine_thread_stack, STATE_MACHINE_THREAD_STACK_SIZE, STATE_MACHINE_THREAD_PRIORITY, STATE_MACHINE_THREAD_PRIORITY,    TX_NO_TIME_SLICE, TX_AUTO_START);
-    tx_thread_create(&nx_link_thread_handle,       "nx_link_thread",       (void (*)(ULONG)) nx_link_thread_entry,       thread_number++, nx_link_thread_stack,       NX_LINK_THREAD_STACK_SIZE,       NX_LINK_THREAD_PRIORITY,       NX_LINK_THREAD_PRIORITY,          TX_NO_TIME_SLICE, TX_DONT_START);
-    tx_thread_create(&switch_thread_handle,        "switch_thread",        (void (*)(ULONG)) switch_thread_entry,        thread_number++, switch_thread_stack,        SWITCH_THREAD_STACK_SIZE,        SWITCH_THREAD_PRIORITY,        SWITCH_THREAD_PREMPTION_PRIORITY, 1,                TX_DONT_START);
-    tx_thread_create(&phy_thread_handle,           "phy_thread",           (void (*)(ULONG)) phy_thread_entry,           thread_number++, phy_thread_stack,           PHY_THREAD_STACK_SIZE,           PHY_THREAD_PRIORITY,           PHY_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
-    // tx_thread_create(&stp_thread_handle,           "stp_thread",           (void (*)(ULONG)) stp_thread_entry,           thread_number++, stp_thread_stack,           STP_THREAD_STACK_SIZE,           STP_THREAD_PRIORITY,           STP_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
-    tx_thread_create(&comms_thread_handle,         "comms_thread",         (void (*)(ULONG)) comms_thread_entry,         thread_number++, comms_thread_stack,         COMMS_THREAD_STACK_SIZE,         COMMS_THREAD_PRIORITY,         COMMS_THREAD_PREMPTION_PRIORITY,  1,                TX_DONT_START);
-    tx_thread_create(&ptp_thread_handle,           "ptp_thread",           (void (*)(ULONG)) ptp_thread_entry,           thread_number++, ptp_thread_stack,           PTP_THREAD_STACK_SIZE,           PTP_THREAD_PRIORITY,           PTP_THREAD_PRIORITY,              TX_NO_TIME_SLICE, TX_DONT_START);
-    tx_thread_create(&background_thread_handle,    "background_thread",    (void (*)(ULONG)) background_thread_entry,    thread_number++, background_thread_stack,    BACKGROUND_THREAD_STACK_SIZE,    BACKGROUND_THREAD_PRIORITY,    BACKGROUND_THREAD_PRIORITY,       TX_NO_TIME_SLICE, TX_AUTO_START);
+    status = tx_thread_create(&state_machine_thread_handle, "state_machine_thread", (void (*)(ULONG)) state_machine_thread_entry, thread_number++, state_machine_thread_stack, STATE_MACHINE_THREAD_STACK_SIZE, STATE_MACHINE_THREAD_PRIORITY, STATE_MACHINE_THREAD_PRIORITY,    TX_NO_TIME_SLICE, TX_AUTO_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&nx_link_thread_handle,       "nx_link_thread",       (void (*)(ULONG)) nx_link_thread_entry,       thread_number++, nx_link_thread_stack,       NX_LINK_THREAD_STACK_SIZE,       NX_LINK_THREAD_PRIORITY,       NX_LINK_THREAD_PRIORITY,          TX_NO_TIME_SLICE, TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&switch_thread_handle,        "switch_thread",        (void (*)(ULONG)) switch_thread_entry,        thread_number++, switch_thread_stack,        SWITCH_THREAD_STACK_SIZE,        SWITCH_THREAD_PRIORITY,        SWITCH_THREAD_PREMPTION_PRIORITY, 1,                TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&phy_thread_handle,           "phy_thread",           (void (*)(ULONG)) phy_thread_entry,           thread_number++, phy_thread_stack,           PHY_THREAD_STACK_SIZE,           PHY_THREAD_PRIORITY,           PHY_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    // status = tx_thread_create(&stp_thread_handle,           "stp_thread",           (void (*)(ULONG)) stp_thread_entry,           thread_number++, stp_thread_stack,           STP_THREAD_STACK_SIZE,           STP_THREAD_PRIORITY,           STP_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
+    // if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&comms_thread_handle,         "comms_thread",         (void (*)(ULONG)) comms_thread_entry,         thread_number++, comms_thread_stack,         COMMS_THREAD_STACK_SIZE,         COMMS_THREAD_PRIORITY,         COMMS_THREAD_PREMPTION_PRIORITY,  1,                TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&ptp_thread_handle,           "ptp_thread",           (void (*)(ULONG)) ptp_thread_entry,           thread_number++, ptp_thread_stack,           PTP_THREAD_STACK_SIZE,           PTP_THREAD_PRIORITY,           PTP_THREAD_PRIORITY,              TX_NO_TIME_SLICE, TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&background_thread_handle,    "background_thread",    (void (*)(ULONG)) background_thread_entry,    thread_number++, background_thread_stack,    BACKGROUND_THREAD_STACK_SIZE,    BACKGROUND_THREAD_PRIORITY,    BACKGROUND_THREAD_PRIORITY,       TX_NO_TIME_SLICE, TX_AUTO_START);
+    if (status != TX_SUCCESS) error_handler();
 
     /* Any threads that call secure functions must allocate secure stack */
-    tx_thread_secure_stack_allocate(&state_machine_thread_handle, MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    tx_thread_secure_stack_allocate(&nx_link_thread_handle,       MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    tx_thread_secure_stack_allocate(&switch_thread_handle,        MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    tx_thread_secure_stack_allocate(&phy_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    // tx_thread_secure_stack_allocate(&stp_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    tx_thread_secure_stack_allocate(&comms_thread_handle,         MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    tx_thread_secure_stack_allocate(&ptp_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
-    tx_thread_secure_stack_allocate(&background_thread_handle,    MIN(BACKGROUND_THREAD_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM)); /* More stack required for secure background tasks */
+    status = tx_thread_secure_stack_allocate(&state_machine_thread_handle, MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&nx_link_thread_handle,       MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&switch_thread_handle,        MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&phy_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    // status = tx_thread_secure_stack_allocate(&stp_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    // if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&comms_thread_handle,         MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&ptp_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&background_thread_handle,    MIN(BACKGROUND_THREAD_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM)); /* More stack required for secure background tasks */
+    if (status != TX_SUCCESS) error_handler();
 
     /* Assign loggers to threads */
     state_machine_thread_handle.logger = &hlog_generic;
@@ -75,7 +97,8 @@ void tx_setup(void *memory_ptr) {
 
     /* Enable tracex */
 #if TRACE_ENABLE
-    tx_trace_enable(TRACE_BUFFER_START, TRACE_BUFFER_SIZE, TRACE_REGISTRY_ENTRIES);
+    status = tx_trace_enable(TRACE_BUFFER_START, TRACE_BUFFER_SIZE, TRACE_REGISTRY_ENTRIES);
+    if (status != TX_SUCCESS) error_handler();
 #endif
 }
 

@@ -56,6 +56,7 @@
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+void        PeriphCommonClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 
@@ -63,6 +64,9 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void periph_common_clock_config() {
+    PeriphCommonClock_Config();
+}
 void mpu_config() {
     MPU_Config();
 }

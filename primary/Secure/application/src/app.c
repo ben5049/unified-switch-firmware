@@ -68,9 +68,16 @@ int main(void) {
 int _write(int file, char *ptr, int len) {
 
     hal_status_t status = HAL_OK;
+    bool         ready;
+    uint32_t     start_time = HAL_GetTick();
 
-    while (huart4.gState != HAL_UART_STATE_READY);
-    status = HAL_UART_Transmit(&huart4, (uint8_t *) ptr, len, 1000);
+    do {
+        ready = huart4.gState == HAL_UART_STATE_READY;
+    } while (!ready && (HAL_GetTick() - start_time < 10));
+
+    if (ready){
+        status = HAL_UART_Transmit(&huart4, (uint8_t *) ptr, len, 1000);
+    }
 
     if (status == HAL_OK) {
         return len;

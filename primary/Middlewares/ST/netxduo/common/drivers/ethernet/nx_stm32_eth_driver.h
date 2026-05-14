@@ -39,6 +39,8 @@ extern   "C" {
 #include "nx_link.h"
 #endif
 
+#include "nxd_ptp_client.h"
+
 /* Determine if the driver's source file is being compiled. The constants and typdefs are only valid within
    the driver's source file compilation.  */
 

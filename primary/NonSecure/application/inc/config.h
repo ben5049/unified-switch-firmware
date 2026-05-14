@@ -168,8 +168,8 @@ extern uint32_t __TRACE_SIZE__;
 #define PHY_TIMEOUT_MS                        (100) /* Default timeout for PHY operations in ms */
 
 #define PHY_THREAD_STACK_SIZE                 (2 * 1024)
-#define PHY_THREAD_PRIORITY                   (15)
-#define PHY_THREAD_PREMPTION_PRIORITY         (15)
+#define PHY_THREAD_PRIORITY                   (9) /* Higher priority than IP thread */
+#define PHY_THREAD_PREMPTION_PRIORITY         (9)
 #define PHY_THREAD_INTERVAL                   (100) /* Execute frequently, work done is dependent on PHY state machines so higher frequency doesn't mean more computation */
 
 #define PHY_TEMPERATURE_READ_INTERVAL         (1000)

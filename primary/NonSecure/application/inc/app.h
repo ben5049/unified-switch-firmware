@@ -19,6 +19,7 @@ extern "C" {
 #include "error.h"
 
 
+void periph_common_clock_config(void);
 void mpu_config(void);
 int  main(void);
 

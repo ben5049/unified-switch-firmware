@@ -56,3 +56,4 @@ bool     s_uart_logging_enabled(void);
 
 #endif /* SECURE_NSC_H */
 /* USER CODE END Non_Secure_CallLib_h */
+

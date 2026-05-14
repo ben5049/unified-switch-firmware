@@ -18,7 +18,6 @@ extern "C" {
 #include "nx_api.h"
 #include "nxd_dhcp_client.h"
 #include "nxd_ptp_client.h"
-#include "nx_stm32_eth_driver.h"
 
 #include "config.h"
 
