@@ -54,7 +54,7 @@ void ptp_thread_entry(uint32_t initial_input) {
      * Using TimestampRolloverMode = 0 would improve the resolution from 1ns to 0.465ns, but this is enough
      * for most applications and simplifies timer reading and writing.
      */
-    uint32_t increment = 10;                                                                                             /* 20ns */
+    uint32_t increment = 20;                                                                                             /* 20ns */
     uint32_t addend    = (((uint64_t) 1 << 32) * (uint64_t) 1000000000) / ((uint64_t) increment * (uint64_t) 100000000); /* 0x33333333 for 250MHx HCLK*/
 
     /* Configure the ethernet timestamping register for PTP */

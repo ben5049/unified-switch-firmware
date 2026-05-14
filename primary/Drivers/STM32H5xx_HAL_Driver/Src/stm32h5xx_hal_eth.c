@@ -207,7 +207,7 @@
 #define ETH_MACWJBTR_MASK             0x010F010FU
 #else
 #define ETH_MACWTR_MASK               0x0000010FU
-#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) || 
+#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) ||
           defined(STM32H553xx) || defined(STM32H543xx) */
 #define ETH_MACTFCR_MASK              0xFFFF00F2U
 #define ETH_MACRFCR_MASK              0x00000003U
@@ -1692,7 +1692,7 @@ HAL_StatusTypeDef HAL_ETH_PTP_SetTime(ETH_HandleTypeDef *heth, ETH_TimeTypeDef *
     heth->Instance->MACSTNUR = time->NanoSeconds;
 
     /* the system time is updated */
-    SET_BIT(heth->Instance->MACTSCR, ETH_MACTSCR_TSUPDT);
+    SET_BIT(heth->Instance->MACTSCR, ETH_MACTSCR_TSINIT);
 
     /* Return function status */
     return HAL_OK;
@@ -2385,7 +2385,7 @@ HAL_StatusTypeDef HAL_ETH_GetMACConfig(const ETH_HandleTypeDef *heth, ETH_MACCon
 #else
   macconf->ProgrammableWatchdog = ((READ_BIT(heth->Instance->MACWTR, ETH_MACWTR_PWE) >> 8) > 0U) ? ENABLE : DISABLE;
   macconf->WatchdogTimeout = READ_BIT(heth->Instance->MACWTR, ETH_MACWTR_WTO);
-#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) || 
+#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) ||
           defined(STM32H553xx) || defined(STM32H543xx) */
 
   macconf->TransmitFlowControl = ((READ_BIT(heth->Instance->MACTFCR, ETH_MACTFCR_TFE) >> 1) > 0U) ? ENABLE : DISABLE;
@@ -2933,7 +2933,7 @@ static void ETH_SetMACConfig(ETH_HandleTypeDef *heth, const ETH_MACConfigTypeDef
                macconf->WatchdogTimeout);
   /* Write to MACWTR */
   MODIFY_REG(heth->Instance->MACWTR, ETH_MACWTR_MASK, macregval);
-#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) || 
+#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) ||
           defined(STM32H553xx) || defined(STM32H543xx) */
 
   /*------------------------ MACTFCR Configuration --------------------*/
@@ -3061,7 +3061,7 @@ static void ETH_MACDMAConfig(ETH_HandleTypeDef *heth)
 #else
   macDefaultConf.Watchdog = ENABLE;
   macDefaultConf.WatchdogTimeout =  ETH_MACWTR_WTO_2KB;
-#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) || 
+#endif /* defined(STM32H5E5xx) || defined(STM32H5E4xx) || defined(STM32H5F5xx) || defined(STM32H5F4xx) ||
           defined(STM32H553xx) || defined(STM32H543xx) */
   macDefaultConf.ZeroQuantaPause = ENABLE;
 
