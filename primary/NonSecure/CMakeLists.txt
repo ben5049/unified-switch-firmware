@@ -178,6 +178,7 @@ target_include_directories(stm32cubemx INTERFACE
 target_compile_definitions(stm32cubemx INTERFACE
     HAL_ETH_USE_PTP
     NX_DRIVER_ENABLE_PTP
+    NX_ENABLE_GPTP
 )
 
 ###############################################################
@@ -274,6 +275,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 
     HAL_ETH_USE_PTP
     NX_DRIVER_ENABLE_PTP
+    NX_ENABLE_GPTP
 
     TX_THREAD_SECURE_STACK_MAXIMUM=4096
 

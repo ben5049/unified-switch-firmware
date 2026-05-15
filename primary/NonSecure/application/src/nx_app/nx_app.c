@@ -16,7 +16,6 @@
 #include "nx_app.h"
 #include "tx_app.h"
 #include "ptp_thread.h"
-#include "ptp_callbacks.h"
 #include "config.h"
 #include "comms_thread.h"
 #include "state_machine.h"

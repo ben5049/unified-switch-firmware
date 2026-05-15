@@ -16,7 +16,6 @@
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp_thread.h"
-#include "ptp_callbacks.h"
 #include "state_machine.h"
 #include "background_thread.h"
 #include "utils.h"

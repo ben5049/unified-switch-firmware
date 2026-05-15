@@ -30,6 +30,8 @@ extern "C" {
 #define TICKS_TO_MS(ticks)        (((ticks) * 1000) / TX_TIMER_TICKS_PER_SECOND)
 #define MS_TO_TICKS(ms)           (((ms) * TX_TIMER_TICKS_PER_SECOND) / 1000)
 
+#define HZ_TO_NS(hz)              (1000000000 / (hz))
+
 #define MIN(a, b)                 ((a) < (b) ? (a) : (b))
 #define MAX(a, b)                 ((a) > (b) ? (a) : (b))
 #define MAX3(a, b, c)             (MAX(MAX((a), (b)), (c)))

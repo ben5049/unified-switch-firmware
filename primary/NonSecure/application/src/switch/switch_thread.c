@@ -64,7 +64,7 @@ void switch_thread_entry(uint32_t initial_input) {
                 }
                 if (status != SJA1105_OK) error_handler();
 
-                /* Read out the detailed stats */
+                /* Read out the stats */
 #if SWITCH_GET_EXTENDED_STATS
                 status = SJA1105_ReadStatsDetailed(&switch_handles[i], &stats_ext[i]);
                 if (status != SJA1105_OK) error_handler();

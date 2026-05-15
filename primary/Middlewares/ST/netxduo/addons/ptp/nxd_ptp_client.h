@@ -63,17 +63,17 @@ extern "C" {
 /* PTP Client configurable options.  */
 /* Enable GPTP configuration as per IEEE 802.1AS. PTP messages are transmitted over Ethernet with peer delay request mechanism.
    If not enabled by default, PTP messages are transmitted over UDP with delay request mechanism. */
-
+/*
 #define NX_ENABLE_GPTP
-
+*/
 
 /* Enable PTP master feature. The role can be selected at runtime. Supported roles,
  * NX_PTP_CLIENT_ROLE_SLAVE_ONLY
  * NX_PTP_CLIENT_ROLE_MASTER_ONLY
  * NX_PTP_CLIENT_ROLE_SLAVE_AND_MASTER */
-
-// #define NX_PTP_ENABLE_MASTER
-
+/*
+#define NX_PTP_ENABLE_MASTER
+*/
 
 /* Disable PTP slave feature. Only master can be supported.  */
 /*

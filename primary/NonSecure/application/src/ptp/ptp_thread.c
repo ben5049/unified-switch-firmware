@@ -8,7 +8,6 @@
 #include "stdint.h"
 
 #include "hal.h"
-#include "eth.h"
 #include "tx_api.h"
 #include "nx_api.h"
 #include "nxd_ptp_client.h"
@@ -17,8 +16,9 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "ptp_callbacks.h"
 #include "utils.h"
+#include "ptp_thread.h"
+#include "ptp_init.h"
 
 
 SHORT ptp_utc_offset = 0;
@@ -35,7 +35,17 @@ uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 ptp_event_counters_t ptp_event_counters;
 
 
-/* This Thread starts the PTP client, processes transmitted timestamps, and prints nx_status information */
+/* Event callback for NetX PTP client */
+static UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data) {
+    NX_PARAMETER_NOT_USED(callback_data);
+
+    ptp_event_t ptp_event = {.event = event, .event_data = event_data};
+
+    return tx_queue_send(&ptp_tx_queue_handle, &ptp_event, TX_NO_WAIT);
+}
+
+
+/* This Thread starts the PTP client, and prints status information */
 void ptp_thread_entry(uint32_t initial_input) {
 
     nx_status_t nx_status = NX_SUCCESS;
@@ -49,54 +59,13 @@ void ptp_thread_entry(uint32_t initial_input) {
 
     ptp_event_t event;
 
+    /* Configure the MAC PTP control registers */
+    nx_status = ptp_configure();
+    if (nx_status != NX_SUCCESS) error_handler();
 
-    /* Increment is the period of the PTP clock. TimestampRolloverMode = 1 so the timer value is 1:1 with ns.
-     * Using TimestampRolloverMode = 0 would improve the resolution from 1ns to 0.465ns, but this is enough
-     * for most applications and simplifies timer reading and writing.
-     */
-    uint32_t increment = 20;                                                                                             /* 20ns */
-    uint32_t addend    = (((uint64_t) 1 << 32) * (uint64_t) 1000000000) / ((uint64_t) increment * (uint64_t) 100000000); /* 0x33333333 for 250MHx HCLK*/
-
-    /* Configure the ethernet timestamping register for PTP */
-    ETH_PTP_ConfigTypeDef ptp_config;
-
-    /* Get the current config */
-    if (HAL_ETH_PTP_GetConfig(&heth, &ptp_config) != HAL_OK) nx_status = NX_PTP_PARAM_ERROR;
-    if (nx_status != NX_STATUS_SUCCESS) error_handler();
-
-    /* Update the config */
-    ptp_config.TimestampUpdateMode   = ENABLE; /* Fine mode */
-    ptp_config.TimestampAddend       = addend;
-    ptp_config.TimestampAddendUpdate = ENABLE;
-
-    ptp_config.TimestampAll          = DISABLE;
-    ptp_config.TimestampRolloverMode = ENABLE; /* Every 1,000,000,000 nanoseconds the seconds count is incremented */
-    ptp_config.TimestampV2           = ENABLE; /* IEE 1588-2008 (PTPv2) enabled */
-
-#ifdef NX_ENABLE_GPTP
-    ptp_config.TimestampEthernet = ENABLE;  /* Enable processing of PTP frames embedded directly in ethernet packets */
-    ptp_config.TimestampIPv6     = DISABLE; /* Disable processing of PTP frames embedded in IPv6-UDP packets */
-    ptp_config.TimestampIPv4     = DISABLE; /* Disable processing of PTP frames embedded in IPv4-UDP packets */
-#else
-    ptp_config.TimestampEthernet = DISABLE; /* Disable processing of PTP frames embedded directly in ethernet packets */
-    ptp_config.TimestampIPv6     = ENABLE;  /* Enable processing of PTP frames embedded in IPv6-UDP packets */
-    ptp_config.TimestampIPv4     = ENABLE;  /* Enable processing of PTP frames embedded in IPv4-UDP packets */
-#endif
-
-    ptp_config.TimestampEvent        = DISABLE;                  /* ┐ These settings mean timestamps are taken for SYNC, Follow_Up, Delay_Req, */
-    ptp_config.TimestampMaster       = DISABLE;                  /* ├ Delay_Resp, Pdelay_Req, Pdelay_Resp, and Pdelay_Resp_Follow_Up messages. */
-    ptp_config.TimestampSnapshots    = ENABLE;                   /* ┘ These are all the master and slave message types. */
-    ptp_config.TimestampFilter       = DISABLE;                  /* Don't bother filtering by destination address */
-    ptp_config.TimestampStatusMode   = DISABLE;                  /* Don't overwrite transmit timestamps */
-    ptp_config.TimestampSubsecondInc = (increment & 0xff) << 16; /* For a 50MHz PTP clock increment by 20ns each time (RM0481 page 2935)*/
-
-    /* Write the new config */
-    if (HAL_ETH_PTP_SetConfig(&heth, &ptp_config) != HAL_OK) nx_status = NX_STATUS_OPTION_ERROR;
-    if (nx_status != NX_STATUS_SUCCESS) error_handler();
-
-
-    /* TODO: Set the ETH_MACTSECNR_TSEC and ETH_MACTSICNR_TSIC registers */
-
+    /* Configure the MAC timestamp correction registers */
+    ptp_set_ingress_correction();
+    ptp_set_engress_correction();
 
     /* Create the PTP client */
     nx_status = nx_ptp_client_create(
@@ -114,10 +83,14 @@ void ptp_thread_entry(uint32_t initial_input) {
     /* Start the PTP client */
     nx_status = nx_ptp_client_start(
         &ptp_client,
-        NX_NULL,
+        NX_NULL, /* Auto-generated ID */
         0,
+        PTP_DOMAIN,
+#ifdef NX_ENABLE_GPTP
+        1,
+#else
         0,
-        0,
+#endif
         &ptp_event_callback,
         NX_NULL);
     if (nx_status != NX_SUCCESS) error_handler();
@@ -129,20 +102,21 @@ void ptp_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
+        /* Receive events from the NetX PTP thread */
         tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event, CONSTRAIN(PTP_PRINT_TIME_INTERVAL, MS_TO_TICKS(100), TX_WAIT_FOREVER));
         if (tx_status == NX_SUCCESS) {
 
             switch (event.event) {
                 case NX_PTP_CLIENT_EVENT_MASTER: {
                     ptp_event_counters.new_master++;
-                    LOG_INFO("PTP: new MASTER clock");
+                    LOG_INFO("PTP: New master clock");
                     break;
                 }
 
                 case NX_PTP_CLIENT_EVENT_SYNC: {
                     ptp_event_counters.sync++;
                     nx_ptp_client_sync_info_get((NX_PTP_CLIENT_SYNC *) event.event_data, NX_NULL, &ptp_utc_offset);
-                    LOG_INFO("PTP: SYNC event: utc offset=%d", ptp_utc_offset);
+                    LOG_INFO("PTP: SYNC event, utc offset=%d", ptp_utc_offset);
                     break;
                 }
 
@@ -163,10 +137,9 @@ void ptp_thread_entry(uint32_t initial_input) {
             error_handler();
         }
 
+#if PTP_PRINT_TIME_INTERVAL
 
-#if (PTP_PRINT_TIME_INTERVAL != UINT32_MAX)
-
-        /* Get, convert, and print the PTP time (this ironically uses the non-precise threadx time to delay between prints) */
+        /* Get, convert, and print the PTP time */
         current_time = tx_time_get_ms();
         if (current_time >= next_print_time) {
             nx_status = nx_ptp_client_time_get(&ptp_client, &time);
@@ -177,6 +150,6 @@ void ptp_thread_entry(uint32_t initial_input) {
             next_print_time = current_time + PTP_PRINT_TIME_INTERVAL;
         }
 
-#endif /* (PTP_PRINT_TIME_INTERVAL != TX_WAIT_FOREVER) */
+#endif
     }
 }
