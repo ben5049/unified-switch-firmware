@@ -160,6 +160,8 @@ extern uint32_t __TRACE_SIZE__;
 
 #define SWITCH_MEM_POOL_SIZE              (1024 * sizeof(uint32_t)) /* 1024 Words should be enough for most variable length tables. TODO: Check */
 
+#define SWITCH_ERR_THRESHOLD              (10)                      /* Once this number of errors has occured then reset the switch to prevent memory leaks */
+
 /* ---------------------------------------------------------------------------- */
 /* PHY Config */
 /* ---------------------------------------------------------------------------- */
@@ -168,7 +170,7 @@ extern uint32_t __TRACE_SIZE__;
 #define PHY_TIMEOUT_MS                        (100) /* Default timeout for PHY operations in ms */
 
 #define PHY_THREAD_STACK_SIZE                 (2 * 1024)
-#define PHY_THREAD_PRIORITY                   (9) /* Higher priority than IP thread */
+#define PHY_THREAD_PRIORITY                   (9)   /* Higher priority than IP thread */
 #define PHY_THREAD_PREMPTION_PRIORITY         (9)
 #define PHY_THREAD_INTERVAL                   (100) /* Execute frequently, work done is dependent on PHY state machines so higher frequency doesn't mean more computation */
 

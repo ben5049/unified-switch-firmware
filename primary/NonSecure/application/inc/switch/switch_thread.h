@@ -78,6 +78,7 @@ extern switch_info_t    switch_info[NUM_SWITCHES];
 /* Exported functions */
 sja1105_status_t switch_init(void);
 void             switch_thread_entry(uint32_t initial_input);
+sja1105_status_t switch_reset(switch_index_t i);
 
 
 #ifdef __cplusplus

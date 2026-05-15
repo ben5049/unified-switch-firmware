@@ -21,9 +21,7 @@
 uint8_t   switch_thread_stack[SWITCH_THREAD_STACK_SIZE];
 TX_THREAD switch_thread_handle;
 
-#if SWITCH_GET_EXTENDED_STATS
 sja1105_stats_detailed_t stats_ext[NUM_SWITCHES];
-#endif
 
 
 /* This thread perform regular maintenance for the switch and publishes periodic diagnostic messages */
@@ -36,12 +34,10 @@ void switch_thread_entry(uint32_t initial_input) {
     uint32_t next_maintenance_time = current_time;
     uint32_t next_wakeup           = 0;
 
-    /* Clear stats structs */
-#if SWITCH_GET_EXTENDED_STATS
-    memset(stats_ext, 0, sizeof(stats_ext));
-#endif
-
     LOG_INFO("Starting switch thread");
+
+    /* Clear stats structs */
+    memset(stats_ext, 0, sizeof(stats_ext));
 
     status = init_switch_diagnostics();
     if (status != SJA1105_OK) error_handler();
@@ -55,25 +51,49 @@ void switch_thread_entry(uint32_t initial_input) {
             next_maintenance_time += SWITCH_MAINTENANCE_INTERVAL;
             for (switch_index_t i = 0; i < NUM_SWITCHES; i++) {
 
-                /* Make sure local copies of tables match the copy on the switch chip (this doesn't check for differences, it only updates the internal copy) */
+                /* Make sure local copies of tables match the copy on the switch chip
+                 * (this doesn't check for differences, it only updates the internal copy) */
                 status = SJA1105_ReadAllTables(&switch_handles[i]);
                 if (status != SJA1105_OK) error_handler();
 
-                /* Check the status registers for issues */
+                /* Check the status registers for issues (including RAM parity errors) */
                 status = SJA1105_CheckStatusRegisters(&switch_handles[i]);
+                if (status == SJA1105_RAM_PARITY_ERROR) {
+                    LOG_WARNING("RAM Parity error detected in switch %d", i);
+                    status = switch_reset(i);
+                }
                 if (status != SJA1105_OK) error_handler();
 
                 /* Read out the detailed stats */
 #if SWITCH_GET_EXTENDED_STATS
                 status = SJA1105_ReadStatsDetailed(&switch_handles[i], &stats_ext[i]);
                 if (status != SJA1105_OK) error_handler();
+#else
+                status = SJA1105_ReadStatsMAC(&switch_handles[i], &stats_ext[i].mac);
+                if (status != SJA1105_OK) error_handler();
 #endif
+
+                /* Certain errors can cause memory leaks under exceptional conditions.
+                 * If a large number of these errors have occured then reset the switch
+                 * (AH1704 section 10.1) */
+                for (uint_fast8_t port = 0; port < SJA1105_NUM_PORTS; port++) {
+
+                    if (stats_ext[i].mac.mii_errors[port] > SWITCH_ERR_THRESHOLD ||
+                        stats_ext[i].mac.runt_count[port] > SWITCH_ERR_THRESHOLD) {
+
+                        LOG_WARNING("High error count in switch %d", i);
+
+                        status = switch_reset(i);
+                        if (status != SJA1105_OK) error_handler();
+                    }
+                }
 
                 /* Free any management routes that have been used */
                 status = SJA1105_ManagementRouteFree(&switch_handles[i], false);
                 if (status != SJA1105_OK) error_handler();
 
-                /* TODO: Occasionally check no important MAC addresses have been learned by accident? (PTP, STP, etc) */
+                /* TODO: Occasionally check no important MAC addresses have been learned
+                 * by accident? (PTP, STP, etc) */
 
                 /* Read the temperature */
                 status = SJA1105_ReadTemperature(&switch_handles[i], &switch_info[i].temperature);
