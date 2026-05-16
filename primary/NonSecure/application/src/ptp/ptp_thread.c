@@ -65,7 +65,9 @@ void ptp_thread_entry(uint32_t initial_input) {
 
     /* Configure the MAC timestamp correction registers */
     ptp_set_ingress_correction();
-    ptp_set_engress_correction();
+    ptp_set_egress_correction();
+
+    // TODO: enable PTP offload?
 
     /* Create the PTP client */
     nx_status = nx_ptp_client_create(
@@ -96,7 +98,16 @@ void ptp_thread_entry(uint32_t initial_input) {
     if (nx_status != NX_SUCCESS) error_handler();
 
 #ifdef NX_PTP_ENABLE_MASTER
-    nx_status = nx_ptp_client_master_enable(&ptp_client, NX_PTP_CLIENT_ROLE_SLAVE_AND_MASTER, NX_PTP_CLIENT_MASTER_PRIORITY, PTP_CLIENT_MASTER_SUB_PRIORITY, NX_PTP_CLIENT_MASTER_CLOCK_CLASS, NX_PTP_CLIENT_MASTER_ACCURACY, NX_PTP_CLIENT_MASTER_CLOCK_VARIANCE, NX_PTP_CLIENT_MASTER_CLOCK_STEPS_REMOVED, NX_NULL); /* Enable master mode with the lowest priority so it is only used as a last restort. TODO: Randomise or make different */
+    nx_status = nx_ptp_client_master_enable(
+        &ptp_client,
+        NX_PTP_CLIENT_ROLE_SLAVE_AND_MASTER,
+        NX_PTP_CLIENT_MASTER_PRIORITY,
+        PTP_CLIENT_MASTER_SUB_PRIORITY,
+        NX_PTP_CLIENT_MASTER_CLOCK_CLASS,
+        NX_PTP_CLIENT_MASTER_ACCURACY,
+        NX_PTP_CLIENT_MASTER_CLOCK_VARIANCE,
+        NX_PTP_CLIENT_MASTER_CLOCK_STEPS_REMOVED,
+        NX_NULL); /* Enable master mode with the lowest priority so it is only used as a last restort. TODO: Randomise or make different */
     if (nx_status != NX_SUCCESS) error_handler();
 #endif
 

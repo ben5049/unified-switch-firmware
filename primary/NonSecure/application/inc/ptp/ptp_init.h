@@ -18,7 +18,7 @@ extern "C" {
 
 nx_status_t ptp_configure(void);
 void        ptp_set_ingress_correction(void);
-void        ptp_set_engress_correction(void);
+void        ptp_set_egress_correction(void);
 
 
 #ifdef __cplusplus

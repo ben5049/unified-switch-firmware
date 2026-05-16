@@ -137,13 +137,12 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_THREAD_STACK_SIZE             (1024)
 #define PTP_THREAD_PRIORITY               (4)
 #define PTP_TX_QUEUE_SIZE                 (10)
-#define PTP_PRINT_TIME_INTERVAL           (10000)     /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_PRINT_TIME_INTERVAL           (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY    (248)       /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_CLIENT_MASTER_SUB_PRIORITY    (248)   /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_DOMAIN                        (0)
 
 #define PTP_CLK_FREQ                      (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
-
-#define PTP_DOMAIN                        (0)
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */

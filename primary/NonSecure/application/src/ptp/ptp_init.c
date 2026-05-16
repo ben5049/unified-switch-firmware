@@ -6,6 +6,7 @@
  */
 
 #include "stdint.h"
+#include "assert.h"
 #include "hal.h"
 #include "eth.h"
 
@@ -16,16 +17,26 @@
 #include "switch_thread.h"
 
 
+/* PTP_COUNTER_INCREMENT is the resolution of the PTP clock. TimestampRolloverMode = 1 so the timer value
+ * is 1:1 with ns. Using TimestampRolloverMode = 0 would improve the resolution from 1ns to 0.465ns, but
+ * this is enough for most applications and simplifies timer reading and writing.
+ *
+ *
+ * Note: An increment of 10ns with a 100MHz PTP_CLK_FREQ would cause addend to overflow. To prevent this,
+ *       and to leave headroom for fine adjustment the increment is set to 20ns. There is therefore no
+ *       advantage to using a 100MHz clock over a 50MHz one.
+ */
+
+#define PTP_COUNTER_INCREMENT (20) /* 20ns */
+#define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
+
+
 nx_status_t ptp_configure() {
 
     nx_status_t status = NX_SUCCESS;
 
-    /* Increment is the period of the PTP clock. TimestampRolloverMode = 1 so the timer value is 1:1 with ns.
-     * Using TimestampRolloverMode = 0 would improve the resolution from 1ns to 0.465ns, but this is enough
-     * for most applications and simplifies timer reading and writing.
-     */
-    uint32_t increment = 20; /* 20ns */
-    uint32_t addend    = (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) increment * (uint64_t) PTP_CLK_FREQ);
+    static_assert(PTP_CLK_FREQ <= 100000000, "PTP_CLK_FREQ too high");
+    static_assert(PTP_COUNTER_ADDEND <= (1 << 31), "PTP_COUNTER_INCREMENT too small");
 
     /* Configure the ethernet timestamping register for PTP */
     ETH_PTP_ConfigTypeDef ptp_config;
@@ -36,9 +47,9 @@ nx_status_t ptp_configure() {
 
     /* Update the config */
     ptp_config.TimestampUpdateMode   = ENABLE; /* Fine mode */
-    ptp_config.TimestampAddend       = addend;
+    ptp_config.TimestampAddend       = PTP_COUNTER_ADDEND;
     ptp_config.TimestampAddendUpdate = ENABLE;
-    ptp_config.TimestampSubsecondInc = (increment & 0xff) << 16; /* For a 50MHz PTP clock increment by 20ns each time (RM0481 page 2935)*/
+    ptp_config.TimestampSubsecondInc = (PTP_COUNTER_INCREMENT & 0xff) << 16; /* For a 50MHz PTP clock increment by 20ns each time (RM0481 page 2935)*/
 
     ptp_config.TimestampAll          = DISABLE;
     ptp_config.TimestampRolloverMode = ENABLE; /* Every 1,000,000,000 nanoseconds the seconds count is incremented */
@@ -90,12 +101,12 @@ void ptp_set_ingress_correction() {
 
 
 /* Set MAC egress correction register */
-void ptp_set_engress_correction() {
+void ptp_set_egress_correction() {
 
     uint32_t correction;
 
     correction  = (switch_handles[0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 40 : 400;
-    correction += (1 * HZ_TO_NS(PTP_CLK_FREQ)) + (4 * 20); /* 1 * PTP_CLK_PER + 4 * TX_CLK_PER */
+    correction += (1 * HZ_TO_NS(PTP_CLK_FREQ)) + (4 * 20); /* 1 * PTP_CLK_PER + 4 * TX_CLK_PER (Note: RMII TX_CLK is always 50MHz (20ns)) */
 
     WRITE_REG(heth.Instance->MACTSECNR, correction);
 }
