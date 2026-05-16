@@ -59,10 +59,12 @@ void nx_link_thread_entry(uint32_t thread_input) {
     nx_status = nx_dhcp_start(&dhcp_client);
     if (nx_status != NX_SUCCESS) error_handler();
 
-    /* Attempt to load and restore the DHCP record */
+    /* Attempt to load and restore the DHCP record on warm boot */
 #if ENABLE_DHCP_RESTORE
-    nx_status = restore_dhcp_record(&dhcp_client);
-    if (nx_status != NX_SUCCESS) error_handler();
+    if (!s_cold_boot()){
+        nx_status = restore_dhcp_record(&dhcp_client);
+        if (nx_status != NX_SUCCESS) error_handler();
+    }
 #endif
 
     while (1) {

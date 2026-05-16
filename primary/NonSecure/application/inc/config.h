@@ -28,7 +28,9 @@ extern uint32_t __TRACE_SIZE__;
 /* Thread Enables */
 /* ---------------------------------------------------------------------------- */
 
-#define ENABLE_STP_THREAD (false) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
+#define ENABLE_STP_THREAD   (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
+#define ENABLE_PTP_THREAD   (1)
+#define ENABLE_COMMS_THREAD (0) /* TODO: re-enable */
 
 /* ---------------------------------------------------------------------------- */
 /* Common Config */
@@ -51,7 +53,7 @@ extern uint32_t __TRACE_SIZE__;
 /* Trace Config */
 /* ---------------------------------------------------------------------------- */
 
-#define TRACE_ENABLE           (true)
+#define TRACE_ENABLE           (false)
 #define TRACE_REGISTRY_ENTRIES (30)
 #define TRACE_BUFFER_START     ((void *) &__TRACE_START__)
 #define TRACE_BUFFER_SIZE      ((uint32_t) &__TRACE_SIZE__)

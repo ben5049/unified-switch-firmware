@@ -157,7 +157,7 @@ void ptp_thread_entry(uint32_t initial_input) {
             if (nx_status != NX_SUCCESS) error_handler();
             nx_status = nx_ptp_client_utility_convert_time_to_date(&time, -ptp_utc_offset, &date);
             if (nx_status != NX_SUCCESS) error_handler();
-            printf("%2u/%02u/%u %02u:%02u:%02u.%09lu\r\n", date.day, date.month, date.year, date.hour, date.minute, date.second, date.nanosecond);
+            LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n", date.day, date.month, date.year, date.hour, date.minute, date.second, date.nanosecond);
             next_print_time = current_time + PTP_PRINT_TIME_INTERVAL;
         }
 

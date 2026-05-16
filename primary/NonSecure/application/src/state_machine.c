@@ -60,7 +60,7 @@ void state_machine_thread_entry(uint32_t initial_input) {
     if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("Link is up");
 
-#if ENABLE_STP_THREAD == true
+#if ENABLE_STP_THREAD
     tx_status = tx_thread_resume(&stp_thread_handle);
     if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("STP thread started");
@@ -83,17 +83,16 @@ void state_machine_thread_entry(uint32_t initial_input) {
     LOG_INFO("Network is up, IP Address = %u.%u.%u.%u", bytes[0], bytes[1], bytes[2], bytes[3]);
 
     /* Start the threads that require networking */
+#if ENABLE_COMMS_THREAD
     tx_status = tx_thread_resume(&comms_thread_handle);
     if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("Comms thread started");
-
-    // tx_status = tx_thread_resume(&ptp_thread_handle);
-    // if (tx_status != TX_SUCCESS) error_handler();
-    // LOG_INFO("Comms thread started");
-
+#endif
+#if ENABLE_PTP_THREAD
     tx_status = tx_thread_resume(&ptp_thread_handle);
     if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("PTP thread started");
+#endif
 
     while (1) {
 

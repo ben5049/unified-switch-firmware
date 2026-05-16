@@ -81,6 +81,8 @@ int main(void) {
     if (!s_uart_logging_enabled()) LOG_WARNING("UART Logging not enabled in secure firmware");
 #endif
 
+    LOG_INFO("Cold boot = %d", s_cold_boot());
+
     /* Initialise important peripherals */
     MX_GPIO_Init();
     MX_RTC_Init();

@@ -73,6 +73,8 @@ bootloader_status_t bootloader_user_init() {
 
     hal_status_t status = HAL_OK;
 
+    LOG_INFO("Cold boot = %d", cold_boot);
+
     /* Enable ECC interrupts */
     status = HAL_RAMCFG_EnableNotification(&hramcfg_SRAM2, RAMCFG_IT_ALL);
     if (status != HAL_OK) return BL_ERROR;

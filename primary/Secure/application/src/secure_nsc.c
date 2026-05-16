@@ -14,6 +14,7 @@
 #include "logging.h"
 #include "utils.h"
 #include "bootloader_config.h"
+#include "backup.h"
 
 
 /* Call this function from a thread in ThreadX at 1Hz to do background work in the secure world */
@@ -59,6 +60,12 @@ CMSE_NS_ENTRY int s_read_user_storage(uint16_t addr, uint8_t *data, uint16_t siz
 
     return (status == BL_OK) ? size : -1;
 }
+
+
+CMSE_NS_ENTRY bool s_cold_boot(void) {
+    return cold_boot;
+}
+
 
 
 /* Called by the application when it reaches an unrecoverable state */

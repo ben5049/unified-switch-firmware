@@ -5,10 +5,14 @@
  *      Author: bens1
  */
 
+#include "stdbool.h"
 #include "hal.h"
 #include "ramcfg.h"
 
 #include "backup.h"
+
+
+volatile bool cold_boot = true;
 
 
 hal_status_t enable_backup_domain() {
@@ -35,12 +39,18 @@ hal_status_t enable_backup_domain() {
     /* Check if this is a cold boot */
     if (TAMP->BACKUP_MAGIC_REG != BACKUP_MAGIC_WORD) {
 
+        cold_boot = true;
+
         /* Erase the backup RAM to prevent ECC errors */
         status = HAL_RAMCFG_Erase(&hramcfg_BKPRAM);
         if (status != HAL_OK) return status;
 
         /* Set the magic word so next boot we know BKPRAM ECC is valid */
         TAMP->BACKUP_MAGIC_REG = BACKUP_MAGIC_WORD;
+    }
+
+    else {
+        cold_boot = false;
     }
 
     return status;

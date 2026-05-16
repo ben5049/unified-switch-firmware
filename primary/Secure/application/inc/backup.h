@@ -19,6 +19,9 @@
 #define BACKUP_MAGIC_WORD (0x738afea1)
 
 
+extern volatile bool cold_boot;
+
+
 hal_status_t enable_backup_domain(void);
 
 
