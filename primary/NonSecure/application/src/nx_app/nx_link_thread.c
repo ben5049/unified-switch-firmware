@@ -61,7 +61,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
 
     /* Attempt to load and restore the DHCP record on warm boot */
 #if ENABLE_DHCP_RESTORE
-    if (!s_cold_boot()){
+    if (!s_cold_boot()) {
         nx_status = restore_dhcp_record(&dhcp_client);
         if (nx_status != NX_SUCCESS) error_handler();
     }
@@ -215,7 +215,7 @@ static nx_status_t restore_dhcp_record(NX_DHCP *client) {
     /* Attempt to restore the record */
     status = nx_dhcp_client_restore_record(client, &record, 0); /* TODO: Set time elapsed based on RTC while asleep */
     if (status == NX_STATUS_SUCCESS) {
-        LOG_INFO("Successfully restored DHCP record");
+        LOG_INFO("Restored DHCP record");
     } else {
         LOG_INFO("Failed to restore DHCP record, status = %d", status);
     }
@@ -257,7 +257,7 @@ static nx_status_t store_dhcp_record(NX_DHCP *client) {
         }
 
         if (status == NX_STATUS_SUCCESS) {
-            LOG_INFO("Successfully stored DHCP record");
+            LOG_INFO("Stored DHCP record");
         } else {
             LOG_INFO("Failed to store DHCP record, status = %d", status);
         }

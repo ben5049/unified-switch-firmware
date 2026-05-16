@@ -54,8 +54,9 @@ void ptp_thread_entry(uint32_t initial_input) {
     NX_PTP_TIME      time;
     NX_PTP_DATE_TIME date;
 
-    uint32_t next_print_time = 0;
-    uint32_t current_time    = 0;
+    uint32_t current_time    = tx_time_get_ms();
+    uint32_t next_print_time = current_time;
+    uint32_t wait_ticks;
 
     ptp_event_t event;
 
@@ -113,8 +114,17 @@ void ptp_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
+        current_time = tx_time_get_ms();
+
+        /* Calculate safe timeout for the queue */
+        if ((int32_t) (current_time - next_print_time) >= 0) {
+            wait_ticks = 0;
+        } else {
+            wait_ticks = MS_TO_TICKS(next_print_time - current_time);
+        }
+
         /* Receive events from the NetX PTP thread */
-        tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event, CONSTRAIN(PTP_PRINT_TIME_INTERVAL, MS_TO_TICKS(100), TX_WAIT_FOREVER));
+        tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event, wait_ticks);
         if (tx_status == NX_SUCCESS) {
 
             switch (event.event) {
@@ -152,13 +162,29 @@ void ptp_thread_entry(uint32_t initial_input) {
 
         /* Get, convert, and print the PTP time */
         current_time = tx_time_get_ms();
-        if (current_time >= next_print_time) {
+        if ((int32_t) (current_time - next_print_time) >= 0) {
+
+            /* We have gotten far behind so catch up */
+            if ((current_time - next_print_time) > (PTP_PRINT_TIME_INTERVAL * 3)) {
+                next_print_time = current_time;
+            } else {
+                next_print_time += PTP_PRINT_TIME_INTERVAL;
+            }
+
+            /* Get and print the time */
             nx_status = nx_ptp_client_time_get(&ptp_client, &time);
-            if (nx_status != NX_SUCCESS) error_handler();
+            if (nx_status != NX_SUCCESS) {
+                error_handler();
+                continue;
+            }
             nx_status = nx_ptp_client_utility_convert_time_to_date(&time, -ptp_utc_offset, &date);
-            if (nx_status != NX_SUCCESS) error_handler();
-            LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n", date.day, date.month, date.year, date.hour, date.minute, date.second, date.nanosecond);
-            next_print_time = current_time + PTP_PRINT_TIME_INTERVAL;
+            if (nx_status != NX_SUCCESS) {
+                error_handler();
+                continue;
+            }
+            LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n",
+                     date.day, date.month, date.year,
+                     date.hour, date.minute, date.second, date.nanosecond);
         }
 
 #endif
