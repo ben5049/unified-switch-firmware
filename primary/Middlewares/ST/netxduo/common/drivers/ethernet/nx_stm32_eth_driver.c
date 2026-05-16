@@ -61,6 +61,7 @@ static VOID         _nx_driver_initialize(NX_IP_DRIVER *driver_req_ptr);
 static VOID         _nx_driver_enable(NX_IP_DRIVER *driver_req_ptr);
 static VOID         _nx_driver_disable(NX_IP_DRIVER *driver_req_ptr);
 static VOID         _nx_driver_packet_send(NX_IP_DRIVER *driver_req_ptr);
+static VOID         _nx_driver_raw_packet_send(NX_IP_DRIVER *driver_req_ptr);
 static VOID         _nx_driver_multicast_join(NX_IP_DRIVER *driver_req_ptr);
 static VOID         _nx_driver_multicast_leave(NX_IP_DRIVER *driver_req_ptr);
 static VOID         _nx_driver_get_status(NX_IP_DRIVER *driver_req_ptr);
@@ -208,11 +209,18 @@ NX_INTERFACE *interface_ptr;
   case NX_LINK_PACKET_BROADCAST:
   case NX_LINK_RARP_SEND:
   case NX_LINK_PACKET_SEND:
-  case NX_LINK_RAW_PACKET_SEND:
     {
 
       /* Process packet send requests.  */
       _nx_driver_packet_send(driver_req_ptr);
+      break;
+    }
+
+
+  case NX_LINK_RAW_PACKET_SEND:
+    {
+      /* Process raw packet send requests.  */
+      _nx_driver_raw_packet_send(driver_req_ptr);
       break;
     }
 
@@ -986,6 +994,80 @@ static VOID  _nx_driver_packet_send(NX_IP_DRIVER *driver_req_ptr)
   }
 }
 #endif
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _nx_driver_raw_packet_send                                          */
+/*                                                           6.x          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Ben Smith                                                           */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function processes a raw packet send request. The processing   */
+/*    in this function is generic. All ethernet controller packet send    */
+/*    logic is to be placed in _nx_driver_hardware_packet_send.           */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    driver_req_ptr                        Driver command from the IP    */
+/*                                            thread                      */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    None                                                                */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _nx_driver_hardware_packet_send       Process packet send request   */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    Driver entry function                                               */
+/*                                                                        */
+/*  RELEASE HISTORY                                                       */
+/*                                                                        */
+/*    DATE              NAME                      DESCRIPTION             */
+/*                                                                        */
+/*  05-16-2026      Ben Smith               Initial Version 6.x           */
+/*                                                                        */
+/**************************************************************************/
+static VOID  _nx_driver_raw_packet_send(NX_IP_DRIVER *driver_req_ptr)
+{
+    /* For raw packets, the Ethernet header is already attached */
+
+      NX_PACKET *packet_ptr = driver_req_ptr->nx_ip_driver_packet;
+      UINT status;
+
+      /* Determine if the packet exceeds the driver's MTU. */
+      if (packet_ptr->nx_packet_length > NX_DRIVER_ETHERNET_MTU)
+      {
+          /* Indicate an unsuccessful packet send. */
+          driver_req_ptr->nx_ip_driver_status = NX_DRIVER_ERROR;
+
+          /* Link is not up or packet too big, simply free the packet. */
+          nx_packet_transmit_release(packet_ptr);
+          return;
+      }
+
+      /* Transmit the packet through the Ethernet controller low-level access routine. */
+      status = _nx_driver_hardware_packet_send(packet_ptr);
+
+      if (status != NX_SUCCESS)
+      {
+          driver_req_ptr->nx_ip_driver_status = NX_DRIVER_ERROR;
+          nx_packet_transmit_release(packet_ptr);
+      }
+      else
+      {
+          driver_req_ptr->nx_ip_driver_status = NX_SUCCESS;
+      }
+}
+
 
 /**************************************************************************/
 /*                                                                        */
