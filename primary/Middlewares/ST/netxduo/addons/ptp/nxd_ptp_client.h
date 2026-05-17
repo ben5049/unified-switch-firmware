@@ -658,7 +658,8 @@ typedef struct NX_PTP_CLIENT_STRUCT {
 #define nx_ptp_client_utility_convert_time_to_date _nx_ptp_client_utility_convert_time_to_date
 
 #ifdef NX_PTP_ENABLE_MASTER
-#define nx_ptp_client_master_enable _nx_ptp_client_master_enable
+#define nx_ptp_client_master_enable        _nx_ptp_client_master_enable
+#define nx_ptp_client_master_clock_compare _nx_ptp_client_master_clock_compare
 #endif /* NX_PTP_ENABLE_MASTER */
 
 #else
@@ -679,7 +680,8 @@ typedef struct NX_PTP_CLIENT_STRUCT {
 #define nx_ptp_client_utility_convert_time_to_date _nxe_ptp_client_utility_convert_time_to_date
 
 #ifdef NX_PTP_ENABLE_MASTER
-#define nx_ptp_client_master_enable _nxe_ptp_client_master_enable
+#define nx_ptp_client_master_enable        _nxe_ptp_client_master_enable
+#define nx_ptp_client_master_clock_compare _nx_ptp_client_master_clock_compare
 #endif /* NX_PTP_ENABLE_MASTER */
 
 #endif
@@ -715,6 +717,7 @@ UINT _nx_ptp_client_soft_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operatio
 UINT _nx_ptp_client_master_enable(NX_PTP_CLIENT *client_ptr, UCHAR role, UCHAR priority1, UCHAR priority2,
                                   UCHAR clock_class, UCHAR clock_accuracy, USHORT clock_variance,
                                   USHORT steps_removed, UCHAR time_source);
+INT  _nx_ptp_client_master_clock_compare(NX_PTP_CLIENT_MASTER *master1, NX_PTP_CLIENT_MASTER *master2);
 #endif /* NX_PTP_ENABLE_MASTER */
 
 UINT _nxe_ptp_client_create(NX_PTP_CLIENT *client_ptr, NX_IP *ip_ptr, UINT interface_index,

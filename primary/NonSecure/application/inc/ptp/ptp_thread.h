@@ -14,6 +14,7 @@ extern "C" {
 
 
 #include "stdint.h"
+#include "stdatomic.h"
 #include "tx_api.h"
 #include "nx_api.h"
 
@@ -33,6 +34,7 @@ extern "C" {
 typedef struct {
     uint32_t event;
     void    *event_data;
+    void    *callback_data;
 } ptp_event_t;
 
 typedef struct {
@@ -50,8 +52,6 @@ typedef struct {
 
 extern SHORT ptp_utc_offset;
 
-extern NX_PTP_CLIENT ptp_client;
-
 extern TX_THREAD ptp_thread_handle;
 extern uint8_t   ptp_thread_stack[PTP_THREAD_STACK_SIZE];
 
@@ -62,6 +62,9 @@ extern ptp_event_counters_t ptp_event_counters;
 
 
 void ptp_thread_entry(uint32_t initial_input);
+
+UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);
+UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data);
 
 
 #ifdef __cplusplus

@@ -494,7 +494,7 @@ static VOID _nx_ptp_msg_parse_announce(UCHAR *ptr, NX_PTP_CLIENT_MASTER *master)
 /*    _nx_ptp_client_init_packet_received   Process PTP announce message  */
 /*                                                                        */
 /**************************************************************************/
-static INT _nx_ptp_client_master_clock_compare(NX_PTP_CLIENT_MASTER *master1, NX_PTP_CLIENT_MASTER *master2)
+INT _nx_ptp_client_master_clock_compare(NX_PTP_CLIENT_MASTER *master1, NX_PTP_CLIENT_MASTER *master2)
 {
 INT result;
 INT gm_compare;

@@ -179,6 +179,7 @@ target_compile_definitions(stm32cubemx INTERFACE
     HAL_ETH_USE_PTP
     NX_DRIVER_ENABLE_PTP
     NX_ENABLE_GPTP
+    NX_PTP_ENABLE_MASTER
 )
 
 ###############################################################
@@ -276,6 +277,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     HAL_ETH_USE_PTP
     NX_DRIVER_ENABLE_PTP
     NX_ENABLE_GPTP
+    NX_PTP_ENABLE_MASTER
 
     TX_THREAD_SECURE_STACK_MAXIMUM=4096
 
