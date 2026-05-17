@@ -19,6 +19,7 @@ extern "C" {
 #include "nx_api.h"
 
 #include "nx_app.h"
+#include "phy_thread.h"
 
 
 #define COPY_NX_TIMESTAMP(into, from)            \
@@ -28,13 +29,13 @@ extern "C" {
         (into).second_high = (from).second_high; \
     } while (0)
 
-#define PTP_MSG_SIZE_WORDS (sizeof(ptp_event_t) / sizeof(uint32_t))
+#define PTP_MSG_SIZE_WORDS ((sizeof(ptp_event_t) + sizeof(uint32_t) - 1) / sizeof(uint32_t)) /* Round up */
 
 
 typedef struct {
-    uint32_t event;
-    void    *event_data;
-    void    *callback_data;
+    uint32_t    event;
+    void       *event_data;
+    phy_index_t port;
 } ptp_event_t;
 
 typedef struct {
@@ -50,18 +51,31 @@ typedef struct {
 } ptp_event_counters_t;
 
 
+/* Exported variables */
+
 extern SHORT ptp_utc_offset;
 
-extern TX_THREAD ptp_thread_handle;
-extern uint8_t   ptp_thread_stack[PTP_THREAD_STACK_SIZE];
+extern TX_THREAD ptp_event_thread_handle;
+extern uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
+
+extern TX_THREAD ptp_tx_thread_handle;
+extern uint8_t   ptp_tx_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
+
+extern TX_QUEUE ptp_event_queue_handle;
+extern uint32_t ptp_event_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 extern TX_QUEUE ptp_tx_queue_handle;
 extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
+extern TX_SEMAPHORE ptp_tx_semaphore_handle;
+
 extern ptp_event_counters_t ptp_event_counters;
 
 
-void ptp_thread_entry(uint32_t initial_input);
+void ptp_event_thread_entry(uint32_t initial_input);
+void ptp_tx_thread_entry(uint32_t initial_input);
+
+uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr);
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);
 UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data);

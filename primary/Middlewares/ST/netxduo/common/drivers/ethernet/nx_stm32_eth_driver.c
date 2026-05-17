@@ -219,6 +219,11 @@ NX_INTERFACE *interface_ptr;
 
   case NX_LINK_RAW_PACKET_SEND:
     {
+
+      /* Filter out PTP packets to be sent by the application */
+      extern uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr);
+      if (ptp_tx_filter_packet(driver_req_ptr->nx_ip_driver_packet)) break;
+
       /* Process raw packet send requests.  */
       _nx_driver_raw_packet_send(driver_req_ptr);
       break;

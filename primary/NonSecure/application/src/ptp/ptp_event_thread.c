@@ -1,5 +1,5 @@
 /*
- * ptp_thread.c
+ * ptp_event_thread.c
  *
  *  Created on: Aug 12, 2025
  *      Author: bens1
@@ -24,13 +24,13 @@
 SHORT ptp_utc_offset = 0;
 
 NX_PTP_CLIENT  ptp_client[NUM_PHYS];
-static uint8_t nx_internal_ptp_stack[NUM_PHYS][NX_INTERNAL_PTP_THREAD_STACK_SIZE];
+static uint8_t nx_internal_ptp_stack[NUM_PHYS][NX_INTERNAL_PTP_EVENT_THREAD_STACK_SIZE];
 
-TX_THREAD ptp_thread_handle;
-uint8_t   ptp_thread_stack[PTP_THREAD_STACK_SIZE];
+TX_THREAD ptp_event_thread_handle;
+uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
 
-TX_QUEUE ptp_tx_queue_handle; /* Stores callback events */
-uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+TX_QUEUE ptp_event_queue_handle;
+uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 ptp_event_counters_t ptp_event_counters;
 
@@ -60,7 +60,7 @@ static inline void write_port_identity_number(uint8_t *port_identity, uint16_t n
 
 
 /* This Thread starts the PTP client, and prints status information */
-void ptp_thread_entry(uint32_t initial_input) {
+void ptp_event_thread_entry(uint32_t initial_input) {
 
     nx_status_t nx_status = NX_SUCCESS;
     tx_status_t tx_status = TX_SUCCESS;
@@ -74,13 +74,12 @@ void ptp_thread_entry(uint32_t initial_input) {
 
     bool        queue_empty;
     ptp_event_t event;
-    uint8_t     event_port;
 
     NX_PTP_CLIENT *connected_to_master = NULL;
     uint8_t        port_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE]; /* 64-bit EUI + port */
 
     NX_PTP_CLIENT_MASTER *master;
-    uint8_t               master_port;
+    phy_index_t           master_port;
     uint8_t               grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
 
     /* Configure the MAC PTP control registers */
@@ -91,16 +90,20 @@ void ptp_thread_entry(uint32_t initial_input) {
     ptp_set_ingress_correction();
     ptp_set_egress_correction();
 
+    /* Start the TX thread before the PTP clients to avoid queues building up */
+    tx_status = tx_thread_resume(&ptp_tx_thread_handle);
+    if (tx_status != TX_SUCCESS) error_handler();
+
     /* Create the PTP client */
-    for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
+    for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         nx_status = nx_ptp_client_create(
             &ptp_client[i],
             &nx_ip_instance,
             0,
             &nx_packet_pool,
-            NX_INTERNAL_PTP_THREAD_PRIORITY,
-            (UCHAR *) nx_internal_ptp_stack,
-            sizeof(nx_internal_ptp_stack),
+            NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY,
+            (UCHAR *) nx_internal_ptp_stack[i],
+            sizeof(nx_internal_ptp_stack[i]),
             &ptp_clock_callback,
             (void *) i);
         if (nx_status != NX_SUCCESS) error_handler();
@@ -108,7 +111,7 @@ void ptp_thread_entry(uint32_t initial_input) {
 
     /* Enable master mode initially on all ports with the lowest priority so
      * it is only used as a last restort. */
-    for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
+    for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         nx_status = nx_ptp_client_master_enable(
             &ptp_client[i],
             NX_PTP_CLIENT_ROLE_SLAVE_AND_MASTER,
@@ -126,7 +129,7 @@ void ptp_thread_entry(uint32_t initial_input) {
     write_port_identity_eui(port_identity);
 
     /* Start the PTP clients */
-    for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
+    for (phy_index_t i = 0; i < NUM_PHYS; i++) {
 
         /* Set port number */
         write_port_identity_number(port_identity, i);
@@ -156,10 +159,8 @@ void ptp_thread_entry(uint32_t initial_input) {
             }
 
             /* Receive event */
-            tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event, wait_ticks);
+            tx_status = tx_queue_receive(&ptp_event_queue_handle, &event, wait_ticks);
             if (tx_status == NX_SUCCESS) {
-
-                event_port = (uint32_t) event.callback_data;
 
                 switch (event.event) {
 
@@ -175,7 +176,7 @@ void ptp_thread_entry(uint32_t initial_input) {
                             nx_ptp_client_master_clock_compare(&connected_to_master->ptp_master, master) >= 0) break;
 
                         /* Save the new master */
-                        connected_to_master = &ptp_client[event_port];
+                        connected_to_master = &ptp_client[event.port];
                         ptp_event_counters.new_master++;
                         memcpy(grandmaster_identity, master->nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
 
@@ -183,10 +184,10 @@ void ptp_thread_entry(uint32_t initial_input) {
                         write_port_identity_eui(port_identity);
 
                         /* Propagate master info to other clients and restart them */
-                        for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
+                        for (phy_index_t i = 0; i < NUM_PHYS; i++) {
 
                             /* Skip the newly connected to master port */
-                            if (i == event_port) continue;
+                            if (i == event.port) continue;
 
                             /* Stop the client */
                             nx_status = nx_ptp_client_stop(&ptp_client[i]);
@@ -221,7 +222,7 @@ void ptp_thread_entry(uint32_t initial_input) {
                             if (nx_status != NX_SUCCESS) error_handler();
                         }
 
-                        LOG_INFO("PTP: New master clock on port %d", event_port);
+                        LOG_INFO("PTP: New master clock on port %d", event.port);
                         break;
                     }
 
@@ -234,7 +235,7 @@ void ptp_thread_entry(uint32_t initial_input) {
 
                     case NX_PTP_CLIENT_EVENT_TIMEOUT: {
 
-                        if (&ptp_client[event_port] != connected_to_master) break;
+                        if (&ptp_client[event.port] != connected_to_master) break;
 
                         /* The actual master has timed out */
                         connected_to_master = NULL;
@@ -243,10 +244,10 @@ void ptp_thread_entry(uint32_t initial_input) {
                         /* Elect a new master */
                         master      = NULL;
                         master_port = 0;
-                        for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
+                        for (phy_index_t i = 0; i < NUM_PHYS; i++) {
 
                             /* Skip the timed out port */
-                            if (i == event_port) continue;
+                            if (i == event.port) continue;
 
                             /* First valid port, set as best candidate */
                             if (master == NULL) {
@@ -262,10 +263,10 @@ void ptp_thread_entry(uint32_t initial_input) {
                         }
 
                         /* Push the elected master as an event so it can be propagated to other ports */
-                        event.event         = NX_PTP_CLIENT_EVENT_MASTER;
-                        event.event_data    = (void *) master;
-                        event.callback_data = (void *) (uint32_t) master_port;
-                        tx_status           = tx_queue_send(&ptp_tx_queue_handle, &event, TX_NO_WAIT);
+                        event.event      = NX_PTP_CLIENT_EVENT_MASTER;
+                        event.event_data = (void *) master;
+                        event.port       = master_port;
+                        tx_status        = tx_queue_send(&ptp_tx_queue_handle, &event, TX_NO_WAIT);
                         if (tx_status != TX_SUCCESS) error_handler();
 
                         LOG_INFO("PTP: Master clock TIMEOUT");
@@ -274,6 +275,7 @@ void ptp_thread_entry(uint32_t initial_input) {
 
                     default: {
                         LOG_WARNING("PTP: Unknown event");
+                        error_handler();
                         break;
                     }
                 }
@@ -326,3 +328,14 @@ void ptp_thread_entry(uint32_t initial_input) {
 #endif
     }
 }
+
+
+// TODO: use these?
+// #define NX_PTP_MASTER_TIME_SRC_ATOMIC_CLOCK        0x10
+// #define NX_PTP_MASTER_TIME_SRC_GPS                 0x20
+// #define NX_PTP_MASTER_TIME_SRC_TERRESTRIAL_RADIO   0x30
+// #define NX_PTP_MASTER_TIME_SRC_PTP                 0x40
+// #define NX_PTP_MASTER_TIME_SRC_NTP                 0x50
+// #define NX_PTP_MASTER_TIME_SRC_HAND_SET            0x60
+// #define NX_PTP_MASTER_TIME_SRC_OTHER               0x90
+// #define NX_PTP_MASTER_TIME_SRC_INTERNAL_OSCILLATOR 0xa0

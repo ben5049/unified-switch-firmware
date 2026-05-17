@@ -113,8 +113,10 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_CONNECTED: {
 
                 /* Update the port speed */
-                status = switch_update_speed_from_phy(phy);
-                if (status != PHY_OK) goto end;
+                if (switch_update_speed_from_phy(phy) != SJA1105_OK) {
+                    status = PHY_ERROR;
+                    goto end;
+                }
 
                 /* Enable traffic through the switch port */
                 if (switch_enable_forwarding(phy) != SJA1105_OK) {
@@ -143,8 +145,10 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 else {
 
                     /* Make sure the port speed is correct */
-                    status = switch_update_speed_from_phy(phy);
-                    if (status != PHY_OK) goto end;
+                    if (switch_update_speed_from_phy(phy) != SJA1105_OK) {
+                        status = PHY_ERROR;
+                        goto end;
+                    }
 
                     /* Get the signal quality index (0-100) */
                     status = PHY_GetSQI(hphy, &PHY_SQI(hphy));

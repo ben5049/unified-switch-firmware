@@ -35,6 +35,8 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
 
     /* Create semaphores */
+    status = tx_semaphore_create(&ptp_tx_semaphore_handle, "ptp_tx_semaphore", 1);
+    if (status != TX_SUCCESS) error_handler();
 
     /* Create event flags */
     status = tx_event_flags_create(&state_machine_events_handle, "state_machine_events_handle");
@@ -45,6 +47,8 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
 
     /* Create queues */
+    status = tx_queue_create(&ptp_event_queue_handle, "ptp_event_queue", PTP_MSG_SIZE_WORDS, ptp_event_queue_stack, sizeof(ptp_event_queue_stack));
+    if (status != TX_SUCCESS) error_handler();
     status = tx_queue_create(&ptp_tx_queue_handle, "ptp_tx_queue", PTP_MSG_SIZE_WORDS, ptp_tx_queue_stack, sizeof(ptp_tx_queue_stack));
     if (status != TX_SUCCESS) error_handler();
 
@@ -61,7 +65,9 @@ void tx_setup(void *memory_ptr) {
     // if (status != TX_SUCCESS) error_handler();
     status = tx_thread_create(&comms_thread_handle,         "comms_thread",         (void (*)(ULONG)) comms_thread_entry,         thread_number++, comms_thread_stack,         COMMS_THREAD_STACK_SIZE,         COMMS_THREAD_PRIORITY,         COMMS_THREAD_PREMPTION_PRIORITY,  1,                TX_DONT_START);
     if (status != TX_SUCCESS) error_handler();
-    status = tx_thread_create(&ptp_thread_handle,           "ptp_thread",           (void (*)(ULONG)) ptp_thread_entry,           thread_number++, ptp_thread_stack,           PTP_THREAD_STACK_SIZE,           PTP_THREAD_PRIORITY,           PTP_THREAD_PRIORITY,              TX_NO_TIME_SLICE, TX_DONT_START);
+    status = tx_thread_create(&ptp_event_thread_handle,     "ptp_event_thread",     (void (*)(ULONG)) ptp_event_thread_entry,     thread_number++, ptp_event_thread_stack,     PTP_EVENT_THREAD_STACK_SIZE,     PTP_EVENT_THREAD_PRIORITY,     PTP_EVENT_THREAD_PRIORITY,        TX_NO_TIME_SLICE, TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&ptp_tx_thread_handle,        "ptp_tx_thread",        (void (*)(ULONG)) ptp_tx_thread_entry,        thread_number++, ptp_tx_thread_stack,        PTP_TX_THREAD_STACK_SIZE,        PTP_TX_THREAD_PRIORITY,        PTP_TX_THREAD_PRIORITY,           TX_NO_TIME_SLICE, TX_DONT_START);
     if (status != TX_SUCCESS) error_handler();
     status = tx_thread_create(&background_thread_handle,    "background_thread",    (void (*)(ULONG)) background_thread_entry,    thread_number++, background_thread_stack,    BACKGROUND_THREAD_STACK_SIZE,    BACKGROUND_THREAD_PRIORITY,    BACKGROUND_THREAD_PRIORITY,       TX_NO_TIME_SLICE, TX_AUTO_START);
     if (status != TX_SUCCESS) error_handler();
@@ -79,7 +85,9 @@ void tx_setup(void *memory_ptr) {
     // if (status != TX_SUCCESS) error_handler();
     status = tx_thread_secure_stack_allocate(&comms_thread_handle,         MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     if (status != TX_SUCCESS) error_handler();
-    status = tx_thread_secure_stack_allocate(&ptp_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    status = tx_thread_secure_stack_allocate(&ptp_event_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&ptp_tx_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     if (status != TX_SUCCESS) error_handler();
     status = tx_thread_secure_stack_allocate(&background_thread_handle,    MIN(BACKGROUND_THREAD_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM)); /* More stack required for secure background tasks */
     if (status != TX_SUCCESS) error_handler();
@@ -91,7 +99,8 @@ void tx_setup(void *memory_ptr) {
     phy_thread_handle.logger           = &hlog_phy;
     // stp_thread_handle.logger           = &hlog_network;
     comms_thread_handle.logger         = &hlog_comms;
-    ptp_thread_handle.logger           = &hlog_network;
+    ptp_event_thread_handle.logger     = &hlog_network;
+    ptp_event_thread_handle.logger     = &hlog_network;
     background_thread_handle.logger    = &hlog_generic;
 
     /* Enable tracex */
