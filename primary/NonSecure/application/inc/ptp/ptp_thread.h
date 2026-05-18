@@ -48,6 +48,7 @@ typedef struct {
     atomic_uint_fast32_t clock_get;
     atomic_uint_fast32_t clock_adjusted;
     atomic_uint_fast32_t timestamps_sent;
+    atomic_uint_fast32_t ptp_tx_packets_dropped;
 } ptp_event_counters_t;
 
 
@@ -62,7 +63,7 @@ extern TX_THREAD ptp_tx_thread_handle;
 extern uint8_t   ptp_tx_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
 
 extern TX_QUEUE ptp_event_queue_handle;
-extern uint32_t ptp_event_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 extern TX_QUEUE ptp_tx_queue_handle;
 extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];

@@ -92,7 +92,7 @@
 
 /* NX_PHYSICAL_HEADER Specifies the size in bytes of the physical header of
    the frame. */
-#define NX_PHYSICAL_HEADER 20
+#define NX_PHYSICAL_HEADER 16
 
 /* NX_PHYSICAL_TRAILER specifies the size in bytes of the physical packet
    trailer and is typically used to reserve storage for things like Ethernet
@@ -167,9 +167,9 @@
 /* Defined, allows the stack to use two packet pools, one with large payload
    size and one with smaller payload size. By default this option is not
    enabled. */
-/*
+
 #define NX_ENABLE_DUAL_PACKET_POOL
-*/
+
 
 /*****************************************************************************/
 /***************** Configuration options for Packet **************************/
@@ -313,7 +313,7 @@
 */
 
 /* Defined, this option enables random IP id. By default IP id is increased by one for each packet.
-*/
+ */
 /*
 #define NX_ENABLE_IP_ID_RANDOMIZATION
 */

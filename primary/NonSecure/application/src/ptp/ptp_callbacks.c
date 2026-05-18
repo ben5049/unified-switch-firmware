@@ -24,5 +24,5 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
         .event_data = event_data,
         .port       = (phy_index_t) callback_data};
 
-    return tx_queue_send(&ptp_tx_queue_handle, &ptp_event, TX_NO_WAIT);
+    return tx_queue_send(&ptp_event_queue_handle, &ptp_event, TX_NO_WAIT);
 }

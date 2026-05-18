@@ -17,7 +17,7 @@
 #include "phy_thread.h"
 #include "stp_thread.h"
 #include "comms_thread.h"
-#include "ptp_thread.h"
+#include "ptp_init.h"
 #include "tx_port.h"
 #include "utils.h"
 
@@ -89,9 +89,9 @@ void state_machine_thread_entry(uint32_t initial_input) {
     LOG_INFO("Comms thread started");
 #endif
 #if ENABLE_PTP_THREAD
-    tx_status = tx_thread_resume(&ptp_event_thread_handle);
+    tx_status = ptp_start();
     if (tx_status != TX_SUCCESS) error_handler();
-    LOG_INFO("PTP thread started");
+    LOG_INFO("PTP started");
 #endif
 
     while (1) {

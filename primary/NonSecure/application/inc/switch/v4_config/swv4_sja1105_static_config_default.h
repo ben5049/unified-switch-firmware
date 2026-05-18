@@ -1,7 +1,7 @@
 /*
  * swv4_sja1105_static_config_default.h
  *
- *  Created on: Feb 2, 2026
+ *  Created on: May 18, 2026
  *      Author: SJA1105X_CONFIG-GENTOOL
  *
  */
@@ -44,7 +44,7 @@ static const uint32_t swv4_sja1105_static_config_default[SWV4_SJA1105_STATIC_CON
     0x2ee8e709, 0x0e000000, 0x00000003, 0xc8a7cee6, 0x2c18c000, 0x0b02c0b0, 0x02c0b02c, 0xa07ddb76,
     0x10000000, 0x00000004, 0x8aa0dfbc, 0x80000000, 0x0df03ffb, 0xb2b78098, 0x40980df7, 0xe6c9318c,
     0x11000000, 0x0000000b, 0xefa3e65a, 0x01800000, 0x46040000, 0xfffffc45, 0xffffffff, 0x00dd37ff,
-    0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x000000ff, 0x460180c2, 0x048258d0, 0x4e000000,
+    0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x00000eff, 0x460180c2, 0x54bd238d, 0x4e000000,
     0x00000001, 0x3a5d5e24, 0x25240000, 0x9ba8eafd, 0x00000000, 0x00000000, 0x5f04f9ba};
 
 #ifdef __cplusplus
@@ -1033,7 +1033,7 @@ Table ID: 17 #entries: 1
 |   MIRR_PTACU  |        1        |  1  |  350   |
 |    SWITCHID   |        0        |  3  |  347   |
 |    HOSTPRIO   |        6        |  3  |  344   |
-| MAC_FLTRES[1] |  1652522221568  |  48 |  296   |
+| MAC_FLTRES[1] |  1652522221582  |  48 |  296   |
 | MAC_FLTRES[0] | 281474976710655 |  48 |  248   |
 |   MAC_FLT[1]  | 281474959933695 |  48 |  200   |
 |   MAC_FLT[0]  |        0        |  48 |  152   |

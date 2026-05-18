@@ -11,9 +11,11 @@
 #include "eth.h"
 
 #include "app.h"
+#include "tx_app.h"
 #include "nx_app.h"
 #include "utils.h"
 #include "ptp_init.h"
+#include "ptp_thread.h"
 #include "switch_thread.h"
 
 
@@ -31,9 +33,9 @@
 #define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
 
 
-nx_status_t ptp_configure() {
+static tx_status_t ptp_configure() {
 
-    nx_status_t status = NX_SUCCESS;
+    tx_status_t status = TX_SUCCESS;
 
     static_assert(PTP_CLK_FREQ <= 100000000, "PTP_CLK_FREQ too high");
     static_assert(PTP_COUNTER_ADDEND <= (1 << 31), "PTP_COUNTER_INCREMENT too small");
@@ -42,8 +44,8 @@ nx_status_t ptp_configure() {
     ETH_PTP_ConfigTypeDef ptp_config;
 
     /* Get the current config */
-    if (HAL_ETH_PTP_GetConfig(&heth, &ptp_config) != HAL_OK) status = NX_PTP_PARAM_ERROR;
-    if (status != NX_SUCCESS) return status;
+    if (HAL_ETH_PTP_GetConfig(&heth, &ptp_config) != HAL_OK) status = TX_STATUS_OPTION_ERROR;
+    if (status != TX_SUCCESS) return status;
 
     /* Update the config */
     ptp_config.TimestampUpdateMode   = ENABLE; /* Fine mode */
@@ -80,15 +82,15 @@ nx_status_t ptp_configure() {
     ptp_config.TimestampStatusMode = DISABLE; /* Don't overwrite transmit timestamps */
 
     /* Write the new config */
-    if (HAL_ETH_PTP_SetConfig(&heth, &ptp_config) != HAL_OK) status = NX_STATUS_OPTION_ERROR;
-    if (status != NX_SUCCESS) return status;
+    if (HAL_ETH_PTP_SetConfig(&heth, &ptp_config) != HAL_OK) status = TX_STATUS_OPTION_ERROR;
+    if (status != TX_SUCCESS) return status;
 
     return status;
 }
 
 
 /* Set MAC ingress correction register */
-void ptp_set_ingress_correction() {
+static void ptp_set_ingress_correction() {
 
     uint32_t correction;
 
@@ -101,7 +103,7 @@ void ptp_set_ingress_correction() {
 
 
 /* Set MAC egress correction register */
-void ptp_set_egress_correction() {
+static void ptp_set_egress_correction() {
 
     uint32_t correction;
 
@@ -109,4 +111,34 @@ void ptp_set_egress_correction() {
     correction += (1 * HZ_TO_NS(PTP_CLK_FREQ)) + (4 * 20); /* 1 * PTP_CLK_PER + 4 * TX_CLK_PER (Note: RMII TX_CLK is always 50MHz (20ns)) */
 
     WRITE_REG(heth.Instance->MACTSECNR, correction);
+}
+
+
+tx_status_t ptp_start() {
+
+    tx_status_t status = TX_SUCCESS;
+
+    /* Configure the MAC PTP control registers */
+    status = ptp_configure();
+    if (status != TX_SUCCESS) return status;
+
+    /* Configure the MAC timestamp correction registers */
+    ptp_set_ingress_correction();
+    ptp_set_egress_correction();
+
+    /* Start the TX thread before the PTP clients to avoid queues building up */
+    status = tx_thread_resume(&ptp_tx_thread_handle);
+    if (status != TX_SUCCESS) return status;
+
+    /* Start the event thread. This also starts the PTP clients */
+    status = tx_thread_resume(&ptp_event_thread_handle);
+    if (status != TX_SUCCESS) return status;
+
+    return status;
+}
+
+
+tx_status_t ptp_stop() {
+    // TODO: stop threads, clear queues etc
+    return -1;
 }

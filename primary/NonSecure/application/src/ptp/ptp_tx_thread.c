@@ -5,6 +5,8 @@
  *      Author: bens1
  */
 
+#include "assert.h"
+
 #include "nx_stm32_eth_driver.h"
 
 #include "app.h"
@@ -37,6 +39,46 @@ static const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
 
 volatile NX_PACKET *tx_packet = NULL; /* Volatile to prevent other threads holding stale copies when the come to filter */
 
+volatile phy_index_t tx_port;
+volatile uint8_t     tx_send_req;   /* How many switches the management frame is required to pass through */
+volatile uint8_t     tx_send_count; /* How many switches the management frame has passed through */
+
+
+static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_mgmt_free_t reason, void *context) {
+
+    sja1105_status_t status = SJA1105_OK;
+
+    /* An error has occured */
+    if (reason != SJA1105_MGMT_FREE_USED) {
+        LOG_ERROR("PTP TX Management route freed with code %d", reason);
+        error_handler();
+    }
+
+    /* The route freed is the one expected */
+    if ((phy_index_t) context == tx_port) {
+
+        /* Increment the sent counter */
+        tx_send_count++;
+        assert(tx_send_count <= NUM_SWITCHES);
+
+        /* PTP Packet fully sent, let the tx thread know it can send the next packet */
+        if (tx_send_count == tx_send_req) {
+            if (tx_semaphore_put(&ptp_tx_semaphore_handle) != TX_SUCCESS) {
+                status = SJA1105_ERROR;
+                return status;
+            }
+        }
+    }
+
+#if DEBUG
+    else {
+        error_handler();
+    }
+#endif
+
+    return status;
+}
+
 
 void ptp_tx_thread_entry(uint32_t initial_input) {
 
@@ -45,9 +87,24 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
     ptp_event_t event;
 
+    uint8_t  depth    = 0;
+    uint32_t attempts = 0;
+
+#if DEBUG
+    uint32_t enqueued;
+    uint32_t queue_high_water_mark = 0;
+#endif
+
     while (1) {
 
         tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event, TX_WAIT_FOREVER);
+#if DEBUG
+        tx_queue_info_get(&ptp_tx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+        if ((enqueued + 1) > queue_high_water_mark) {
+            queue_high_water_mark = (enqueued + 1);
+            LOG_INFO("PTP TX Queue high water mark = %lu/%d", queue_high_water_mark, PTP_TX_QUEUE_SIZE);
+        }
+#endif
         if (tx_status == NX_SUCCESS) {
 
             switch (event.event) {
@@ -55,14 +112,39 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                 case PTP_EVENT_PACKET_TX: {
 
                     /* Get permission to transmit */
-                    tx_status = tx_semaphore_get(&ptp_tx_semaphore_handle, TX_WAIT_FOREVER);
-                    if (tx_status != TX_SUCCESS) error_handler();
+                    attempts = 0;
+                    do {
 
-                    /* Save packet */
-                    tx_packet = (NX_PACKET *) event.event_data;
+                        /* Attempt to get permission to transmit */
+                        tx_status = tx_semaphore_get(&ptp_tx_semaphore_handle, 1);
+
+                        /* Permission acquired */
+                        if (tx_status == TX_SUCCESS) {
+                            break;
+                        }
+
+                        /* Keep waiting and attempt to free managemnt routes */
+                        else if (tx_status == TX_NO_INSTANCE) {
+                            if (switch_free_mgmt_route(depth) != SJA1105_OK) error_handler();
+                        }
+
+                        else {
+                            error_handler();
+                        }
+
+                        attempts++;
+                        if (attempts == MS_TO_TICKS(PTP_TX_PERMISSION_TIMEOUT)) error_handler();
+
+                    } while (1);
+
+                    /* Save packet info */
+                    tx_packet     = (NX_PACKET *) event.event_data;
+                    tx_port       = event.port;
+                    tx_send_count = 0;
 
                     /* Create a management route for the packet */
-                    if (switch_create_mgmt_route(event.port, ptp_dst_addr, true, false) != SJA1105_OK) error_handler();
+                    if (switch_create_mgmt_route(event.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event.port) != SJA1105_OK) error_handler();
+                    tx_send_req = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
 
                     /* Send the packet */
                     nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, (NX_PACKET *) tx_packet);
@@ -88,7 +170,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 /* Filter out raw PTP packets that are about to be sent by the ethernet driver.
  * The application needs to deal with these packets to ensure they are sent out
  * ot the correct port. This function returns true if the packet was filtered
- * and shouldn't be sent */
+ * and shouldn't be sent. */
 uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr) {
 
     bool     filter_packet = false;
@@ -144,7 +226,8 @@ uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr) {
 #endif
 
             /* Queue is full, release the packet instead */
-            // TODO: increment a dropped packet counter
+            ptp_event_counters.ptp_tx_packets_dropped++;
+            LOG_ERROR("PTP TX Dropped packet");
             if (nx_packet_release(packet_ptr) != NX_SUCCESS) error_handler();
         }
     }

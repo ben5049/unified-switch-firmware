@@ -82,18 +82,6 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     phy_index_t           master_port;
     uint8_t               grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
 
-    /* Configure the MAC PTP control registers */
-    nx_status = ptp_configure();
-    if (nx_status != NX_SUCCESS) error_handler();
-
-    /* Configure the MAC timestamp correction registers */
-    ptp_set_ingress_correction();
-    ptp_set_egress_correction();
-
-    /* Start the TX thread before the PTP clients to avoid queues building up */
-    tx_status = tx_thread_resume(&ptp_tx_thread_handle);
-    if (tx_status != TX_SUCCESS) error_handler();
-
     /* Create the PTP client */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
         nx_status = nx_ptp_client_create(
@@ -266,7 +254,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         event.event      = NX_PTP_CLIENT_EVENT_MASTER;
                         event.event_data = (void *) master;
                         event.port       = master_port;
-                        tx_status        = tx_queue_send(&ptp_tx_queue_handle, &event, TX_NO_WAIT);
+                        tx_status        = tx_queue_send(&ptp_event_queue_handle, &event, TX_NO_WAIT);
                         if (tx_status != TX_SUCCESS) error_handler();
 
                         LOG_INFO("PTP: Master clock TIMEOUT");
@@ -308,6 +296,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
             /* No master connected */
             // TODO: print local time instead
             if (connected_to_master == NULL) continue;
+            continue; // TODO: enable when clock callback done
 
             /* Get and print the time */
             nx_status = nx_ptp_client_time_get(connected_to_master, &time);

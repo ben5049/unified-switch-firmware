@@ -39,7 +39,7 @@ end:
 
 
 /* Given a PHY index, create a management route to that PHY from the host port */
-sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_addr, bool takets, bool tsreg) {
+sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context) {
 
     sja1105_status_t status = SJA1105_OK;
 
@@ -50,7 +50,15 @@ sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_ad
         dst_addr,
         takets,
         tsreg,
-        NULL);
+        depth,
+        free_callback,
+        callback_context);
 
     return status;
+}
+
+
+sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
+    if (depth == 0) return SJA1105_OK;
+    return SJA1105_ManagementRouteFreeCasc(switch_handles, false, depth);
 }

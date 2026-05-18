@@ -143,19 +143,19 @@ extern uint32_t __TRACE_SIZE__;
 /* ---------------------------------------------------------------------------- */
 
 #define NX_INTERNAL_PTP_EVENT_THREAD_STACK_SIZE (1024)
-#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY   (2) /* This must be very high priority. Firstly to minimise delays, and secondly to prevent another thread prempting it and sending a packet that receives the timestamp meant for a PTP packet. */
+#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY   (6)
 
 #define PTP_EVENT_THREAD_STACK_SIZE             (1024)
-#define PTP_EVENT_THREAD_PRIORITY               (4)
+#define PTP_EVENT_THREAD_PRIORITY               (5)
 #define PTP_EVENT_QUEUE_SIZE                    (10)
 
 #define PTP_TX_THREAD_STACK_SIZE                (1024)
 #define PTP_TX_THREAD_PRIORITY                  (4)
-#define PTP_TX_QUEUE_SIZE                       (10)
+#define PTP_TX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
 
-#define PTP_PRINT_TIME_INTERVAL                 (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_PRINT_TIME_INTERVAL                 (10000)         /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)   /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)           /* The subpriority of this device for BMCA. Default for an end instance is 248 */
 #define PTP_DOMAIN                              (0)
 
 #define PTP_CLK_FREQ                            (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
@@ -163,6 +163,10 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_ETHERNET_ADDR_MSB                   (0x0180)
 #define PTP_ETHERNET_ADDR_LSB                   (0xc200000e)
 #define PTP_HEADER_PORT_OFFSET                  (28)
+
+/* Management route variables */
+#define PTP_TX_PERMISSION_TIMEOUT (500) /* The maximum number of ms to wait to send a packet */
+#define PTP_TX_TSREG              (0)
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */

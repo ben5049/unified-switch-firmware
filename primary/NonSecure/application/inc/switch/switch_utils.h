@@ -122,7 +122,8 @@ static inline sja1105_status_t switch_update_speed(phy_index_t phy, uint16_t spe
 
 
 sja1105_status_t switch_update_speed_from_phy(phy_index_t phy);
-sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_addr, bool takets, bool tsreg);
+sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context);
+sja1105_status_t switch_free_mgmt_route(uint8_t depth);
 
 
 #ifdef __cplusplus

@@ -13,12 +13,12 @@ extern "C" {
 #endif
 
 
+#include "tx_app.h"
 #include "nx_app.h"
 
 
-nx_status_t ptp_configure(void);
-void        ptp_set_ingress_correction(void);
-void        ptp_set_egress_correction(void);
+tx_status_t ptp_start(void);
+tx_status_t ptp_stop(void);
 
 
 #ifdef __cplusplus
