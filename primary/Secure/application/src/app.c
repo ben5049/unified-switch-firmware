@@ -75,7 +75,7 @@ int _write(int file, char *ptr, int len) {
         ready = huart4.gState == HAL_UART_STATE_READY;
     } while (!ready && (HAL_GetTick() - start_time < 10));
 
-    if (ready){
+    if (ready) {
         status = HAL_UART_Transmit(&huart4, (uint8_t *) ptr, len, 1000);
     }
 

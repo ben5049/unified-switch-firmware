@@ -85,7 +85,10 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 }
 
 
-/* Filter out PTP packets that the application needs to deal with. Returns true if the packet was filtered and shouldn't be sent */
+/* Filter out raw PTP packets that are about to be sent by the ethernet driver.
+ * The application needs to deal with these packets to ensure they are sent out
+ * ot the correct port. This function returns true if the packet was filtered
+ * and shouldn't be sent */
 uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr) {
 
     bool     filter_packet = false;
@@ -126,8 +129,8 @@ uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr) {
         /* Extract the port */
         port_idx    = ptp_payload_offset + PTP_HEADER_PORT_OFFSET;               /* Index into the packet */
         port_number = (uint16_t) ((frame[port_idx] << 8) | frame[port_idx + 1]); /* Extract the 1-indexed port number */
-        assert((port_number > 0) && (port_number <= NUM_PHYS));
         port_number--;
+        assert((port_number >= 0) && (port_number < NUM_PHYS));
 
         /* Fill the event struct */
         event.event      = PTP_EVENT_PACKET_TX;

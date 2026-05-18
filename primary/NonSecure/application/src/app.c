@@ -5,6 +5,8 @@
  *      Author: bens1
  */
 
+#include "assert.h"
+
 #include "main.h"
 #include "app_threadx.h"
 #include "hal.h"
@@ -157,6 +159,14 @@ static uint32_t logging_timestamp_callback(void *context) {
     }
 }
 
+
 int _write(int file, char *ptr, int len) {
     return s_write(file, ptr, len);
+}
+
+
+void __assert_func(const char *file, int line, const char *func, const char *failedexpr) {
+    LOG_ERROR_NO_CHECK("Assert failed at '%s' line %d", file, line); /* Don't check return since assertions can fail before logging is enabled */
+    error_handler();
+    while (1);
 }
