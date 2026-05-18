@@ -136,7 +136,8 @@ typedef enum {
 
 
 extern NX_IP          nx_ip_instance;
-extern NX_PACKET_POOL nx_packet_pool;
+extern NX_PACKET_POOL nx_small_packet_pool;
+extern NX_PACKET_POOL nx_big_packet_pool;
 extern NX_DHCP        dhcp_client;
 
 

@@ -56,7 +56,7 @@ nx_status_t nx_stp_allocate_packet() {
     if (status != NX_SUCCESS) return status;
 
     /* Allocate a packet */
-    status = nx_packet_allocate(&nx_packet_pool, packet_ptr, NX_PHYSICAL_HEADER, TX_WAIT_FOREVER);
+    status = nx_packet_allocate(&nx_small_packet_pool, packet_ptr, NX_PHYSICAL_HEADER, TX_WAIT_FOREVER);
     if (status != NX_SUCCESS) return status;
 
     /* Check there is available space in the packet for the header */

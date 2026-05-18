@@ -23,8 +23,10 @@
 
 NX_IP nx_ip_instance __attribute__((section(".ETH")));
 
-NX_PACKET_POOL nx_packet_pool __attribute__((section(".ETH")));
-static uint8_t nx_packet_pool_memory[NX_APP_PACKET_POOL_SIZE] __attribute__((section(".ETH")));
+NX_PACKET_POOL nx_small_packet_pool __attribute__((section(".ETH")));
+NX_PACKET_POOL nx_big_packet_pool __attribute__((section(".ETH")));
+static uint8_t nx_small_packet_pool_memory[NX_APP_SMALL_PACKET_POOL_SIZE] __attribute__((section(".ETH")));
+static uint8_t nx_big_packet_pool_memory[NX_APP_BIG_PACKET_POOL_SIZE] __attribute__((section(".ETH")));
 
 NX_DHCP dhcp_client __attribute__((section(".ETH")));
 
@@ -40,18 +42,20 @@ nx_status_t nx_setup(TX_BYTE_POOL *byte_pool) {
     /* Initialize the NetXDuo system. */
     nx_system_initialize();
 
-    /* Create the Packet pool to be used for packet allocation,
-     * If extra NX_PACKET are to be used the NX_APP_PACKET_POOL_SIZE should be increased
-     */
-    nx_status = nx_packet_pool_create(&nx_packet_pool, "NetXDuo App Pool", DEFAULT_PAYLOAD_SIZE, nx_packet_pool_memory, NX_APP_PACKET_POOL_SIZE);
+    /* Create the packet pools */
+    nx_status = nx_packet_pool_create(&nx_small_packet_pool, "NetX Small packet pool", SMALL_PACKET_SIZE, nx_small_packet_pool_memory, NX_APP_SMALL_PACKET_POOL_SIZE);
+    if (nx_status != NX_SUCCESS) return nx_status;
+    nx_status = nx_packet_pool_create(&nx_big_packet_pool, "NetX Big packet pool", BIG_PACKET_SIZE, nx_big_packet_pool_memory, NX_APP_BIG_PACKET_POOL_SIZE);
     if (nx_status != NX_SUCCESS) return nx_status;
 
     /* Allocate the memory for nx_ip_instance */
     tx_status = tx_byte_allocate(byte_pool, (void **) &pointer, NX_INTERNAL_IP_THREAD_STACK_SIZE, TX_NO_WAIT);
     if (tx_status != TX_SUCCESS) return NX_STATUS_POOL_ERROR;
 
-    /* Create the main NX_IP instance */
-    nx_status = nx_ip_create(&nx_ip_instance, "NetX IP instance", NX_DEFAULT_IP_ADDRESS, NX_DEFAULT_NET_MASK, &nx_packet_pool, nx_stm32_eth_driver, pointer, NX_INTERNAL_IP_THREAD_STACK_SIZE, NX_INTERNAL_IP_THREAD_PRIORITY);
+    /* Create the main NX_IP instance and attach the big packet pool */
+    nx_status = nx_ip_create(&nx_ip_instance, "NetX IP instance", NX_DEFAULT_IP_ADDRESS, NX_DEFAULT_NET_MASK, &nx_small_packet_pool, nx_stm32_eth_driver, pointer, NX_INTERNAL_IP_THREAD_STACK_SIZE, NX_INTERNAL_IP_THREAD_PRIORITY);
+    if (nx_status != NX_SUCCESS) return nx_status;
+    nx_status = nx_ip_auxiliary_packet_pool_set(&nx_ip_instance, &nx_big_packet_pool);
     if (nx_status != NX_SUCCESS) return nx_status;
 
     /* Allocate the memory for ARP */

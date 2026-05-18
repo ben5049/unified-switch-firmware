@@ -86,15 +86,21 @@ extern uint32_t __TRACE_SIZE__;
 #define ETHERNET_PACKET_PAYLOAD_OFFSET      (ETHERNET_PACKET_TYPE_OFFSET + ETHER_TYPE_SIZE)
 #define ETHERNET_PACKET_PAYLOAD_OFFSET_VLAN (ETHERNET_PACKET_TYPE_OFFSET_VLAN + ETHER_TYPE_SIZE)
 
-#define NX_APP_DEFAULT_TIMEOUT              (10000)                                           /* Generic timeout for nx events (e.g. TCP send) in ms */
-#define NX_APP_PACKET_POOL_SIZE             ((DEFAULT_PAYLOAD_SIZE + sizeof(NX_PACKET)) * 32) /* Enough space for 32 max size packets */
+#define SMALL_PACKET_SIZE                   (128)
+#define BIG_PACKET_SIZE                     (1536) /* Ethernet payload size field (0x600) */
 
-#define NX_DEFAULT_IP_ADDRESS               (0)                                               /* TODO: Set this */
-#define NX_DEFAULT_NET_MASK                 (0)                                               /* TODO: Set this */
+#define NUM_SMALL_PACKETS                   (120)
+#define NUM_BIG_PACKETS                     (20)
+
+#define NX_APP_SMALL_PACKET_POOL_SIZE       ((SMALL_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_SMALL_PACKETS)
+#define NX_APP_BIG_PACKET_POOL_SIZE         ((BIG_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_BIG_PACKETS)
+
+#define NX_APP_DEFAULT_TIMEOUT              (1000) /* Generic timeout for nx events (e.g. TCP send) in ms */
+
+#define NX_DEFAULT_IP_ADDRESS               (0)    /* TODO: Set this */
+#define NX_DEFAULT_NET_MASK                 (0)    /* TODO: Set this */
 #define NX_INTERNAL_IP_THREAD_STACK_SIZE    (2 * 1024)
 #define NX_INTERNAL_IP_THREAD_PRIORITY      (NX_APP_THREAD_PRIORITY)
-
-#define DEFAULT_PAYLOAD_SIZE                (1536) /* Ethernet payload size field (0x600) */
 
 #define DEFAULT_ARP_CACHE_SIZE              (1024)
 

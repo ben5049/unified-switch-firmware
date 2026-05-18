@@ -232,21 +232,29 @@ size_t _z_send_udp_unicast(const _z_sys_net_socket_t sock, const uint8_t *ptr, s
 
     TX_INTERRUPT_SAVE_AREA
 
-    _z_res_t   status      = Z_OK;
-    uint32_t   bytes_sent  = SIZE_MAX;
-    NX_PACKET *data_packet = NULL;
+    _z_res_t        status      = Z_OK;
+    uint32_t        bytes_sent  = SIZE_MAX;
+    NX_PACKET      *data_packet = NULL;
+    NX_PACKET_POOL *nx_packet_pool;
 
     UNUSED(status);
 
-    /* Allocate a packet TODO: Use two packet pools */
-    if (nx_packet_allocate(&nx_packet_pool, &data_packet, NX_UDP_PACKET, sock.timeout) != NX_SUCCESS) {
+    /* Select the packet pool to use. 4 Bytes on the end for the CRC, and another 16 for safety */
+    if ((len + NX_PHYSICAL_HEADER + sizeof(NX_IPV4_HEADER) + sizeof(NX_UDP_HEADER) + 4 + 16) > SMALL_PACKET_SIZE) {
+        nx_packet_pool = &nx_big_packet_pool;   /* 1536-byte packets */
+    } else {
+        nx_packet_pool = &nx_small_packet_pool; /* 128-byte packets */
+    }
+
+    /* Allocate a packet */
+    if (nx_packet_allocate(nx_packet_pool, &data_packet, NX_UDP_PACKET, sock.timeout) != NX_SUCCESS) {
         status = _Z_ERR_GENERIC;
         _Z_ERROR_LOG(status);
         return bytes_sent;
     }
 
     /* Append the message to send */
-    if (nx_packet_data_append(data_packet, (uint8_t *) ptr, len, &nx_packet_pool, sock.timeout) != NX_SUCCESS) {
+    if (nx_packet_data_append(data_packet, (uint8_t *) ptr, len, nx_packet_pool, sock.timeout) != NX_SUCCESS) {
         status = _Z_ERR_GENERIC;
         _Z_ERROR_LOG(status);
         if (nx_packet_release(data_packet) != NX_SUCCESS) error_handler();

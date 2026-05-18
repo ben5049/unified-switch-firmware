@@ -88,7 +88,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
             &ptp_client[i],
             &nx_ip_instance,
             0,
-            &nx_packet_pool,
+            &nx_small_packet_pool, // TODO: static assert that the small packets are large enough
             NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY,
             (UCHAR *) nx_internal_ptp_stack[i],
             sizeof(nx_internal_ptp_stack[i]),
