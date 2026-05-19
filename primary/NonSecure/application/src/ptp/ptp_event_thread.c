@@ -35,7 +35,7 @@ uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 ptp_event_counters_t ptp_event_counters;
 
 
-// TODO: stop instances when linkgs go down + restart when up
+// TODO: stop instances when links go down + restart when up
 //       also need to elect new master on port down rather than
 //       waiting for timeout
 
@@ -88,7 +88,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
             &ptp_client[i],
             &nx_ip_instance,
             0,
-            &nx_small_packet_pool, // TODO: static assert that the small packets are large enough
+            &nx_small_packet_pool,
             NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY,
             (UCHAR *) nx_internal_ptp_stack[i],
             sizeof(nx_internal_ptp_stack[i]),

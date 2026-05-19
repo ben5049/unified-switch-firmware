@@ -80,11 +80,14 @@ extern uint32_t __TRACE_SIZE__;
 
 #define MAC_ADDR_SIZE                       (6)
 #define ETHER_TYPE_SIZE                     (2)
-#define VLAN_HEADER_SIZE                    (4)
+#define VLAN_TAG_SIZE                       (4)
 #define ETHERNET_PACKET_TYPE_OFFSET         (2 * MAC_ADDR_SIZE)
-#define ETHERNET_PACKET_TYPE_OFFSET_VLAN    ((2 * MAC_ADDR_SIZE) + VLAN_HEADER_SIZE)
+#define ETHERNET_PACKET_TYPE_OFFSET_VLAN    ((2 * MAC_ADDR_SIZE) + VLAN_TAG_SIZE)
 #define ETHERNET_PACKET_PAYLOAD_OFFSET      (ETHERNET_PACKET_TYPE_OFFSET + ETHER_TYPE_SIZE)
 #define ETHERNET_PACKET_PAYLOAD_OFFSET_VLAN (ETHERNET_PACKET_TYPE_OFFSET_VLAN + ETHER_TYPE_SIZE)
+#define ETHERNET_HEADER_SIZE                ((2 * MAC_ADDR_SIZE) + ETHER_TYPE_SIZE)
+#define ETHERNET_HEADER_SIZE_VLAN           (ETHERNET_HEADER_SIZE + VLAN_TAG_SIZE)
+
 
 #define SMALL_PACKET_SIZE                   (128)
 #define BIG_PACKET_SIZE                     (1536) /* Ethernet payload size field (0x600) */

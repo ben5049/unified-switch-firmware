@@ -105,7 +105,7 @@ sja1105_status_t switch_init() {
     switch_configs[0].casc_port = SW0_PORT_SW1; /* Port to switch 1 downstream */
 #endif
     switch_configs[0].skew_clocks = true; /* Improves EMI performance */
-    switch_configs[0].switch_id   = 0;
+    switch_configs[0].switch_id   = SWITCH0;
 
     /* Set the general switch 1 parameters */
 #if HW_VERSION == 5
@@ -115,7 +115,7 @@ sja1105_status_t switch_init() {
     switch_configs[1].host_port    = SW1_PORT_SW0;      /* Port to switch 0 upstream */
     switch_configs[1].casc_port    = SJA1105_NUM_PORTS; /* No downstream switches */
     switch_configs[1].skew_clocks  = true;              /* Improves EMI performance */
-    switch_configs[1].switch_id    = 1;
+    switch_configs[1].switch_id    = SWITCH1;
 #endif
 
     /* Switch 0 port 0 config */

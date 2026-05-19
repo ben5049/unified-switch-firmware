@@ -8,7 +8,7 @@
 /*       and in the root directory of this software.                      */
 /*                                                                        */
 /**************************************************************************/
-
+// clang-format off
 
 /* Indicate that driver source is being compiled.  */
 
@@ -2343,6 +2343,10 @@ void HAL_ETH_TxFreeCallback(uint32_t * buff)
 {
   NX_PACKET * release_packet = (NX_PACKET *) buff;
 
+  /* PTP TX packets are freed by the application */
+  extern uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
+  if (ptp_tx_filter_packet_free(release_packet)) return;
+
   /* Remove the Ethernet header and release the packet.  */
   NX_DRIVER_ETHERNET_HEADER_REMOVE(release_packet);
 
@@ -2959,3 +2963,4 @@ ETH_TASOperationConfigTypeDef opconfig[NX_SHAPER_GCL_LENGTH_MAX];
 }
 #endif /* NX_DRIVER_ENABLE_TAS */
 /****** DRIVER SPECIFIC ****** Start of part/vendor specific internal driver functions.  */
+// clang-format on

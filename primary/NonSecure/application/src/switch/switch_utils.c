@@ -62,3 +62,36 @@ sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
     if (depth == 0) return SJA1105_OK;
     return SJA1105_ManagementRouteFreeCasc(switch_handles, false, depth);
 }
+
+
+sja1105_status_t switch_get_egress_timestamp(phy_index_t phy, uint8_t tsreg, NX_PTP_TIME *timestamp) {
+
+    sja1105_status_t status = SJA1105_OK;
+    uint64_t         egress_timestamp;
+    uint64_t         total_ns;
+    uint64_t         total_sec;
+
+    /* Get the egress timestamp in 8ns intervals */
+    status = SJA1105_GetEgressTimestamp(
+        phy_to_switch_handle(phy),
+        phy_to_switch_port(phy),
+        tsreg,
+        &egress_timestamp);
+    if (status != SJA1105_OK) return status;
+
+    /* Convert the hardware ticks (8ns per tick) into total nanoseconds */
+    total_ns = egress_timestamp * 8;
+
+    /* Separate total seconds from the remaining nanosecond fraction */
+    total_sec = total_ns / 1000000000ULL;
+
+    /* Store timestamp in the NX_PTP_TIME structure.
+     * Standard PTP seconds are 48-bit. We put the upper 16 bits in
+     * second_high and the lower 32 bits in second_low.
+     */
+    timestamp->second_high = (uint32_t) (total_sec >> 32);
+    timestamp->second_low  = (uint32_t) (total_sec & 0xFFFFFFFFULL);
+    timestamp->nanosecond  = (uint32_t) (total_ns % 1000000000ULL);
+
+    return status;
+}

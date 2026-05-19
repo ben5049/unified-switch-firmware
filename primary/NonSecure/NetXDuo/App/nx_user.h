@@ -92,7 +92,7 @@
 
 /* NX_PHYSICAL_HEADER Specifies the size in bytes of the physical header of
    the frame. */
-#define NX_PHYSICAL_HEADER 16
+#define NX_PHYSICAL_HEADER 20
 
 /* NX_PHYSICAL_TRAILER specifies the size in bytes of the physical packet
    trailer and is typically used to reserve storage for things like Ethernet

@@ -39,7 +39,7 @@ typedef struct {
 } ptp_event_t;
 
 typedef struct {
-    atomic_uint_fast32_t tx_timestamps_missed; /* Due to an eror in HAL_ETH_TxPtpCallback() */
+    atomic_uint_fast32_t tx_timestamps_missed; /* Due to an eror in */
     atomic_uint_fast32_t sync;
     atomic_uint_fast32_t new_master;
     atomic_uint_fast32_t master_timeout;
@@ -54,22 +54,20 @@ typedef struct {
 
 /* Exported variables */
 
-extern SHORT ptp_utc_offset;
-
 extern TX_THREAD ptp_event_thread_handle;
 extern uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
-
 extern TX_THREAD ptp_tx_thread_handle;
 extern uint8_t   ptp_tx_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
 
 extern TX_QUEUE ptp_event_queue_handle;
 extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
-
 extern TX_QUEUE ptp_tx_queue_handle;
 extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 extern TX_SEMAPHORE ptp_tx_semaphore_handle;
 
+extern NX_PTP_CLIENT        ptp_client[NUM_PHYS];
+extern SHORT                ptp_utc_offset;
 extern ptp_event_counters_t ptp_event_counters;
 
 

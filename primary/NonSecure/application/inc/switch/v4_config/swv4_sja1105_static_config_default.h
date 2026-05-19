@@ -1,7 +1,7 @@
 /*
  * swv4_sja1105_static_config_default.h
  *
- *  Created on: May 18, 2026
+ *  Created on: May 19, 2026
  *      Author: SJA1105X_CONFIG-GENTOOL
  *
  */
@@ -43,8 +43,8 @@ static const uint32_t swv4_sja1105_static_config_default[SWV4_SJA1105_STATIC_CON
     0x6c3cf923, 0x0d000000, 0x00000004, 0x12d08c8f, 0x02000000, 0x00000020, 0x02004008, 0x00000410,
     0x2ee8e709, 0x0e000000, 0x00000003, 0xc8a7cee6, 0x2c18c000, 0x0b02c0b0, 0x02c0b02c, 0xa07ddb76,
     0x10000000, 0x00000004, 0x8aa0dfbc, 0x80000000, 0x0df03ffb, 0xb2b78098, 0x40980df7, 0xe6c9318c,
-    0x11000000, 0x0000000b, 0xefa3e65a, 0x01800000, 0x46040000, 0xfffffc45, 0xffffffff, 0x00dd37ff,
-    0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x00000eff, 0x460180c2, 0x54bd238d, 0x4e000000,
+    0x11000000, 0x0000000b, 0xefa3e65a, 0x01800000, 0x42040000, 0xfffffc45, 0xffffffff, 0x00dd37ff,
+    0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x00000eff, 0x460180c2, 0x3aee7532, 0x4e000000,
     0x00000001, 0x3a5d5e24, 0x25240000, 0x9ba8eafd, 0x00000000, 0x00000000, 0x5f04f9ba};
 
 #ifdef __cplusplus
@@ -1047,7 +1047,7 @@ Table ID: 17 #entries: 1
 |    VIMARKER   |    4294967295   |  32 |  107   |
 |     VIMASK    |    4294967295   |  32 |   75   |
 |      TPID     |      34984      |  16 |   59   |
-|   IGNORE2STF  |        1        |  1  |   58   |
+|   IGNORE2STF  |        0        |  1  |   58   |
 |     TPID2     |      33024      |  16 |   42   |
 |    QUEUE_TS   |        0        |  1  |   41   |
 |   EGRMIRRVID  |        0        |  12 |   29   |

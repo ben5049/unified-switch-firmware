@@ -24,3 +24,80 @@ void error_handler() {
 
     __enable_irq();
 }
+
+
+void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth) {
+
+    if (heth->ErrorCode & HAL_ETH_ERROR_PARAM) {
+        error_handler();
+    }
+    if (heth->ErrorCode & HAL_ETH_ERROR_BUSY) {
+        error_handler();
+    }
+    if (heth->ErrorCode & HAL_ETH_ERROR_TIMEOUT) {
+        error_handler();
+    }
+    if (heth->ErrorCode & HAL_ETH_ERROR_DMA) {
+        if (heth->DMAErrorCode & ETH_DMA_RX_NO_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_RX_DESC_READ_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_RX_DESC_WRITE_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_RX_BUFFER_READ_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_RX_BUFFER_WRITE_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_TX_NO_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_TX_DESC_READ_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_TX_DESC_WRITE_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_TX_BUFFER_READ_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_TX_BUFFER_WRITE_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_CONTEXT_DESC_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_FATAL_BUS_ERROR_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_EARLY_TX_IT_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_RX_WATCHDOG_TIMEOUT_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_RX_PROCESS_STOPPED_FLAG) {
+            error_handler();
+        }
+
+        /* */
+        if (heth->DMAErrorCode & ETH_DMA_RX_BUFFER_UNAVAILABLE_FLAG) {
+            error_handler();
+        }
+        if (heth->DMAErrorCode & ETH_DMA_TX_PROCESS_STOPPED_FLAG) {
+            error_handler();
+        }
+        error_handler();
+    }
+    if (heth->ErrorCode & HAL_ETH_ERROR_MAC) {
+    }
+#if (USE_HAL_ETH_REGISTER_CALLBACKS == 1)
+    if (heth->ErrorCode & HAL_ETH_ERROR_INVALID_CALLBACK) {
+        error_handler();
+    }
+#endif
+}

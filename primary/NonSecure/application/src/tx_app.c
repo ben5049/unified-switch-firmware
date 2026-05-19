@@ -35,7 +35,7 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
 
     /* Create semaphores */
-    status = tx_semaphore_create(&ptp_tx_semaphore_handle, "ptp_tx_semaphore", 1);
+    status = tx_semaphore_create(&ptp_tx_semaphore_handle, "ptp_tx_semaphore", 0);
     if (status != TX_SUCCESS) error_handler();
 
     /* Create event flags */

@@ -44,7 +44,7 @@ volatile uint8_t     tx_send_req;   /* How many switches the management frame is
 volatile uint8_t     tx_send_count; /* How many switches the management frame has passed through */
 
 
-static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_mgmt_free_t reason, void *context) {
+static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_mgmt_free_t reason, void *context) {
 
     sja1105_status_t status = SJA1105_OK;
 
@@ -57,11 +57,38 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_mgmt_free_t reason, void
     /* The route freed is the one expected */
     if ((phy_index_t) context == tx_port) {
 
+        /* This is the last switch in the chain, get the timestamp */
+        if (dev->config->switch_id == (tx_send_req - 1)) {
+
+            NX_PTP_TIME timestamp;
+            NX_PACKET  *packet_ptr = tx_packet;
+            uint16_t    ether_type;
+
+            /* Get the timestamp */
+            status = switch_get_egress_timestamp(tx_port, PTP_TX_TSREG, &timestamp);
+            if (status != SJA1105_OK) return status;
+
+            /* No timestamp. Could be because frame never reached MAC egress port.
+             * This could be because the PHY has no link */
+            if ((timestamp.nanosecond == 0) &&
+                (timestamp.second_low == 0) &&
+                (timestamp.second_high == 0)) {
+                ptp_event_counters.tx_timestamps_missed++;
+            }
+
+            /* Call PTP client notification callback */
+            nx_ptp_client_packet_timestamp_notify(&ptp_client[tx_port], packet_ptr, &timestamp);
+
+            /* Release the packet back to the pool */
+            nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, packet_ptr, NULL);
+            tx_packet = NULL;
+        }
+
         /* Increment the sent counter */
         tx_send_count++;
         assert(tx_send_count <= NUM_SWITCHES);
 
-        /* PTP Packet fully sent, let the tx thread know it can send the next packet */
+        /* PTP Packet fully sent, let the tx thread know */
         if (tx_send_count == tx_send_req) {
             if (tx_semaphore_put(&ptp_tx_semaphore_handle) != TX_SUCCESS) {
                 status = SJA1105_ERROR;
@@ -70,15 +97,12 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_mgmt_free_t reason, void
         }
     }
 
-#if DEBUG
     else {
-        error_handler();
+        status = SJA1105_ERROR;
     }
-#endif
 
     return status;
 }
-
 
 void ptp_tx_thread_entry(uint32_t initial_input) {
 
@@ -111,32 +135,6 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 case PTP_EVENT_PACKET_TX: {
 
-                    /* Get permission to transmit */
-                    attempts = 0;
-                    do {
-
-                        /* Attempt to get permission to transmit */
-                        tx_status = tx_semaphore_get(&ptp_tx_semaphore_handle, 1);
-
-                        /* Permission acquired */
-                        if (tx_status == TX_SUCCESS) {
-                            break;
-                        }
-
-                        /* Keep waiting and attempt to free managemnt routes */
-                        else if (tx_status == TX_NO_INSTANCE) {
-                            if (switch_free_mgmt_route(depth) != SJA1105_OK) error_handler();
-                        }
-
-                        else {
-                            error_handler();
-                        }
-
-                        attempts++;
-                        if (attempts == MS_TO_TICKS(PTP_TX_PERMISSION_TIMEOUT)) error_handler();
-
-                    } while (1);
-
                     /* Save packet info */
                     tx_packet     = (NX_PACKET *) event.event_data;
                     tx_port       = event.port;
@@ -150,8 +148,32 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                     nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, (NX_PACKET *) tx_packet);
                     if (nx_status != NX_SUCCESS) error_handler();
 
-                    /* Clear packet */
-                    tx_packet = NULL;
+                    /* Get confirmation the packet has been sent */
+                    attempts = 0;
+                    do {
+
+                        /* Attempt to free management route */
+                        if (switch_free_mgmt_route(depth) != SJA1105_OK) error_handler();
+
+                        /* Attempt to get confirmation the packet has been sent */
+                        tx_status = tx_semaphore_get(&ptp_tx_semaphore_handle, 1);
+
+                        /* Sent */
+                        if (tx_status == TX_SUCCESS) {
+                            break;
+                        }
+
+                        /* Error occured */
+                        else if (tx_status != TX_NO_INSTANCE) {
+                            error_handler();
+                        }
+
+                        /* Keep waiting */
+                        attempts++;
+                        if (attempts == MS_TO_TICKS(PTP_TX_PERMISSION_TIMEOUT)) error_handler();
+
+                    } while (1);
+
                     break;
                 }
 
@@ -171,6 +193,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
  * The application needs to deal with these packets to ensure they are sent out
  * ot the correct port. This function returns true if the packet was filtered
  * and shouldn't be sent. */
+// TODO: add send to the end of the name
 uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr) {
 
     bool     filter_packet = false;
@@ -234,3 +257,40 @@ uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr) {
 
     return filter_packet;
 }
+
+
+/* Filter out the packets being freed by the ethernet driver in the transmit complete callback */
+// TODO: add to .h
+uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr) {
+    if (packet_ptr == tx_packet) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+// TODO: use new version?
+// /* Filter out the packets being freed by the ethernet driver in the transmit complete callback */
+// uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr) {
+
+//     uint16_t ether_type;
+//     uint8_t *frame = packet_ptr->nx_packet_prepend_ptr;
+
+//     /* Extract standard ether type */
+//     ether_type = (uint16_t) ((frame[ETHERNET_PACKET_TYPE_OFFSET] << 8) |
+//                              frame[ETHERNET_PACKET_TYPE_OFFSET + 1]);
+
+//     /* Handle VLAN tags if present */
+//     if (ether_type == NX_LINK_ETHERNET_TPID) {
+//         ether_type = (uint16_t) ((frame[ETHERNET_PACKET_TYPE_OFFSET_VLAN] << 8) |
+//                                  frame[ETHERNET_PACKET_TYPE_OFFSET_VLAN + 1]);
+//     }
+
+//     /* If it is a PTP packet the application owns it, tell the MAC driver to leave it alone. */
+//     if (ether_type == NX_LINK_ETHERNET_PTP) {
+//         return true;
+//     }
+
+//     return false;
+// }
