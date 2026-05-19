@@ -66,6 +66,13 @@ void state_machine_thread_entry(uint32_t initial_input) {
     LOG_INFO("STP thread started");
 #endif
 
+    /* Start the PTP thread. No IP address is required since gPTP uses raw ethernet frames */
+#if ENABLE_PTP_THREAD
+    tx_status = ptp_start();
+    if (tx_status != TX_SUCCESS) error_handler();
+    LOG_INFO("PTP started");
+#endif
+
     /* -------------------- Network Up -------------------- */
 
     /* Wait for the network to be initialised and an IP address assigned */
@@ -82,16 +89,11 @@ void state_machine_thread_entry(uint32_t initial_input) {
     uint8_t *bytes = (uint8_t *) &ip_address;
     LOG_INFO("Network is up, IP Address = %u.%u.%u.%u", bytes[0], bytes[1], bytes[2], bytes[3]);
 
-    /* Start the threads that require networking */
+    /* Start the threads that require IP networking */
 #if ENABLE_COMMS_THREAD
     tx_status = tx_thread_resume(&comms_thread_handle);
     if (tx_status != TX_SUCCESS) error_handler();
     LOG_INFO("Comms thread started");
-#endif
-#if ENABLE_PTP_THREAD
-    tx_status = ptp_start();
-    if (tx_status != TX_SUCCESS) error_handler();
-    LOG_INFO("PTP started");
 #endif
 
     while (1) {

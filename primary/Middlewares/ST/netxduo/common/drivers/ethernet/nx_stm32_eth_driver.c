@@ -221,8 +221,8 @@ NX_INTERFACE *interface_ptr;
     {
 
       /* Filter out PTP packets to be sent by the application */
-      extern uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr);
-      if (ptp_tx_filter_packet(driver_req_ptr->nx_ip_driver_packet)) break;
+      extern uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
+      if (ptp_tx_filter_packet_send(driver_req_ptr->nx_ip_driver_packet)) break;
 
       /* Process raw packet send requests.  */
       _nx_driver_raw_packet_send(driver_req_ptr);
@@ -1055,7 +1055,7 @@ static VOID  _nx_driver_raw_packet_send(NX_IP_DRIVER *driver_req_ptr)
           driver_req_ptr->nx_ip_driver_status = NX_DRIVER_ERROR;
 
           /* Link is not up or packet too big, simply free the packet. */
-          nx_packet_transmit_release(packet_ptr);
+          nx_link_packet_transmitted(driver_req_ptr->nx_ip_driver_ptr, driver_req_ptr->nx_ip_driver_interface->nx_interface_index, packet_ptr, NULL);
           return;
       }
 
@@ -1065,7 +1065,7 @@ static VOID  _nx_driver_raw_packet_send(NX_IP_DRIVER *driver_req_ptr)
       if (status != NX_SUCCESS)
       {
           driver_req_ptr->nx_ip_driver_status = NX_DRIVER_ERROR;
-          nx_packet_transmit_release(packet_ptr);
+          nx_link_packet_transmitted(driver_req_ptr->nx_ip_driver_ptr, driver_req_ptr->nx_ip_driver_interface->nx_interface_index, packet_ptr, NULL);
       }
       else
       {

@@ -44,7 +44,7 @@ sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_ad
     sja1105_status_t status = SJA1105_OK;
 
     status = SJA1105_ManagementRouteCreateCascSingle(
-        switch_handles,
+        &switch_handles[0],
         phy_to_switch_handle(phy)->config->switch_id,
         phy_to_switch_port(phy),
         dst_addr,
@@ -60,7 +60,7 @@ sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_ad
 
 sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
     if (depth == 0) return SJA1105_OK;
-    return SJA1105_ManagementRouteFreeCasc(switch_handles, false, depth);
+    return SJA1105_ManagementRouteFreeCasc(&switch_handles[0], false, depth);
 }
 
 

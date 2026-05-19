@@ -39,16 +39,23 @@ typedef struct {
 } ptp_event_t;
 
 typedef struct {
-    atomic_uint_fast32_t tx_timestamps_missed; /* Due to an eror in */
+
+    /* TX */
+    atomic_uint_fast32_t tx_packets_sent[NUM_PHYS];
+    atomic_uint_fast32_t tx_packets_dropped[NUM_PHYS];
+    atomic_uint_fast32_t tx_timestamps_received[NUM_PHYS];
+    atomic_uint_fast32_t tx_timestamps_missed[NUM_PHYS];
+
+    /* Events */
     atomic_uint_fast32_t sync;
     atomic_uint_fast32_t new_master;
     atomic_uint_fast32_t master_timeout;
-    atomic_uint_fast32_t clock_set;
-    atomic_uint_fast32_t timestamps_extracted;
-    atomic_uint_fast32_t clock_get;
-    atomic_uint_fast32_t clock_adjusted;
-    atomic_uint_fast32_t timestamps_sent;
-    atomic_uint_fast32_t ptp_tx_packets_dropped;
+
+    // atomic_uint_fast32_t clock_set;
+    // atomic_uint_fast32_t timestamps_extracted;
+    // atomic_uint_fast32_t clock_get;
+    // atomic_uint_fast32_t clock_adjusted;
+    // atomic_uint_fast32_t timestamps_sent;
 } ptp_event_counters_t;
 
 
@@ -64,7 +71,7 @@ extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS]
 extern TX_QUEUE ptp_tx_queue_handle;
 extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
-extern TX_SEMAPHORE ptp_tx_semaphore_handle;
+extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 
 extern NX_PTP_CLIENT        ptp_client[NUM_PHYS];
 extern SHORT                ptp_utc_offset;
@@ -74,7 +81,8 @@ extern ptp_event_counters_t ptp_event_counters;
 void ptp_event_thread_entry(uint32_t initial_input);
 void ptp_tx_thread_entry(uint32_t initial_input);
 
-uint8_t ptp_tx_filter_packet(NX_PACKET *packet_ptr);
+uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
+uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);
 UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data);
