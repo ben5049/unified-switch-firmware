@@ -39,14 +39,14 @@ end:
 
 
 /* Given a PHY index, create a management route to that PHY from the host port */
-sja1105_status_t switch_create_mgmt_route(phy_index_t phy, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context) {
+sja1105_status_t switch_create_mgmt_route(phy_index_t port, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context) {
 
     sja1105_status_t status = SJA1105_OK;
 
     status = SJA1105_ManagementRouteCreateCascSingle(
         &switch_handles[0],
-        phy_to_switch_handle(phy)->config->switch_id,
-        phy_to_switch_port(phy),
+        phy_to_switch_handle(port)->config->switch_id,
+        phy_to_switch_port(port),
         dst_addr,
         takets,
         tsreg,
@@ -64,23 +64,13 @@ sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
 }
 
 
-sja1105_status_t switch_get_egress_timestamp(phy_index_t phy, uint8_t tsreg, NX_PTP_TIME *timestamp) {
+void switch_format_timestamp(uint64_t timestamp_raw, NX_PTP_TIME *timestamp) {
 
-    sja1105_status_t status = SJA1105_OK;
-    uint64_t         egress_timestamp;
-    uint64_t         total_ns;
-    uint64_t         total_sec;
-
-    /* Get the egress timestamp in 8ns intervals */
-    status = SJA1105_GetEgressTimestamp(
-        phy_to_switch_handle(phy),
-        phy_to_switch_port(phy),
-        tsreg,
-        &egress_timestamp);
-    if (status != SJA1105_OK) return status;
+    uint64_t total_ns;
+    uint64_t total_sec;
 
     /* Convert the hardware ticks (8ns per tick) into total nanoseconds */
-    total_ns = egress_timestamp * 8;
+    total_ns = timestamp_raw * 8;
 
     /* Separate total seconds from the remaining nanosecond fraction */
     total_sec = total_ns / 1000000000ULL;
@@ -92,6 +82,68 @@ sja1105_status_t switch_get_egress_timestamp(phy_index_t phy, uint8_t tsreg, NX_
     timestamp->second_high = (uint32_t) (total_sec >> 32);
     timestamp->second_low  = (uint32_t) (total_sec & 0xFFFFFFFFULL);
     timestamp->nanosecond  = (uint32_t) (total_ns % 1000000000ULL);
+}
+
+
+sja1105_status_t switch_get_egress_timestamp(phy_index_t port, uint8_t tsreg, NX_PTP_TIME *timestamp) {
+
+    sja1105_status_t status = SJA1105_OK;
+    uint64_t         timestamp_raw;
+
+    /* Get the egress timestamp in 8ns intervals */
+    status = SJA1105_GetEgressTimestamp(
+        phy_to_switch_handle(port),
+        phy_to_switch_port(port),
+        tsreg,
+        &timestamp_raw);
+    if (status != SJA1105_OK) return status;
+
+    /* Turn the 8ns timestamp to seconds and nanoseconds */
+    switch_format_timestamp(timestamp_raw, timestamp);
+
+    return status;
+}
+
+
+sja1105_status_t switch_parse_meta_frame(NX_PACKET *packet, phy_index_t *port, NX_PTP_TIME *timestamp) {
+
+    sja1105_status_t status = SJA1105_OK;
+
+    USHORT vlan_tag;
+    UCHAR  vlan_tag_valid;
+    UINT   header_size;
+
+    uint8_t  switch_id;
+    uint8_t  src_port;
+    uint64_t timestamp_raw;
+
+    /* Get info from the header */
+    if (nx_link_ethernet_header_parse(packet, NULL, NULL, NULL, NULL, NULL, &vlan_tag, &vlan_tag_valid, &header_size) != NX_SUCCESS) {
+        status = SJA1105_ERROR;
+        return status;
+    }
+
+    /* Check VLAN */
+    if ((vlan_tag_valid == NX_TRUE) && ((vlan_tag & NX_LINK_VLAN_ID_MASK) != PTP_VLAN)) {
+        status = SJA1105_ERROR;
+        return status;
+    }
+
+    /* Parse META frame and get raw timestamp */
+    status = SJA1105_GetIngressTimestamp(&switch_handles[0], packet->nx_packet_prepend_ptr + header_size, &switch_id, &src_port, &timestamp_raw);
+    if (status != SJA1105_OK) return status;
+
+    /* Release the META frame packet */
+    if (nx_packet_release(packet) != NX_SUCCESS) {
+        status = SJA1105_ERROR;
+        return status;
+    }
+
+    /* Turn the 8ns timestamp to seconds and nanoseconds */
+    if (timestamp != NULL) switch_format_timestamp(timestamp_raw, timestamp);
+
+    /* Get the port */
+    if (port != NULL) *port = switch_id_port_to_phy(switch_id, src_port);
 
     return status;
 }

@@ -83,15 +83,15 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth) {
         if (heth->DMAErrorCode & ETH_DMA_RX_PROCESS_STOPPED_FLAG) {
             error_handler();
         }
-
-        /* */
+        /* When debugging ignore this error since it can be caused by hitting a breakpoint */
+#if !DEBUG
         if (heth->DMAErrorCode & ETH_DMA_RX_BUFFER_UNAVAILABLE_FLAG) {
             error_handler();
         }
+#endif
         if (heth->DMAErrorCode & ETH_DMA_TX_PROCESS_STOPPED_FLAG) {
             error_handler();
         }
-        error_handler();
     }
     if (heth->ErrorCode & HAL_ETH_ERROR_MAC) {
     }

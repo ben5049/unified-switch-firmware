@@ -117,6 +117,7 @@ static void ptp_set_egress_correction() {
 tx_status_t ptp_start() {
 
     tx_status_t status = TX_SUCCESS;
+    uint32_t    flags;
 
     /* Configure the MAC PTP control registers */
     status = ptp_configure();
@@ -126,12 +127,30 @@ tx_status_t ptp_start() {
     ptp_set_ingress_correction();
     ptp_set_egress_correction();
 
+    /* Flush the queues */
+    status = tx_queue_flush(&ptp_tx_queue_handle);
+    if (status != TX_SUCCESS) return status;
+    status = tx_queue_flush(&ptp_event_queue_handle);
+    if (status != TX_SUCCESS) return status;
+    status = tx_queue_flush(&ptp_rx_packet_queue_handle);
+    if (status != TX_SUCCESS) return status;
+    status = tx_queue_flush(&ptp_rx_meta_queue_handle);
+    if (status != TX_SUCCESS) return status;
+
+    /* Clear event flags */
+    status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    if (status != TX_SUCCESS) return status;
+
     /* Start the TX thread before the PTP clients to avoid queues building up */
     status = tx_thread_resume(&ptp_tx_thread_handle);
     if (status != TX_SUCCESS) return status;
 
     /* Start the event thread. This also starts the PTP clients */
     status = tx_thread_resume(&ptp_event_thread_handle);
+    if (status != TX_SUCCESS) return status;
+
+    /* Start the RX thread after the PTP clients to avoid giving packets from before the PTP clients are started */
+    status = tx_thread_resume(&ptp_rx_thread_handle);
     if (status != TX_SUCCESS) return status;
 
     return status;

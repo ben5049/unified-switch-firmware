@@ -1,7 +1,7 @@
 /*
  * ptp_tx_thread.c
  *
- *  Created on: May, 2026
+ *  Created on: May 18, 2026
  *      Author: bens1
  */
 
@@ -15,11 +15,6 @@
 #include "utils.h"
 #include "ptp_thread.h"
 #include "switch_utils.h"
-
-
-#define PTP_TX_EVENT_MGMT_FREE   (1 << 0) /* All management routes have been used */
-#define PTP_TX_EVENT_PACKET_FREE (1 << 1) /* Ethernet driver is done with packet and it can be freed */
-#define PTP_TX_EVENT_SEND_PACKET (1 << 7) /* Mustn't conflict with the NX_PTP_CLIENT_EVENT macros */
 
 
 TX_THREAD ptp_tx_thread_handle;
@@ -75,6 +70,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 (timestamp.second_low == 0) &&
                 (timestamp.second_high == 0)) {
                 ptp_event_counters.tx_timestamps_missed[port]++;
+                LOG_WARNING("PTP TX Missed a timestamp on port %d", port);
             } else {
                 ptp_event_counters.tx_timestamps_received[port]++;
             }
@@ -109,8 +105,8 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
     tx_status_t tx_status = TX_SUCCESS;
     nx_status_t nx_status = NX_SUCCESS;
 
-    ptp_event_t event;
-    uint32_t    event_flags;
+    ptp_event_info_t event_info;
+    uint32_t         event_flags;
 
     uint8_t  depth    = 0;
     uint32_t attempts = 0;
@@ -122,7 +118,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
-        tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event, TX_WAIT_FOREVER);
+        tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event_info, TX_WAIT_FOREVER);
 #if DEBUG
         tx_queue_info_get(&ptp_tx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
         if ((enqueued + 1) > queue_high_water_mark) {
@@ -132,23 +128,23 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 #endif
         if (tx_status == NX_SUCCESS) {
 
-            switch (event.event) {
+            switch (event_info.event) {
 
                 case PTP_TX_EVENT_SEND_PACKET: {
 
                     /* Save packet info */
-                    ptp_tx_packet = (NX_PACKET *) event.event_data;
-                    ptp_tx_port   = event.port;
+                    ptp_tx_packet = (NX_PACKET *) event_info.data;
+                    ptp_tx_port   = event_info.port;
                     tx_send_count = 0;
 
                     /* Create a management route for the packet */
-                    if (switch_create_mgmt_route(event.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event.port) != SJA1105_OK) error_handler();
+                    if (switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port) != SJA1105_OK) error_handler();
                     ptp_ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
 
                     /* Send the packet */
                     nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, (NX_PACKET *) ptp_tx_packet);
                     if (nx_status != NX_SUCCESS) error_handler();
-                    ptp_event_counters.tx_packets_sent[event.port]++;
+                    ptp_event_counters.tx_packets_sent[event_info.port]++;
 
                     /* Get confirmation the packet has been sent through the switch */
                     attempts = 0;
@@ -175,41 +171,30 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                         /* Keep waiting */
                         attempts++;
-                        if (attempts == MS_TO_TICKS(PTP_TX_PERMISSION_TIMEOUT)) error_handler();
+                        if (attempts == MS_TO_TICKS(PTP_TX_TIMEOUT)) error_handler();
 
                     } while (1);
 
                     /* Wait for the ethernet driver to be done with the packet */
-                    attempts = 0;
-                    do {
+                    tx_status = tx_event_flags_get(
+                        &ptp_tx_events_handle,
+                        PTP_TX_EVENT_PACKET_FREE,
+                        TX_OR_CLEAR,
+                        &event_flags,
+                        MS_TO_TICKS(PTP_TX_TIMEOUT));
+                    if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
 
-                        /* Attempt to get confirmation the packet has been sent and has made it through the switch */
-                        tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_PACKET_FREE, TX_OR_CLEAR, &event_flags, 10);
-
-                        /* Ethernet driver is done with the packet, release it */
-                        if (tx_status == TX_SUCCESS) {
-                            nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event.event_data, NULL);
-                            ptp_tx_packet = NULL;
-                            break;
-                        }
-
-                        /* Error occured */
-                        else if (tx_status != TX_NO_EVENTS) {
-                            error_handler();
-                        }
-
-                        /* Keep waiting */
-                        attempts++;
-                        if (attempts == MS_TO_TICKS(PTP_TX_PERMISSION_TIMEOUT / 10)) error_handler();
-
-                    } while (1);
+                    /* Release the packet */
+                    nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.data, NULL);
+                    ptp_tx_packet = NULL;
 
                     break;
                 }
 
-                default:
+                default: {
                     error_handler();
                     break;
+                }
             }
         } else {
             error_handler();
@@ -225,12 +210,24 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 
     bool     filter_packet = false;
-    uint16_t ether_type;
-    uint8_t *frame              = packet_ptr->nx_packet_prepend_ptr;
-    uint16_t ptp_payload_offset = ETHERNET_PACKET_PAYLOAD_OFFSET;
+    uint8_t *frame         = packet_ptr->nx_packet_prepend_ptr;
 
-    ether_type = (uint16_t) ((frame[ETHERNET_PACKET_TYPE_OFFSET] << 8) |
-                             frame[ETHERNET_PACKET_TYPE_OFFSET + 1]);
+    USHORT ether_type;
+    USHORT vlan_tag;
+    UCHAR  vlan_tag_valid;
+    UINT   header_size;
+
+    /* Get info from the header */
+    if (nx_link_ethernet_header_parse(
+            packet_ptr,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            &ether_type,
+            &vlan_tag,
+            &vlan_tag_valid,
+            &header_size) != NX_SUCCESS) error_handler();
 
     /* Packet has already been filtered */
     if (packet_ptr == ptp_tx_packet) {
@@ -238,40 +235,29 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
     }
 
     /* Packet is PTP */
-    else if (ether_type == NX_LINK_ETHERNET_PTP) {
+    else if (ether_type == NX_LINK_ETHERNET_PTP &&
+             ((vlan_tag_valid != NX_TRUE) || ((vlan_tag & NX_LINK_VLAN_ID_MASK) == PTP_VLAN))) {
+
+        /* Queue the packet to be sent */
         filter_packet = true;
-    }
 
-    /* Packet is VLAN tagged, could still be PTP */
-    else if (ether_type == NX_LINK_ETHERNET_TPID) {
-        ether_type = (uint16_t) ((frame[ETHERNET_PACKET_TYPE_OFFSET_VLAN] << 8) |
-                                 frame[ETHERNET_PACKET_TYPE_OFFSET_VLAN + 1]);
-        if (ether_type == NX_LINK_ETHERNET_PTP) {
-            filter_packet      = true;
-            ptp_payload_offset = ETHERNET_PACKET_PAYLOAD_OFFSET_VLAN;
-        }
-    }
-
-    /* Queue the packet to be sent */
-    if (filter_packet) {
-
-        uint8_t     port_idx;
-        phy_index_t port_number;
-        ptp_event_t event;
+        uint8_t          port_idx;
+        phy_index_t      port_number;
+        ptp_event_info_t event_info;
 
         /* Extract the port */
-        port_idx    = ptp_payload_offset + PTP_HEADER_PORT_OFFSET;               /* Index into the packet */
+        port_idx    = header_size + PTP_HEADER_PORT_OFFSET;                      /* Index into the packet */
         port_number = (uint16_t) ((frame[port_idx] << 8) | frame[port_idx + 1]); /* Extract the 1-indexed port number */
         port_number--;
         assert((port_number >= 0) && (port_number < NUM_PHYS));
 
         /* Fill the event struct */
-        event.event      = PTP_TX_EVENT_SEND_PACKET;
-        event.event_data = packet_ptr;
-        event.port       = port_number;
+        event_info.event = PTP_TX_EVENT_SEND_PACKET;
+        event_info.data  = packet_ptr;
+        event_info.port  = port_number;
 
         /* Queue the event */
-        if (tx_queue_send(&ptp_tx_queue_handle, &event, TX_NO_WAIT) != TX_SUCCESS) {
+        if (tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) {
 #if DEBUG
             error_handler();
 #endif

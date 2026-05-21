@@ -72,8 +72,8 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     uint32_t next_print_time = current_time;
     uint32_t wait_ticks;
 
-    bool        queue_empty;
-    ptp_event_t event;
+    bool             queue_empty;
+    ptp_event_info_t event_info;
 
     NX_PTP_CLIENT *connected_to_master = NULL;
     uint8_t        port_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE]; /* 64-bit EUI + port */
@@ -81,6 +81,8 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     NX_PTP_CLIENT_MASTER *master;
     phy_index_t           master_port;
     uint8_t               grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
+
+    static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
 
     /* Create the PTP client */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {
@@ -147,14 +149,14 @@ void ptp_event_thread_entry(uint32_t initial_input) {
             }
 
             /* Receive event */
-            tx_status = tx_queue_receive(&ptp_event_queue_handle, &event, wait_ticks);
+            tx_status = tx_queue_receive(&ptp_event_queue_handle, &event_info, wait_ticks);
             if (tx_status == NX_SUCCESS) {
 
-                switch (event.event) {
+                switch (event_info.event) {
 
-                    case NX_PTP_CLIENT_EVENT_MASTER: {
+                    case PTP_CLIENT_EVENT_MASTER: {
 
-                        master = (NX_PTP_CLIENT_MASTER *) event.event_data;
+                        master = (NX_PTP_CLIENT_MASTER *) event_info.data;
                         if (master == NULL) error_handler();
 
                         /* If the new master is worse (+ve) or the same (0) as the current one then skip.
@@ -164,7 +166,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             nx_ptp_client_master_clock_compare(&connected_to_master->ptp_master, master) >= 0) break;
 
                         /* Save the new master */
-                        connected_to_master = &ptp_client[event.port];
+                        connected_to_master = &ptp_client[event_info.port];
                         ptp_event_counters.new_master++;
                         memcpy(grandmaster_identity, master->nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
 
@@ -175,7 +177,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
 
                             /* Skip the newly connected to master port */
-                            if (i == event.port) continue;
+                            if (i == event_info.port) continue;
 
                             /* Stop the client */
                             nx_status = nx_ptp_client_stop(&ptp_client[i]);
@@ -210,20 +212,20 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             if (nx_status != NX_SUCCESS) error_handler();
                         }
 
-                        LOG_INFO("PTP: New master clock on port %d", event.port);
+                        LOG_INFO("PTP: New master clock on port %d", event_info.port);
                         break;
                     }
 
-                    case NX_PTP_CLIENT_EVENT_SYNC: {
+                    case PTP_CLIENT_EVENT_SYNC: {
                         ptp_event_counters.sync++;
-                        nx_ptp_client_sync_info_get((NX_PTP_CLIENT_SYNC *) event.event_data, NX_NULL, &ptp_utc_offset);
+                        nx_ptp_client_sync_info_get((NX_PTP_CLIENT_SYNC *) event_info.data, NX_NULL, &ptp_utc_offset);
                         LOG_INFO("PTP: SYNC event, utc offset=%d", ptp_utc_offset);
                         break;
                     }
 
-                    case NX_PTP_CLIENT_EVENT_TIMEOUT: {
+                    case PTP_CLIENT_EVENT_TIMEOUT: {
 
-                        if (&ptp_client[event.port] != connected_to_master) break;
+                        if (&ptp_client[event_info.port] != connected_to_master) break;
 
                         /* The actual master has timed out */
                         connected_to_master = NULL;
@@ -235,7 +237,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
 
                             /* Skip the timed out port */
-                            if (i == event.port) continue;
+                            if (i == event_info.port) continue;
 
                             /* First valid port, set as best candidate */
                             if (master == NULL) {
@@ -251,10 +253,10 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         }
 
                         /* Push the elected master as an event so it can be propagated to other ports */
-                        event.event      = NX_PTP_CLIENT_EVENT_MASTER;
-                        event.event_data = (void *) master;
-                        event.port       = master_port;
-                        tx_status        = tx_queue_send(&ptp_event_queue_handle, &event, TX_NO_WAIT);
+                        event_info.event = NX_PTP_CLIENT_EVENT_MASTER;
+                        event_info.data  = (void *) master;
+                        event_info.port  = master_port;
+                        tx_status        = tx_queue_send(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
                         if (tx_status != TX_SUCCESS) error_handler();
 
                         LOG_INFO("PTP: Master clock TIMEOUT");

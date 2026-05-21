@@ -71,48 +71,38 @@ extern uint32_t __TRACE_SIZE__;
 /* ---------------------------------------------------------------------------- */
 
 // TODO: pass in from cmake
-#define MAC_ADDR_OCTET1                     (0x02)
-#define MAC_ADDR_OCTET2                     (0x00)
-#define MAC_ADDR_OCTET3                     (0x00)
-#define MAC_ADDR_OCTET4                     (0xd3)
-#define MAC_ADDR_OCTET5                     (0x6a)
-#define MAC_ADDR_OCTET6                     (0x48)
+#define MAC_ADDR_SIZE                    (6)
+#define MAC_ADDR_OCTET1                  (0x02)
+#define MAC_ADDR_OCTET2                  (0x00)
+#define MAC_ADDR_OCTET3                  (0x00)
+#define MAC_ADDR_OCTET4                  (0xd3)
+#define MAC_ADDR_OCTET5                  (0x6a)
+#define MAC_ADDR_OCTET6                  (0x48)
 
-#define MAC_ADDR_SIZE                       (6)
-#define ETHER_TYPE_SIZE                     (2)
-#define VLAN_TAG_SIZE                       (4)
-#define ETHERNET_PACKET_TYPE_OFFSET         (2 * MAC_ADDR_SIZE)
-#define ETHERNET_PACKET_TYPE_OFFSET_VLAN    ((2 * MAC_ADDR_SIZE) + VLAN_TAG_SIZE)
-#define ETHERNET_PACKET_PAYLOAD_OFFSET      (ETHERNET_PACKET_TYPE_OFFSET + ETHER_TYPE_SIZE)
-#define ETHERNET_PACKET_PAYLOAD_OFFSET_VLAN (ETHERNET_PACKET_TYPE_OFFSET_VLAN + ETHER_TYPE_SIZE)
-#define ETHERNET_HEADER_SIZE                ((2 * MAC_ADDR_SIZE) + ETHER_TYPE_SIZE)
-#define ETHERNET_HEADER_SIZE_VLAN           (ETHERNET_HEADER_SIZE + VLAN_TAG_SIZE)
+#define SMALL_PACKET_SIZE                (128)
+#define BIG_PACKET_SIZE                  (1536) /* Ethernet payload size field (0x600) */
 
+#define NUM_SMALL_PACKETS                (120)
+#define NUM_BIG_PACKETS                  (20)
 
-#define SMALL_PACKET_SIZE                   (128)
-#define BIG_PACKET_SIZE                     (1536) /* Ethernet payload size field (0x600) */
+#define NX_APP_SMALL_PACKET_POOL_SIZE    ((SMALL_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_SMALL_PACKETS)
+#define NX_APP_BIG_PACKET_POOL_SIZE      ((BIG_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_BIG_PACKETS)
 
-#define NUM_SMALL_PACKETS                   (120)
-#define NUM_BIG_PACKETS                     (20)
+#define NX_APP_DEFAULT_TIMEOUT           (1000) /* Generic timeout for nx events (e.g. TCP send) in ms */
 
-#define NX_APP_SMALL_PACKET_POOL_SIZE       ((SMALL_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_SMALL_PACKETS)
-#define NX_APP_BIG_PACKET_POOL_SIZE         ((BIG_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_BIG_PACKETS)
+#define NX_DEFAULT_IP_ADDRESS            (0)    /* TODO: Set this */
+#define NX_DEFAULT_NET_MASK              (0)    /* TODO: Set this */
+#define NX_INTERNAL_IP_THREAD_STACK_SIZE (2 * 1024)
+#define NX_INTERNAL_IP_THREAD_PRIORITY   (NX_APP_THREAD_PRIORITY)
 
-#define NX_APP_DEFAULT_TIMEOUT              (1000) /* Generic timeout for nx events (e.g. TCP send) in ms */
+#define DEFAULT_ARP_CACHE_SIZE           (1024)
 
-#define NX_DEFAULT_IP_ADDRESS               (0)    /* TODO: Set this */
-#define NX_DEFAULT_NET_MASK                 (0)    /* TODO: Set this */
-#define NX_INTERNAL_IP_THREAD_STACK_SIZE    (2 * 1024)
-#define NX_INTERNAL_IP_THREAD_PRIORITY      (NX_APP_THREAD_PRIORITY)
+#define NX_APP_THREAD_STACK_SIZE         (2 * 1024)
+#define NX_APP_THREAD_PRIORITY           (10)
 
-#define DEFAULT_ARP_CACHE_SIZE              (1024)
+#define NUM_VLANS                        (8) /* Currently only used for STP (unused due to RSTP not MSTP) */
 
-#define NX_APP_THREAD_STACK_SIZE            (2 * 1024)
-#define NX_APP_THREAD_PRIORITY              (10)
-
-#define NUM_VLANS                           (8) /* Currently only used for STP (unused due to RSTP not MSTP) */
-
-#define PRIMARY_INTERFACE                   (0) /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
+#define PRIMARY_INTERFACE                (0) /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
 
 #if HW_VERSION == 4
 #define PORT0_SPEED_MBPS (1000) /* 88Q2112 #1 (100 or 1000 Mbps) */
@@ -162,10 +152,15 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_TX_THREAD_PRIORITY                  (4)
 #define PTP_TX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
 
+#define PTP_RX_THREAD_STACK_SIZE                (1024)
+#define PTP_RX_THREAD_PRIORITY                  (4)
+#define PTP_RX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
+
 #define PTP_PRINT_TIME_INTERVAL                 (10000)         /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
 #define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)           /* The subpriority of this device for BMCA. Default for an end instance is 248 */
 #define PTP_DOMAIN                              (0)
+#define PTP_VLAN                                (0)
 
 #define PTP_CLK_FREQ                            (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
 
@@ -174,8 +169,10 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_HEADER_PORT_OFFSET                  (28)
 
 /* Management route variables */
-#define PTP_TX_PERMISSION_TIMEOUT (500) /* The maximum number of ms to wait to send a packet */
-#define PTP_TX_TSREG              (0)
+#define PTP_TX_TIMEOUT (500) /* The maximum number of ms to wait to send a packet */
+#define PTP_TX_TSREG   (0)
+
+#define PTP_RX_TIMEOUT (100) /* How long to wait for a meta frame */
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */
