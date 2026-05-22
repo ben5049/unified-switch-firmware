@@ -20,6 +20,8 @@ extern "C" {
 tx_status_t ptp_start(void);
 tx_status_t ptp_stop(void);
 
+void ptp_flush_packet_queue(TX_QUEUE *queue_ptr);
+
 
 #ifdef __cplusplus
 }

@@ -127,14 +127,11 @@ tx_status_t ptp_start() {
     ptp_set_ingress_correction();
     ptp_set_egress_correction();
 
-    /* Flush the queues */
-    status = tx_queue_flush(&ptp_tx_queue_handle);
-    if (status != TX_SUCCESS) return status;
+    /* Flush the queues. Queues containing packets must have all their packets released */
+    ptp_flush_packet_queue(&ptp_tx_queue_handle);
+    ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
+    ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
     status = tx_queue_flush(&ptp_event_queue_handle);
-    if (status != TX_SUCCESS) return status;
-    status = tx_queue_flush(&ptp_rx_packet_queue_handle);
-    if (status != TX_SUCCESS) return status;
-    status = tx_queue_flush(&ptp_rx_meta_queue_handle);
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
@@ -160,4 +157,29 @@ tx_status_t ptp_start() {
 tx_status_t ptp_stop() {
     // TODO: stop threads, clear queues etc
     return -1;
+}
+
+
+/* Drain all items from a PTP queue and release any packets */
+void ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
+
+    ptp_event_info_t event_info;
+    NX_PACKET       *packet;
+
+    /* Loop until tx_queue_receive returns TX_QUEUE_EMPTY (or another error) */
+    while (tx_queue_receive(queue_ptr, &event_info, TX_NO_WAIT) == TX_SUCCESS) {
+
+        /* Ensure the data pointer actually contains a packet before releasing */
+        switch (event_info.event) {
+
+            case PTP_TX_EVENT_SEND_PACKET:
+            case PTP_RX_EVENT_RECEIVE_PACKET:
+                packet = (NX_PACKET *) event_info.data;
+                if (nx_packet_release(packet) != NX_SUCCESS) error_handler();
+                break;
+
+            default:
+                break;
+        }
+    }
 }

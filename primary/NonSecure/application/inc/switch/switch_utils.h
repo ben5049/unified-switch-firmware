@@ -173,7 +173,7 @@ sja1105_status_t switch_create_mgmt_route(phy_index_t port, const uint8_t *dst_a
 sja1105_status_t switch_free_mgmt_route(uint8_t depth);
 void             switch_format_timestamp(uint64_t timestamp_raw, NX_PTP_TIME *timestamp);
 sja1105_status_t switch_get_egress_timestamp(phy_index_t port, uint8_t tsreg, NX_PTP_TIME *timestamp);
-sja1105_status_t switch_parse_meta_frame(NX_PACKET *packet, phy_index_t *port, NX_PTP_TIME *timestamp);
+sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, phy_index_t *port, NX_PTP_TIME *timestamp);
 
 
 #ifdef __cplusplus

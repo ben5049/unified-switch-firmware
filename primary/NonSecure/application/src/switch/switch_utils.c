@@ -105,39 +105,25 @@ sja1105_status_t switch_get_egress_timestamp(phy_index_t port, uint8_t tsreg, NX
 }
 
 
-sja1105_status_t switch_parse_meta_frame(NX_PACKET *packet, phy_index_t *port, NX_PTP_TIME *timestamp) {
+sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, phy_index_t *port, NX_PTP_TIME *timestamp) {
 
     sja1105_status_t status = SJA1105_OK;
 
-    USHORT vlan_tag;
-    UCHAR  vlan_tag_valid;
-    UINT   header_size;
+    UINT header_size;
 
     uint8_t  switch_id;
     uint8_t  src_port;
     uint64_t timestamp_raw;
 
     /* Get info from the header */
-    if (nx_link_ethernet_header_parse(packet, NULL, NULL, NULL, NULL, NULL, &vlan_tag, &vlan_tag_valid, &header_size) != NX_SUCCESS) {
+    if (nx_link_ethernet_header_parse(packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size) != NX_SUCCESS) {
         status = SJA1105_ERROR;
-        return status;
-    }
-
-    /* Check VLAN */
-    if ((vlan_tag_valid == NX_TRUE) && ((vlan_tag & NX_LINK_VLAN_ID_MASK) != PTP_VLAN)) {
-        status = SJA1105_ERROR;
-        return status;
+        goto end;
     }
 
     /* Parse META frame and get raw timestamp */
     status = SJA1105_GetIngressTimestamp(&switch_handles[0], packet->nx_packet_prepend_ptr + header_size, &switch_id, &src_port, &timestamp_raw);
-    if (status != SJA1105_OK) return status;
-
-    /* Release the META frame packet */
-    if (nx_packet_release(packet) != NX_SUCCESS) {
-        status = SJA1105_ERROR;
-        return status;
-    }
+    if (status != SJA1105_OK) goto end;
 
     /* Turn the 8ns timestamp to seconds and nanoseconds */
     if (timestamp != NULL) switch_format_timestamp(timestamp_raw, timestamp);
@@ -145,5 +131,9 @@ sja1105_status_t switch_parse_meta_frame(NX_PACKET *packet, phy_index_t *port, N
     /* Get the port */
     if (port != NULL) *port = switch_id_port_to_phy(switch_id, src_port);
 
+end:
+
+    /* Release the META frame packet and return */
+    if (nx_packet_release(packet) != NX_SUCCESS) status = SJA1105_ERROR;
     return status;
 }

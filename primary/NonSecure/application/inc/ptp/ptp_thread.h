@@ -68,6 +68,10 @@ typedef struct {
     atomic_uint_fast32_t tx_timestamps_received[NUM_PHYS];
     atomic_uint_fast32_t tx_timestamps_missed[NUM_PHYS];
 
+    /* RX */
+    atomic_uint_fast32_t rx_no_meta;
+    atomic_uint_fast32_t rx_client_not_found[NUM_PHYS];
+
     /* Events */
     atomic_uint_fast32_t sync;
     atomic_uint_fast32_t new_master;
@@ -112,6 +116,9 @@ void ptp_rx_thread_entry(uint32_t initial_input);
 
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
 uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
+
+void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
+void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);
 UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data);
