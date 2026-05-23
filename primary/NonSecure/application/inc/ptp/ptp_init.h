@@ -17,6 +17,9 @@ extern "C" {
 #include "nx_app.h"
 
 
+extern const uint8_t ptp_dst_addr[MAC_ADDR_SIZE];
+
+
 tx_status_t ptp_start(void);
 tx_status_t ptp_stop(void);
 

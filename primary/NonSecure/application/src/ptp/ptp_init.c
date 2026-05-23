@@ -33,6 +33,16 @@
 #define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
 
 
+const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
+    (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8),  /* Index 0: 0x01 */
+    (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 1: 0x80 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 2: 0xC2 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 16), /* Index 3: 0x00 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 4: 0x00 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB)        /* Index 5: 0x0E */
+};
+
+
 static tx_status_t ptp_configure() {
 
     tx_status_t status = TX_SUCCESS;
@@ -118,6 +128,17 @@ tx_status_t ptp_start() {
 
     tx_status_t status = TX_SUCCESS;
     uint32_t    flags;
+    bool        trapped;
+    bool        send_meta;
+    bool        incl_srcpt;
+
+    /* Check all switches trap PTP frames */
+    for (uint_fast8_t i = 0; i < NUM_SWITCHES; i++) {
+        if (SJA1105_MACAddrTrapTest(&switch_handles[i], ptp_dst_addr, &trapped, &send_meta, &incl_srcpt) != SJA1105_OK) error_handler();
+        assert(trapped);
+        assert(send_meta);
+        assert(incl_srcpt);
+    }
 
     /* Configure the MAC PTP control registers */
     status = ptp_configure();

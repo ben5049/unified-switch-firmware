@@ -70,6 +70,9 @@ typedef struct {
 
     /* RX */
     atomic_uint_fast32_t rx_no_meta;
+    atomic_uint_fast32_t rx_invalid_vlan;
+    atomic_uint_fast32_t rx_meta_dropped;
+    atomic_uint_fast32_t rx_packets_dropped;
     atomic_uint_fast32_t rx_client_not_found[NUM_PHYS];
 
     /* Events */
@@ -77,6 +80,7 @@ typedef struct {
     atomic_uint_fast32_t new_master;
     atomic_uint_fast32_t master_timeout;
 
+    // TODO: Use?
     // atomic_uint_fast32_t clock_set;
     // atomic_uint_fast32_t timestamps_extracted;
     // atomic_uint_fast32_t clock_get;
@@ -116,6 +120,7 @@ void ptp_rx_thread_entry(uint32_t initial_input);
 
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
 uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
+uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr);
 
 void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
 void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);

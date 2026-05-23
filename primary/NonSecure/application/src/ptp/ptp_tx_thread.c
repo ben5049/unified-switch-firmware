@@ -14,6 +14,7 @@
 #include "nx_app.h"
 #include "utils.h"
 #include "ptp_thread.h"
+#include "ptp_init.h"
 #include "switch_utils.h"
 
 
@@ -25,14 +26,6 @@ uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 
-static const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8),  /* Index 0: 0x01 */
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 1: 0x80 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 2: 0xC2 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 16), /* Index 3: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 4: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB)        /* Index 5: 0x0E */
-};
 
 static volatile NX_PACKET  *ptp_tx_packet = NULL;  /* Packet pointer of management frame */
 static volatile phy_index_t ptp_tx_port;           /* Port the management frame will be sent through */
@@ -209,8 +202,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
  * and shouldn't be sent. */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 
-    bool     filter_packet = false;
-    uint8_t *frame         = packet_ptr->nx_packet_prepend_ptr;
+    bool filter_packet = false;
 
     USHORT ether_type;
     USHORT vlan_tag;
@@ -246,8 +238,9 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         ptp_event_info_t event_info;
 
         /* Extract the port */
-        port_idx    = header_size + PTP_HEADER_PORT_OFFSET;                      /* Index into the packet */
-        port_number = (uint16_t) ((frame[port_idx] << 8) | frame[port_idx + 1]); /* Extract the 1-indexed port number */
+        port_idx    = header_size + PTP_HEADER_PORT_OFFSET;                         /* Index into the packet */
+        port_number = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[port_idx] << 8) |
+                                  packet_ptr->nx_packet_prepend_ptr[port_idx + 1]); /* Extract the 1-indexed port number */
         port_number--;
         assert((port_number >= 0) && (port_number < NUM_PHYS));
 

@@ -38,6 +38,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
     NX_PTP_TIME timestamp;
     phy_index_t port;
 
+    bool                   client_found = false;
     NX_LINK_RECEIVE_QUEUE *nx_receive_queue_ptr;
     UINT                   header_size;
 
@@ -88,6 +89,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                     ptp_packet_insert_timestamp(ptp_packet, &timestamp);
 
                     /* Iterate through the receive callbacks to find the one for this port */
+                    client_found         = false;
                     nx_receive_queue_ptr = nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head;
                     while (nx_receive_queue_ptr) {
 
@@ -112,19 +114,23 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                             if (nx_status != NX_SUCCESS) error_handler();
 
                             /* Packet was consumed */
+                            client_found = true;
                             break;
                         }
 
-                        /* Move to the next queue.  */
+                        /* Move to the next queue */
                         nx_receive_queue_ptr = nx_receive_queue_ptr->next_ptr;
                         if (nx_receive_queue_ptr == nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head) {
-
-                            /* We have reached the end of the queue and found no callback */
-                            nx_packet_release(ptp_packet);
-                            ptp_event_counters.rx_client_not_found[port]++;
-                            LOG_WARNING("PTP RX Couldn't route packet to client");
                             break;
                         }
+                    }
+
+                    /* Reached the end of the queue and found no callback */
+                    if (!client_found) {
+                        nx_status = nx_packet_release(ptp_packet);
+                        if (nx_status != NX_SUCCESS) error_handler();
+                        ptp_event_counters.rx_client_not_found[port]++;
+                        LOG_WARNING("PTP RX Couldn't route packet to client");
                     }
 
                     break;
@@ -155,6 +161,99 @@ void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
 }
 
 
-// TODO: Rx filter function.
-//       should filter all PTP packets
-//       should check VLANs (PTP_VLAN = put in queue, otherwise release packet)
+/* Send packets straight to the application if required. Returns true if packet has been dealt with and the caller should ignore */
+uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr) {
+
+    tx_status_t tx_status = TX_SUCCESS;
+    nx_status_t nx_status = NX_SUCCESS;
+
+    bool filter_packet = false;
+
+    ptp_event_info_t event_info;
+
+    ULONG  dst_msw, dst_lsw;
+    USHORT ether_type;
+    USHORT vlan_tag;
+    UCHAR  vlan_tag_valid;
+    UINT   header_size;
+
+    /* Get info from the header */
+    nx_status = nx_link_ethernet_header_parse(
+        packet_ptr,
+        &dst_msw,
+        &dst_lsw,
+        NULL,
+        NULL,
+        &ether_type,
+        &vlan_tag,
+        &vlan_tag_valid,
+        &header_size);
+
+    /* Ignore garbage packet */
+    if (nx_status != NX_SUCCESS) {
+        nx_status = nx_packet_release(packet_ptr);
+        if (nx_status != NX_SUCCESS) error_handler();
+        goto end;
+    }
+
+    /* META Frame */
+    // TODO: check dst address
+    if (false) {
+
+        // TODO: Check if META frames are VLAN tagged
+
+        /* Queue the packet to be sent */
+        event_info.event = PTP_RX_EVENT_RECEIVE_PACKET;
+        event_info.data  = packet_ptr;
+        tx_status        = tx_queue_send(&ptp_rx_meta_queue_handle, &event_info, TX_NO_WAIT);
+        if (tx_status != TX_SUCCESS) {
+#if DEBUG
+            error_handler();
+#endif
+
+            /* Queue is full, release the packet instead */
+            ptp_event_counters.rx_meta_dropped++;
+            LOG_ERROR("PTP RX Dropped meta frame");
+            nx_status = nx_packet_release(packet_ptr);
+            if (nx_status != NX_SUCCESS) error_handler();
+        }
+    }
+
+    /* PTP packet */
+    if (ether_type == NX_LINK_ETHERNET_PTP) {
+
+        /* Filter out all PTP packets, regardless of VLAN */
+        filter_packet = true;
+
+        /* Only pass packets with the correct VLAN to the rx thread */
+        if ((vlan_tag_valid != NX_TRUE) || ((vlan_tag & NX_LINK_VLAN_ID_MASK) == PTP_VLAN)) {
+
+            /* Queue the packet to be sent */
+            event_info.event = PTP_RX_EVENT_RECEIVE_PACKET;
+            event_info.data  = packet_ptr;
+            tx_status        = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
+            if (tx_status != TX_SUCCESS) {
+#if DEBUG
+                error_handler();
+#endif
+
+                /* Queue is full, release the packet instead */
+                ptp_event_counters.rx_packets_dropped++;
+                LOG_ERROR("PTP RX Dropped PTP packet");
+                nx_status = nx_packet_release(packet_ptr);
+                if (nx_status != NX_SUCCESS) error_handler();
+            }
+        }
+
+        /* Invalid VLAN */
+        else {
+            ptp_event_counters.rx_invalid_vlan++;
+            nx_status = nx_packet_release(packet_ptr);
+            if (nx_status != NX_SUCCESS) error_handler();
+        }
+    }
+
+end:
+
+    return filter_packet;
+}
