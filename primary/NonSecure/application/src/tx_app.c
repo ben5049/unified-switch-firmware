@@ -60,6 +60,8 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
     status = tx_queue_create(&ptp_rx_meta_queue_handle,   "ptp_rx_meta_queue",   PTP_MSG_SIZE_WORDS, ptp_rx_meta_queue_stack,   sizeof(ptp_rx_meta_queue_stack));
     if (status != TX_SUCCESS) error_handler();
+    status = tx_queue_create(&ptp_clock_queue_handle,     "ptp_clock_queue",     PTP_MSG_SIZE_WORDS, ptp_clock_queue_stack,     sizeof(ptp_clock_queue_stack));
+    if (status != TX_SUCCESS) error_handler();
 #endif
 
     /* Create threads */
@@ -85,6 +87,8 @@ void tx_setup(void *memory_ptr) {
     status = tx_thread_create(&ptp_tx_thread_handle,        "ptp_tx_thread",        (void (*)(ULONG)) ptp_tx_thread_entry,        thread_number++, ptp_tx_thread_stack,        PTP_TX_THREAD_STACK_SIZE,        PTP_TX_THREAD_PRIORITY,        PTP_TX_THREAD_PRIORITY,           TX_NO_TIME_SLICE, TX_DONT_START);
     if (status != TX_SUCCESS) error_handler();
     status = tx_thread_create(&ptp_rx_thread_handle,        "ptp_rx_thread",        (void (*)(ULONG)) ptp_rx_thread_entry,        thread_number++, ptp_rx_thread_stack,        PTP_RX_THREAD_STACK_SIZE,        PTP_RX_THREAD_PRIORITY,        PTP_RX_THREAD_PRIORITY,           TX_NO_TIME_SLICE, TX_DONT_START);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_create(&ptp_clock_thread_handle,     "ptp_clock_thread",     (void (*)(ULONG)) ptp_clock_thread_entry,     thread_number++, ptp_clock_thread_stack,     PTP_CLOCK_THREAD_STACK_SIZE,     PTP_CLOCK_THREAD_PRIORITY,     PTP_CLOCK_THREAD_PRIORITY,        TX_NO_TIME_SLICE, TX_DONT_START);
     if (status != TX_SUCCESS) error_handler();
 #endif
     status = tx_thread_create(&background_thread_handle,    "background_thread",    (void (*)(ULONG)) background_thread_entry,    thread_number++, background_thread_stack,    BACKGROUND_THREAD_STACK_SIZE,    BACKGROUND_THREAD_PRIORITY,    BACKGROUND_THREAD_PRIORITY,       TX_NO_TIME_SLICE, TX_AUTO_START);
@@ -114,6 +118,8 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
     status = tx_thread_secure_stack_allocate(&ptp_rx_thread_handle,        MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     if (status != TX_SUCCESS) error_handler();
+    status = tx_thread_secure_stack_allocate(&ptp_clock_thread_handle,     MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    if (status != TX_SUCCESS) error_handler();
 #endif
     status = tx_thread_secure_stack_allocate(&background_thread_handle,    MIN(BACKGROUND_THREAD_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM)); /* More stack required for secure background tasks */
     if (status != TX_SUCCESS) error_handler();
@@ -128,6 +134,7 @@ void tx_setup(void *memory_ptr) {
     ptp_event_thread_handle.logger     = &hlog_network;
     ptp_tx_thread_handle.logger        = &hlog_network;
     ptp_rx_thread_handle.logger        = &hlog_network;
+    ptp_clock_thread_handle.logger     = &hlog_network;
     background_thread_handle.logger    = &hlog_generic;
 
     /* Enable tracex */

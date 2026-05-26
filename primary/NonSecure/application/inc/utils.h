@@ -37,6 +37,13 @@ extern "C" {
 #define MAX3(a, b, c)             (MAX(MAX((a), (b)), (c)))
 #define CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
+#define MAC_ADDR_MSW(o1, o2)      (((uint32_t) (o1) << 8) | \
+                              ((uint32_t) (o2)))
+
+#define MAC_ADDR_LSW(o3, o4, o5, o6) (((uint32_t) (o3) << 24) | \
+                                      ((uint32_t) (o4) << 16) | \
+                                      ((uint32_t) (o5) << 8) |  \
+                                      ((uint32_t) (o6)))
 
 #define LOG_INFO(format, ...)                                         \
     ({                                                                \

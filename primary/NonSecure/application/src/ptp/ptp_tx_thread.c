@@ -27,16 +27,16 @@ uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 
 
-static volatile NX_PACKET  *ptp_tx_packet = NULL;  /* Packet pointer of management frame */
-static volatile phy_index_t ptp_tx_port;           /* Port the management frame will be sent through */
-static volatile uint8_t     ptp_ptp_tx_send_count; /* How many switches the management frame is required to pass through */
-static volatile uint8_t     tx_send_count;         /* How many switches the management frame has passed through */
+static volatile NX_PACKET   *ptp_tx_packet = NULL;  /* Packet pointer of management frame */
+static volatile port_index_t ptp_tx_port;           /* Port the management frame will be sent through */
+static volatile uint8_t      ptp_ptp_tx_send_count; /* How many switches the management frame is required to pass through */
+static volatile uint8_t      tx_send_count;         /* How many switches the management frame has passed through */
 
 
 static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_mgmt_free_t reason, void *context) {
 
     sja1105_status_t status = SJA1105_OK;
-    uint8_t          port   = (phy_index_t) context;
+    port_index_t     port   = (port_index_t) context;
 
     /* An error has occured */
     if (reason != SJA1105_MGMT_FREE_USED) {
@@ -68,8 +68,23 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 ptp_event_counters.tx_timestamps_received[port]++;
             }
 
+            /* Send the transmit timestamp to the clock sync thread */
+            if (port == PORT_HOST) {
+                ptp_event_info_t event_info;
+                event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
+                event_info.time  = timestamp;
+                event_info.port  = PORT_HOST;
+                if (tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) error_handler();
+            }
+
             /* Call PTP client notification callback */
-            nx_ptp_client_packet_timestamp_notify(&ptp_client[port], packet_ptr, &timestamp);
+            else if (port < NUM_PHYS) {
+                nx_ptp_client_packet_timestamp_notify(&ptp_client[port], packet_ptr, &timestamp);
+            }
+
+            else {
+                error_handler();
+            }
         }
 
         /* Increment the sent counter */
@@ -126,7 +141,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                 case PTP_TX_EVENT_SEND_PACKET: {
 
                     /* Save packet info */
-                    ptp_tx_packet = (NX_PACKET *) event_info.data;
+                    ptp_tx_packet = event_info.packet_ptr;
                     ptp_tx_port   = event_info.port;
                     tx_send_count = 0;
 
@@ -178,7 +193,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                     if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
 
                     /* Release the packet */
-                    nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.data, NULL);
+                    nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr, NULL);
                     ptp_tx_packet = NULL;
 
                     break;
@@ -234,7 +249,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         filter_packet = true;
 
         uint8_t          port_idx;
-        phy_index_t      port_number;
+        port_index_t     port_number;
         ptp_event_info_t event_info;
 
         /* Extract the port */
@@ -242,12 +257,12 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         port_number = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[port_idx] << 8) |
                                   packet_ptr->nx_packet_prepend_ptr[port_idx + 1]); /* Extract the 1-indexed port number */
         port_number--;
-        assert((port_number >= 0) && (port_number < NUM_PHYS));
+        assert((port_number >= 0) && (port_number < NUM_PHYS));                     // TODO: NUM_PORTS
 
         /* Fill the event struct */
-        event_info.event = PTP_TX_EVENT_SEND_PACKET;
-        event_info.data  = packet_ptr;
-        event_info.port  = port_number;
+        event_info.event      = PTP_TX_EVENT_SEND_PACKET;
+        event_info.packet_ptr = packet_ptr;
+        event_info.port       = port_number;
 
         /* Queue the event */
         if (tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) {

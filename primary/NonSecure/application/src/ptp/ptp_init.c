@@ -34,13 +34,16 @@
 
 
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8),  /* Index 0: 0x01 */
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 1: 0x80 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 2: 0xC2 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 16), /* Index 3: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 4: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB)        /* Index 5: 0x0E */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB),       /* Index 0: 0x0E */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 1: 0x00 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 16), /* Index 2: 0x00 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 3: 0xC2 */
+    (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 4: 0x80 */
+    (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8)   /* Index 5: 0x01 */
 };
+
+volatile uint32_t srcmeta_msw;
+volatile uint32_t srcmeta_lsw;
 
 
 static tx_status_t ptp_configure() {
@@ -131,13 +134,24 @@ tx_status_t ptp_start() {
     bool        trapped;
     bool        send_meta;
     bool        incl_srcpt;
+    uint32_t    msw, lsw;
 
     /* Check all switches trap PTP frames */
     for (uint_fast8_t i = 0; i < NUM_SWITCHES; i++) {
-        if (SJA1105_MACAddrTrapTest(&switch_handles[i], ptp_dst_addr, &trapped, &send_meta, &incl_srcpt) != SJA1105_OK) error_handler();
+        if (SJA1105_MACAddrTrapTest(&switch_handles[i], ptp_dst_addr, &trapped, &send_meta, &incl_srcpt) != SJA1105_OK) return TX_ERROR;
         assert(trapped);
         assert(send_meta);
         assert(incl_srcpt);
+
+        /* Cache the MAC address used as a source by META frames */
+        if (SJA1105_GetSRCMETA(&switch_handles[0], &msw, &lsw) != SJA1105_OK) return TX_ERROR;
+        if (i == 0) {
+            srcmeta_msw = msw;
+            srcmeta_lsw = lsw;
+        } else {
+            assert(msw == srcmeta_msw);
+            assert(lsw == srcmeta_lsw);
+        }
     }
 
     /* Configure the MAC PTP control registers */
@@ -149,15 +163,20 @@ tx_status_t ptp_start() {
     ptp_set_egress_correction();
 
     /* Flush the queues. Queues containing packets must have all their packets released */
-    ptp_flush_packet_queue(&ptp_tx_queue_handle);
-    ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
-    ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+    status = ptp_flush_packet_queue(&ptp_tx_queue_handle);
+    if (status != TX_SUCCESS) return status;
+    status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
+    if (status != TX_SUCCESS) return status;
+    status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+    if (status != TX_SUCCESS) return status;
     status = tx_queue_flush(&ptp_event_queue_handle);
+    if (status != TX_SUCCESS) return status;
+    status = tx_queue_flush(&ptp_clock_queue_handle);
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
     status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
-    if (status != TX_SUCCESS) return status;
+    if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 
     /* Start the TX thread before the PTP clients to avoid queues building up */
     status = tx_thread_resume(&ptp_tx_thread_handle);
@@ -171,36 +190,63 @@ tx_status_t ptp_start() {
     status = tx_thread_resume(&ptp_rx_thread_handle);
     if (status != TX_SUCCESS) return status;
 
+    /* Start the clock sync thread last since it relies on both TX and RX threads */
+    status = tx_thread_resume(&ptp_clock_thread_handle);
+    if (status != TX_SUCCESS) return status;
+
     return status;
 }
 
 
 tx_status_t ptp_stop() {
-    // TODO: stop threads, clear queues etc
+    // TODO: stop threads
     return -1;
 }
 
 
 /* Drain all items from a PTP queue and release any packets */
-void ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
+tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
 
+    tx_status_t      status = TX_SUCCESS;
     ptp_event_info_t event_info;
     NX_PACKET       *packet;
 
-    /* Loop until tx_queue_receive returns TX_QUEUE_EMPTY (or another error) */
-    while (tx_queue_receive(queue_ptr, &event_info, TX_NO_WAIT) == TX_SUCCESS) {
+    /* Loop until all packets released or error occured */
+    do {
+
+        /* Get an event */
+        status = tx_queue_receive(queue_ptr, &event_info, TX_NO_WAIT);
 
         /* Ensure the data pointer actually contains a packet before releasing */
-        switch (event_info.event) {
+        if (status == TX_SUCCESS) {
+            switch (event_info.event) {
 
-            case PTP_TX_EVENT_SEND_PACKET:
-            case PTP_RX_EVENT_RECEIVE_PACKET:
-                packet = (NX_PACKET *) event_info.data;
-                if (nx_packet_release(packet) != NX_SUCCESS) error_handler();
-                break;
+                case PTP_TX_EVENT_SEND_PACKET:
+                case PTP_RX_EVENT_RECEIVE_PACKET:
+                    packet = event_info.packet_ptr;
+                    if (nx_packet_release(packet) != NX_SUCCESS) {
+                        status = TX_ERROR;
+                        return status;
+                    };
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
-    }
+
+        /* Empty queue */
+        else if (status == TX_QUEUE_EMPTY) {
+            status = TX_SUCCESS;
+            break;
+        }
+
+        /* Unknown error */
+        else {
+            break;
+        }
+
+    } while (1);
+
+    return status;
 }

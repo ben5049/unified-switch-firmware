@@ -30,7 +30,7 @@ extern "C" {
         (into).second_high = (from).second_high; \
     } while (0)
 
-#define PTP_MSG_SIZE_WORDS ((sizeof(ptp_event_t) + sizeof(uint32_t) - 1) / sizeof(uint32_t)) /* Round up */
+#define PTP_MSG_SIZE_WORDS ((sizeof(ptp_event_info_t) + 3) / 4) /* Round up */
 
 
 typedef enum {
@@ -50,30 +50,42 @@ typedef enum {
     /* PTP RX Queue event */
     PTP_RX_EVENT_RECEIVE_PACKET,
 
+    /* PTP Clock queue event */
+    PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP,
+    PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP,
+    PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP,
+    PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP,
+
     PTP_TX_EVENT_ALL = 0xffffffff
 
 } ptp_event_t;
 
 typedef struct {
     ptp_event_t event;
-    void       *data;
-    phy_index_t port;
+    union {
+        void                 *data;
+        NX_PACKET            *packet_ptr;
+        NX_PTP_CLIENT_MASTER *master;
+        NX_PTP_CLIENT_SYNC   *sync;
+        NX_PTP_TIME           time;
+    };
+    port_index_t port;
 } ptp_event_info_t;
 
 typedef struct {
 
     /* TX */
-    atomic_uint_fast32_t tx_packets_sent[NUM_PHYS];
-    atomic_uint_fast32_t tx_packets_dropped[NUM_PHYS];
-    atomic_uint_fast32_t tx_timestamps_received[NUM_PHYS];
-    atomic_uint_fast32_t tx_timestamps_missed[NUM_PHYS];
+    atomic_uint_fast32_t tx_packets_sent[NUM_PORTS];
+    atomic_uint_fast32_t tx_packets_dropped[NUM_PORTS];
+    atomic_uint_fast32_t tx_timestamps_received[NUM_PORTS];
+    atomic_uint_fast32_t tx_timestamps_missed[NUM_PORTS];
 
     /* RX */
     atomic_uint_fast32_t rx_no_meta;
     atomic_uint_fast32_t rx_invalid_vlan;
     atomic_uint_fast32_t rx_meta_dropped;
     atomic_uint_fast32_t rx_packets_dropped;
-    atomic_uint_fast32_t rx_client_not_found[NUM_PHYS];
+    atomic_uint_fast32_t rx_client_not_found[NUM_PORTS];
 
     /* Events */
     atomic_uint_fast32_t sync;
@@ -97,6 +109,8 @@ extern TX_THREAD ptp_tx_thread_handle;
 extern uint8_t   ptp_tx_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
 extern TX_THREAD ptp_rx_thread_handle;
 extern uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
+extern TX_THREAD ptp_clock_thread_handle;
+extern uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
 
 extern TX_QUEUE ptp_event_queue_handle;
 extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
@@ -106,6 +120,8 @@ extern TX_QUEUE ptp_rx_packet_queue_handle;
 extern uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_rx_meta_queue_handle;
 extern uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern TX_QUEUE ptp_clock_queue_handle;
+extern uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 
@@ -117,10 +133,12 @@ extern ptp_event_counters_t ptp_event_counters;
 void ptp_event_thread_entry(uint32_t initial_input);
 void ptp_tx_thread_entry(uint32_t initial_input);
 void ptp_rx_thread_entry(uint32_t initial_input);
+void ptp_clock_thread_entry(uint32_t initial_input);
 
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
 uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
-uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr);
+uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]);
+uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
 
 void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
 void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);

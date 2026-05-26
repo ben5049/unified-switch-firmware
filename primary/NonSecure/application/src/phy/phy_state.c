@@ -223,8 +223,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Sleep the switch port (turn off clocks) */
                 // TODO: re-enable when implemented
                 // if (SJA1105_PortSleep(
-                //         phy_to_switch_handle(phy),
-                //         phy_to_switch_port(phy)) != SJA1105_OK) {
+                //         port_to_switch_handle(phy),
+                //         port_to_switch_port(phy)) != SJA1105_OK) {
                 //     status = PHY_ERROR;
                 //     goto end;
                 // }
@@ -240,8 +240,8 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Wake the switch port (turn on clocks) */
                 // TODO: re-enable when implemented
                 // if (SJA1105_PortWake(
-                //         phy_to_switch_handle(phy),
-                //         phy_to_switch_port(phy)) != SJA1105_OK) {
+                //         port_to_switch_handle(phy),
+                //         port_to_switch_port(phy)) != SJA1105_OK) {
                 //     status = PHY_ERROR;
                 //     goto end;
                 // }

@@ -154,11 +154,15 @@ extern uint32_t __TRACE_SIZE__;
 
 #define PTP_RX_THREAD_STACK_SIZE                (1024)
 #define PTP_RX_THREAD_PRIORITY                  (4)
-#define PTP_RX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
+#define PTP_RX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 received PTP packets per port */
 
-#define PTP_PRINT_TIME_INTERVAL                 (10000)         /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_CLOCK_THREAD_STACK_SIZE             (1024)
+#define PTP_CLOCK_THREAD_PRIORITY               (7)
+#define PTP_CLOCK_QUEUE_SIZE                    (NUM_PHYS * 4) /* Only need to store 4 timestamps: MAC TX/RX and switch TX/RX*/
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)           /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_PRINT_TIME_INTERVAL                 (10000)        /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+
+#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)          /* The subpriority of this device for BMCA. Default for an end instance is 248 */
 #define PTP_DOMAIN                              (0)
 #define PTP_VLAN                                (0)
 
@@ -169,10 +173,12 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_HEADER_PORT_OFFSET                  (28)
 
 /* Management route variables */
-#define PTP_TX_TIMEOUT (500) /* The maximum number of ms to wait to send a packet */
-#define PTP_TX_TSREG   (0)
+#define PTP_TX_TIMEOUT    (500) /* The maximum number of ms to wait to send a packet */
+#define PTP_TX_TSREG      (0)
 
-#define PTP_RX_TIMEOUT (100) /* How long to wait for a meta frame */
+#define PTP_RX_TIMEOUT    (100) /* How long to wait for a meta frame */
+
+#define PTP_CLOCK_TIMEOUT (100)
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */
@@ -200,7 +206,8 @@ extern uint32_t __TRACE_SIZE__;
 /* ---------------------------------------------------------------------------- */
 
 #define NUM_PHYS                              ((HW_VERSION == 4) ? 4 : 7)
-#define PHY_TIMEOUT_MS                        (100) /* Default timeout for PHY operations in ms */
+#define NUM_PORTS                             (NUM_PHYS + 1) /* Count the host as a port */
+#define PHY_TIMEOUT_MS                        (100)          /* Default timeout for PHY operations in ms */
 
 #define PHY_THREAD_STACK_SIZE                 (2 * 1024)
 #define PHY_THREAD_PRIORITY                   (9)   /* Higher priority than IP thread */

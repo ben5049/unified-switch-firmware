@@ -1,7 +1,7 @@
 /*
  * swv5_0_sja1105_static_config_default.h
  *
- *  Created on: May 19, 2026
+ *  Created on: May 26, 2026
  *      Author: SJA1105X_CONFIG-GENTOOL
  *
  */
@@ -43,8 +43,8 @@ static const uint32_t swv5_0_sja1105_static_config_default[SWV5_0_SJA1105_STATIC
     0x89983017, 0x0d000000, 0x00000004, 0x12d08c8f, 0x02000000, 0x00000020, 0x02004010, 0x00000410,
     0x81b6cd97, 0x0e000000, 0x00000003, 0xc8a7cee6, 0x2c18c000, 0x0b02c0b0, 0x02c0b02c, 0xa07ddb76,
     0x10000000, 0x00000004, 0x8aa0dfbc, 0x80000000, 0x0df03ffb, 0xb2b78098, 0x40980df7, 0xe6c9318c,
-    0x11000000, 0x0000000b, 0xefa3e65a, 0x01800000, 0x42040000, 0xfffffc45, 0xffffffff, 0x00d137ff,
-    0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x00000eff, 0x460180c2, 0x4553ce50, 0x4e000000,
+    0x11000000, 0x0000000b, 0xefa3e65a, 0x01800000, 0x42040000, 0xfffffc45, 0xffffffff, 0x00e137ff,
+    0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x00000eff, 0x460180c2, 0x60d42599, 0x4e000000,
     0x00000001, 0x3a5d5e24, 0x25240000, 0x9ba8eafd, 0x00000000, 0x00000000, 0x5f04f9ba};
 
 #ifdef __cplusplus
@@ -1039,8 +1039,8 @@ Table ID: 17 #entries: 1
 |   MAC_FLT[0]  |        0        |  48 |  152   |
 | INCL_SRCPT[1] |        1        |  1  |  151   |
 | INCL_SRCPT[0] |        1        |  1  |  150   |
-|  SEND_META[1] |        0        |  1  |  149   |
-|  SEND_META[0] |        1        |  1  |  148   |
+|  SEND_META[1] |        1        |  1  |  149   |
+|  SEND_META[0] |        0        |  1  |  148   |
 |   CASC_PORT   |        0        |  3  |  145   |
 |   HOST_PORT   |        4        |  3  |  142   |
 |   MIRR_PORT   |        6        |  3  |  139   |

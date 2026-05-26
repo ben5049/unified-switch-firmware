@@ -49,7 +49,7 @@ void switch_thread_entry(uint32_t initial_input) {
         /* Check if maintenance is necessary */
         if (current_time >= next_maintenance_time) {
             next_maintenance_time += SWITCH_MAINTENANCE_INTERVAL;
-            for (switch_index_t i = 0; i < NUM_SWITCHES; i++) {
+            for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
 
                 /* Make sure local copies of tables match the copy on the switch chip
                  * (this doesn't check for differences, it only updates the internal copy) */

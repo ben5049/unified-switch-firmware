@@ -40,6 +40,24 @@ typedef enum {
 } phy_index_t;
 
 typedef enum {
+#if HW_VERSION == 4
+    PORT0 = PHY0_88Q2112,
+    PORT1 = PHY1_88Q2112,
+    PORT2 = PHY2_88Q2112,
+    PORT3 = PHY3_LAN8671,
+#elif HW_VERSION == 5
+    PORT0 = PHY0_DP83867,
+    PORT1 = PHY1_88Q2112,
+    PORT2 = PHY2_88Q2112,
+    PORT3 = PHY3_88Q2112,
+    PORT4 = PHY4_88Q2112,
+    PORT5 = PHY5_88Q2112,
+    PORT6 = PHY6_LAN8671,
+#endif
+    PORT_HOST = NUM_PHYS,
+} port_index_t;
+
+typedef enum {
     PHY_STATE_UNINITIALISED,
     PHY_STATE_INITIALISED,
     PHY_STATE_WAIT_FOR_LINK,

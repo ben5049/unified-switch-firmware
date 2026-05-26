@@ -33,7 +33,6 @@ typedef enum {
 } switch_index_t;
 
 typedef enum {
-
 #if HW_VERSION == 4
     SW0_PORT_PHY0_88Q2112 = 0x0,
     SW0_PORT_PHY1_88Q2112 = 0x1,

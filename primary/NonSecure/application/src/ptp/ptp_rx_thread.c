@@ -34,9 +34,9 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
 
     ptp_event_info_t event_info;
 
-    NX_PACKET  *ptp_packet;
-    NX_PTP_TIME timestamp;
-    phy_index_t port;
+    NX_PACKET   *ptp_packet;
+    NX_PTP_TIME  timestamp;
+    port_index_t port;
 
     bool                   client_found = false;
     NX_LINK_RECEIVE_QUEUE *nx_receive_queue_ptr;
@@ -63,7 +63,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
 
                 case PTP_RX_EVENT_RECEIVE_PACKET: {
 
-                    ptp_packet = event_info.data;
+                    ptp_packet = event_info.packet_ptr;
 
                     /* Get the follow up META frame */
                     tx_status = tx_queue_receive(&ptp_rx_meta_queue_handle, &event_info, MS_TO_TICKS(PTP_RX_TIMEOUT));
@@ -74,63 +74,95 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         nx_packet_release(ptp_packet);
 
                         /* Flush both queues */
-                        ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
-                        ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+                        tx_status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
+                        if (tx_status != TX_SUCCESS) return error_handler();
+                        tx_status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+                        if (tx_status != TX_SUCCESS) return error_handler();
 
                         ptp_event_counters.rx_no_meta++;
                         LOG_ERROR("PTP RX No META frame found");
                         break;
                     }
 
-                    /* Parse META frame for timestamp and port then free it.
-                     * Store the resulting timestamp in the packet */
-                    if (switch_parse_and_free_meta_frame(event_info.data, &port, &timestamp) != SJA1105_OK) error_handler();
-                    assert(port < NUM_PHYS);
-                    ptp_packet_insert_timestamp(ptp_packet, &timestamp);
+                    /* Parse META frame for timestamp and port then free it */
+                    if (switch_parse_and_free_meta_frame(
+                            event_info.packet_ptr,
+                            &port,
+                            &timestamp) != SJA1105_OK) error_handler();
 
-                    /* Iterate through the receive callbacks to find the one for this port */
-                    client_found         = false;
-                    nx_receive_queue_ptr = nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head;
-                    while (nx_receive_queue_ptr) {
+                    /* Packet was sent by us to synchronise switch clock with
+                     * STM32 MAC clock */
+                    if (port == PORT_HOST) {
 
-                        /* PTP Client found */
-                        if ((NX_PTP_CLIENT *) nx_receive_queue_ptr->context == &ptp_client[port]) {
+                        /* Send switch timestamp */
+                        event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
+                        event_info.time  = timestamp;
+                        event_info.port  = PORT_HOST;
+                        tx_status        = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
+                        if (tx_status != TX_SUCCESS) error_handler();
 
-                            /* Parse information from the packet header */
-                            nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
-                            if (nx_status != NX_SUCCESS) error_handler();
+                        /* Send MAC timestamp */
+                        event_info.event = PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP;
+                        ptp_packet_extract_timestamp(ptp_packet, &event_info.time);
+                        event_info.port = PORT_HOST;
+                        tx_status       = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
+                        if (tx_status != TX_SUCCESS) error_handler();
+                    }
 
-                            /* Call the packet receive callback
-                             *
-                             * Note: _nx_ptp_client_ethernet_receive_notify doesn't use the following:
-                             *   - ip_ptr
-                             *   - interface_index
-                             *   - physical_address_msw
-                             *   - physical_address_lsw
-                             *   - packet_type
-                             *   - time_ptr
-                             */
-                            nx_status = nx_receive_queue_ptr->callback(NULL, 0, ptp_packet, 0, 0, 0, header_size, nx_receive_queue_ptr->context, NULL);
-                            if (nx_status != NX_SUCCESS) error_handler();
+                    /* Packet was sent by an external device */
+                    else if (port < NUM_PHYS) {
 
-                            /* Packet was consumed */
-                            client_found = true;
-                            break;
+                        /* Store the resulting timestamp in the packet */
+                        ptp_packet_insert_timestamp(ptp_packet, &timestamp);
+
+                        /* Iterate through the receive callbacks to find the one for this port */
+                        client_found         = false;
+                        nx_receive_queue_ptr = nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head;
+                        while (nx_receive_queue_ptr) {
+
+                            /* PTP Client found */
+                            if ((NX_PTP_CLIENT *) nx_receive_queue_ptr->context == &ptp_client[port]) {
+
+                                /* Parse information from the packet header */
+                                nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
+                                if (nx_status != NX_SUCCESS) error_handler();
+
+                                /* Call the packet receive callback
+                                 *
+                                 * Note: _nx_ptp_client_ethernet_receive_notify doesn't use the following:
+                                 *   - ip_ptr
+                                 *   - interface_index
+                                 *   - physical_address_msw
+                                 *   - physical_address_lsw
+                                 *   - packet_type
+                                 *   - time_ptr
+                                 */
+                                nx_status = nx_receive_queue_ptr->callback(NULL, 0, ptp_packet, 0, 0, 0, header_size, nx_receive_queue_ptr->context, NULL);
+                                if (nx_status != NX_SUCCESS) error_handler();
+
+                                /* Packet was consumed */
+                                client_found = true;
+                                break;
+                            }
+
+                            /* Move to the next queue */
+                            nx_receive_queue_ptr = nx_receive_queue_ptr->next_ptr;
+                            if (nx_receive_queue_ptr == nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head) {
+                                break;
+                            }
                         }
 
-                        /* Move to the next queue */
-                        nx_receive_queue_ptr = nx_receive_queue_ptr->next_ptr;
-                        if (nx_receive_queue_ptr == nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head) {
-                            break;
+                        /* Reached the end of the queue and found no callback */
+                        if (!client_found) {
+                            nx_status = nx_packet_release(ptp_packet);
+                            if (nx_status != NX_SUCCESS) error_handler();
+                            ptp_event_counters.rx_client_not_found[port]++;
+                            LOG_WARNING("PTP RX Couldn't route packet to client");
                         }
                     }
 
-                    /* Reached the end of the queue and found no callback */
-                    if (!client_found) {
-                        nx_status = nx_packet_release(ptp_packet);
-                        if (nx_status != NX_SUCCESS) error_handler();
-                        ptp_event_counters.rx_client_not_found[port]++;
-                        LOG_WARNING("PTP RX Couldn't route packet to client");
+                    else {
+                        error_handler();
                     }
 
                     break;
@@ -162,7 +194,7 @@ void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
 
 
 /* Send packets straight to the application if required. Returns true if packet has been dealt with and the caller should ignore */
-uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr) {
+uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
     tx_status_t tx_status = TX_SUCCESS;
     nx_status_t nx_status = NX_SUCCESS;
@@ -171,7 +203,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr) {
 
     ptp_event_info_t event_info;
 
-    ULONG  dst_msw, dst_lsw;
+    ULONG  src_msw, src_lsw;
     USHORT ether_type;
     USHORT vlan_tag;
     UCHAR  vlan_tag_valid;
@@ -180,10 +212,10 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr) {
     /* Get info from the header */
     nx_status = nx_link_ethernet_header_parse(
         packet_ptr,
-        &dst_msw,
-        &dst_lsw,
         NULL,
         NULL,
+        &src_msw,
+        &src_lsw,
         &ether_type,
         &vlan_tag,
         &vlan_tag_valid,
@@ -197,15 +229,14 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr) {
     }
 
     /* META Frame */
-    // TODO: check dst address
-    if (false) {
+    if ((src_msw == srcmeta_msw) && (src_lsw == srcmeta_lsw)) {
 
         // TODO: Check if META frames are VLAN tagged
 
         /* Queue the packet to be sent */
-        event_info.event = PTP_RX_EVENT_RECEIVE_PACKET;
-        event_info.data  = packet_ptr;
-        tx_status        = tx_queue_send(&ptp_rx_meta_queue_handle, &event_info, TX_NO_WAIT);
+        event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
+        event_info.packet_ptr = packet_ptr;
+        tx_status             = tx_queue_send(&ptp_rx_meta_queue_handle, &event_info, TX_NO_WAIT);
         if (tx_status != TX_SUCCESS) {
 #if DEBUG
             error_handler();
@@ -228,10 +259,17 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr) {
         /* Only pass packets with the correct VLAN to the rx thread */
         if ((vlan_tag_valid != NX_TRUE) || ((vlan_tag & NX_LINK_VLAN_ID_MASK) == PTP_VLAN)) {
 
-            /* Queue the packet to be sent */
-            event_info.event = PTP_RX_EVENT_RECEIVE_PACKET;
-            event_info.data  = packet_ptr;
-            tx_status        = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
+            /* Store the receive timestamp at the start of the packet */
+            NX_PTP_TIME timestamp;
+            timestamp.nanosecond  = ts[0];
+            timestamp.second_low  = ts[1];
+            timestamp.second_high = 0;
+            ptp_packet_insert_timestamp(packet_ptr, &timestamp);
+
+            /* Queue the packet to be processed */
+            event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
+            event_info.packet_ptr = packet_ptr;
+            tx_status             = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
             if (tx_status != TX_SUCCESS) {
 #if DEBUG
                 error_handler();

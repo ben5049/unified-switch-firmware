@@ -2149,6 +2149,14 @@ static UINT  _nx_driver_hardware_packet_send(NX_PACKET *packet_ptr)
   TxPacketCfg.ChecksumCtrl = ETH_CHECKSUM_DISABLE;
 #endif /* NX_ENABLE_INTERFACE_CAPABILITY */
 
+#ifdef NX_DRIVER_ENABLE_PTP
+  /* Enable PTP timestamp */
+  if (packet_ptr -> nx_packet_interface_capability_flag & NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP)
+  {
+    HAL_ETH_PTP_InsertTxTimestamp(&eth_handle);
+  }
+#endif /* NX_DRIVER_ENABLE_PTP */
+
   TxPacketCfg.Length = buffLen;
   TxPacketCfg.TxBuffer = Txbuffer;
   TxPacketCfg.pData = (uint32_t *)packet_ptr;
@@ -2369,6 +2377,9 @@ void HAL_ETH_TxPtpCallback(uint32_t * buff, ETH_TimeStampTypeDef *timestamp)
     ts.second_low  = timestamp->TimeStampHigh;
     ts.nanosecond  = timestamp->TimeStampLow;
 
+    extern uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
+    if (ptp_clock_tx_filter_packet(release_packet, &ts)) return;
+
     /* call notification callback */
     nx_ptp_client_packet_timestamp_notify(nx_driver_information.nx_driver_ptp_ptr,
                                           release_packet, &ts);
@@ -2388,14 +2399,14 @@ static VOID  _nx_driver_hardware_packet_received(VOID)
   while (HAL_ETH_ReadData(&eth_handle, (void **)&received_packet_ptr) == HAL_OK)
   {
 
-    extern uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr);
-    if (ptp_rx_filter_packet(received_packet_ptr)) continue;
-
 #ifdef NX_DRIVER_ENABLE_PTP
     /* Save PTP timestamp */
     HAL_ETH_PTP_GetRxTimestamp(&eth_handle, &timestamp);
     ts[0] = timestamp.TimeStampLow;
     ts[1] = timestamp.TimeStampHigh;
+
+    extern uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]);
+    if (ptp_rx_filter_packet(received_packet_ptr, ts)) continue;
 
     /* Transfer the packet to NetX.  */
     _nx_driver_transfer_to_netx(nx_driver_information.nx_driver_information_ip_ptr, received_packet_ptr, ts);
