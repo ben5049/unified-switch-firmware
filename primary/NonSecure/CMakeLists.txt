@@ -243,6 +243,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
     # Application
     application/inc
+    application/inc/system
     application/inc/comms
     application/inc/hal
     application/inc/nx_app
