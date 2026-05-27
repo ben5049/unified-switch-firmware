@@ -132,24 +132,29 @@ sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
 }
 
 
-void switch_format_timestamp(uint64_t timestamp_raw, NX_PTP_TIME *timestamp) {
+void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp) {
 
-    uint64_t total_ns;
-    uint64_t total_sec;
+    int64_t total_ns;
+    int64_t total_sec;
+    int32_t ns_remainder;
 
-    /* Convert the hardware ticks (8ns per tick) into total nanoseconds */
-    total_ns = timestamp_raw * 8;
+    /* Convert the hardware ticks into total nanoseconds */
+    total_ns = timestamp_raw * SJA1105_NS_PER_TS_TICK;
 
     /* Separate total seconds from the remaining nanosecond fraction */
-    total_sec = total_ns / 1000000000ULL;
+    total_sec    = total_ns / 1000000000LL;
+    ns_remainder = (int32_t) (total_ns % 1000000000LL);
+
+    /* Nanoseconds must be positive when seconds are greater than 0 */
+    assert((total_sec == 0) || (ns_remainder >= 0));
 
     /* Store timestamp in the NX_PTP_TIME structure.
      * Standard PTP seconds are 48-bit. We put the upper 16 bits in
      * second_high and the lower 32 bits in second_low.
      */
-    timestamp->second_high = (uint32_t) (total_sec >> 32);
-    timestamp->second_low  = (uint32_t) (total_sec & 0xFFFFFFFFULL);
-    timestamp->nanosecond  = (uint32_t) (total_ns % 1000000000ULL);
+    timestamp->second_high = (LONG) (total_sec >> 32);
+    timestamp->second_low  = (ULONG) (total_sec & 0xFFFFFFFFULL);
+    timestamp->nanosecond  = (LONG) ns_remainder;
 }
 
 
@@ -205,3 +210,23 @@ end:
     if (nx_packet_release(packet) != NX_SUCCESS) status = SJA1105_ERROR;
     return status;
 }
+
+
+#if NUM_SWITCHES > 1
+
+sja1105_status_t switch_get_timestamp_offsets(switch_index_t a, switch_index_t b, NX_PTP_TIME *offset) {
+
+    sja1105_status_t status = SJA1105_OK;
+    int64_t          offset_internal;
+
+    /* Get the offset */
+    status = SJA1105_GetTimestampOffset(&switch_handles[a], &switch_handles[b], &offset_internal);
+    if (status != SJA1105_OK) return status;
+
+    /* Format into PTP time struct */
+    switch_format_timestamp(offset_internal, offset);
+
+    return status;
+}
+
+#endif

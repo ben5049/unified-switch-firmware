@@ -84,23 +84,31 @@ nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr) {
     NX_PACKET  *packet_ptr;
 
     /* Allocate a packet */
-    status = nx_packet_allocate(&nx_small_packet_pool, packet_ptr_ptr, NX_PHYSICAL_HEADER, PTP_CLOCK_TIMEOUT);
-    if (status != NX_SUCCESS) return status;
+    status = nx_packet_allocate(&nx_small_packet_pool, packet_ptr_ptr, NX_PHYSICAL_HEADER, NX_NO_WAIT);
+    if (status != NX_SUCCESS) goto end;
 
     packet_ptr = *packet_ptr_ptr;
 
     /* Append dummy payload to make the MAC see it as a PTP packet and timestamp it */
     status = nx_packet_data_append(packet_ptr, dummy_sync_payload, sizeof(dummy_sync_payload), &nx_small_packet_pool, NX_NO_WAIT);
-    if (status != NX_SUCCESS) return status;
+    if (status != NX_SUCCESS) goto cleanup;
 
     /* Add Ethernet header */
     status = nx_link_ethernet_header_add(&nx_ip_instance, PRIMARY_INTERFACE, packet_ptr,
                                          PTP_ETHERNET_ADDR_MSB, PTP_ETHERNET_ADDR_LSB,
                                          NX_LINK_ETHERNET_PTP);
-    if (status != NX_SUCCESS) return status;
+    if (status != NX_SUCCESS) goto cleanup;
 
     /* Enable egress timestamping for this packet */
     packet_ptr->nx_packet_interface_capability_flag |= NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP;
+
+    goto end;
+
+cleanup:
+
+    if (nx_packet_release(packet_ptr) != NX_SUCCESS) error_handler();
+
+end:
 
     return status;
 }

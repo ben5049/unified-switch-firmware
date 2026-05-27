@@ -9,8 +9,8 @@
 #include "stdint.h"
 #include "stdatomic.h"
 
-#include "main.h"
-
+#include "app.h"
+#include "tx_app.h"
 #include "switch_thread.h"
 #include "switch_callbacks.h"
 #include "switch_diagnostics.h"
@@ -21,18 +21,24 @@
 uint8_t   switch_thread_stack[SWITCH_THREAD_STACK_SIZE];
 TX_THREAD switch_thread_handle;
 
+TX_EVENT_FLAGS_GROUP switch_events_handle;
+
+TX_TIMER switch_maintenance_timer;
+TX_TIMER switch_publish_timer;
+
 sja1105_stats_detailed_t stats_ext[NUM_SWITCHES];
 
 
 /* This thread perform regular maintenance for the switch and publishes periodic diagnostic messages */
 void switch_thread_entry(uint32_t initial_input) {
 
-    sja1105_status_t status;
+    sja1105_status_t status    = SJA1105_OK;
+    tx_status_t      tx_status = TX_SUCCESS;
+    uint32_t         events;
 
-    uint32_t current_time          = tx_time_get_ms();
-    uint32_t next_publish_time     = current_time;
-    uint32_t next_maintenance_time = current_time;
-    uint32_t next_wakeup           = 0;
+#if DEBUG
+    TX_THREAD *mutex_owner;
+#endif
 
     LOG_INFO("Starting switch thread");
 
@@ -42,13 +48,26 @@ void switch_thread_entry(uint32_t initial_input) {
     status = init_switch_diagnostics();
     if (status != SJA1105_OK) error_handler();
 
+    /* Start the timers */
+    tx_status = tx_timer_activate(&switch_maintenance_timer);
+    if (tx_status != TX_SUCCESS) error_handler();
+    tx_status = tx_timer_activate(&switch_publish_timer);
+    if (tx_status != TX_SUCCESS) error_handler();
+
     while (1) {
 
-        current_time = tx_time_get_ms();
+        /* Wait for an event from the timers */
+        tx_status = tx_event_flags_get(
+            &switch_events_handle,
+            SWITCH_EVENT_MAINTENANCE | SWITCH_EVENT_PUBLISH,
+            TX_OR_CLEAR,
+            &events,
+            MAX(SWITCH_MAINTENANCE_INTERVAL, SWITCH_PUBLISH_STATS_INTERVAL) * 5 /* Break out of deadlocks */
+        );
+        if (tx_status != TX_SUCCESS) error_handler();
 
         /* Check if maintenance is necessary */
-        if (current_time >= next_maintenance_time) {
-            next_maintenance_time += SWITCH_MAINTENANCE_INTERVAL;
+        if (events & SWITCH_EVENT_MAINTENANCE) {
             for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
 
                 /* Make sure local copies of tables match the copy on the switch chip
@@ -103,26 +122,18 @@ void switch_thread_entry(uint32_t initial_input) {
         }
 
         /* Check if publishing diagnostics is necessary */
-        if (current_time >= next_publish_time) {
-            next_publish_time += SWITCH_PUBLISH_STATS_INTERVAL;
+        if (events & SWITCH_EVENT_PUBLISH) {
 
             /* Attempt to publish the diagnostics */
-            status = publish_switch_diagnostics(current_time);
+            status = publish_switch_diagnostics(tx_time_get_ms());
             if (status != SJA1105_OK) error_handler();
         }
 
-        /* Schedule the next wakeup */
-        next_wakeup = MIN(next_maintenance_time, next_publish_time);
-        if (current_time < next_wakeup) {
-            tx_thread_sleep_ms(next_wakeup - current_time);
-        }
-
-        /* Somehow we have gotten far behind so catch up */
-        else if ((current_time - next_wakeup) > (MAX(SWITCH_MAINTENANCE_INTERVAL, SWITCH_PUBLISH_STATS_INTERVAL) * 3)) {
-            next_maintenance_time = current_time;
-            next_publish_time     = current_time;
-        }
-
-        /* TODO: If the current thread holds the switch mutex when it shouldn't report an error */
+        /* If the current thread holds the switch mutex when it shouldn't report an error */
+#if DEBUG
+        tx_status = tx_mutex_info_get(&switch_mutex_handle, NULL, NULL, &mutex_owner, NULL, NULL, NULL);
+        if (tx_status != TX_SUCCESS) error_handler();
+        assert(mutex_owner != &switch_thread_handle);
+#endif
     }
 }

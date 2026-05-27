@@ -23,7 +23,22 @@ uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
 TX_QUEUE ptp_clock_queue_handle;
 uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
+TX_EVENT_FLAGS_GROUP ptp_clock_events_handle;
+
+TX_TIMER ptp_mac_sync_timer;
+TX_TIMER ptp_switch_sync_timer;
+
 static volatile NX_PACKET *dummy_packet_ptr = NULL; /* Packet pointer of dummy packet */
+
+
+void ptp_mac_sync_timer_callback(ULONG id) {
+    if (tx_event_flags_set(&ptp_clock_events_handle, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR) != TX_SUCCESS) error_handler();
+}
+
+
+void ptp_switch_sync_timer_callback(ULONG id) {
+    if (tx_event_flags_set(&ptp_clock_events_handle, PTP_CLOCK_EVENT_SWITCH_SYNC, TX_OR) != TX_SUCCESS) error_handler();
+}
 
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
@@ -113,14 +128,16 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
 
 /* This thread synchronises the SJA1105 clocks with each other (if there are
- * multiple) and the STM32 timestamp clock with the main SJA1105 clock. */
+ * multiple) and the STM32's MAC timestamp clock with the main SJA1105 clock. */
 void ptp_clock_thread_entry(uint32_t initial_input) {
 
     nx_status_t nx_status = NX_SUCCESS;
     tx_status_t tx_status = TX_SUCCESS;
 
-    NX_PACKET       *packet_ptr;
+    ULONG            events;
     ptp_event_info_t event_info;
+
+    NX_PACKET *packet_ptr;
 
     NX_PTP_TIME mac_tx_timestamp;    /* t1 */
     NX_PTP_TIME switch_rx_timestamp; /* t2 */
@@ -134,104 +151,160 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     uint16_t dummy_packet_length;
     uint16_t host_speed_mbps;
 
+    /* Start the timers */
+    tx_status = tx_timer_activate(&ptp_mac_sync_timer);
+    if (tx_status != TX_SUCCESS) error_handler();
+#if NUM_SWITCHES > 1
+    tx_status = tx_timer_activate(&ptp_switch_sync_timer);
+    if (tx_status != TX_SUCCESS) error_handler();
+#endif
+
     while (1) {
 
-        /* Create a dummy sync packet that will look convincing enough to make
-         * the MAC timestamp it */
-        nx_status = ptp_create_dummy_sync(&packet_ptr);
-        if (nx_status != NX_SUCCESS) error_handler();
-
-        /* Save packet pointer for callback filtering and length for timestamp corrections */
-        dummy_packet_ptr    = packet_ptr;
-        dummy_packet_length = packet_ptr->nx_packet_length;
-
-        /* Send the packet so that it bounces back into the host port */
-        event_info.event = PTP_TX_EVENT_SEND_PACKET;
-        event_info.data  = packet_ptr;
-        event_info.port  = PORT_HOST;
-        tx_status        = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
+        /* Wait for an event from the timers */
+        tx_status = tx_event_flags_get(
+            &ptp_clock_events_handle,
+            PTP_CLOCK_EVENT_MAC_SYNC | PTP_CLOCK_EVENT_SWITCH_SYNC,
+            TX_OR_CLEAR,
+            &events,
+            MAX(PTP_MAC_SYNC_INTERVAL, PTP_SWITCH_SYNC_INTERVAL) * 5 /* Break out of deadlocks */
+        );
         if (tx_status != TX_SUCCESS) error_handler();
 
-        /* Gather up all the timestamps */
-        timestamps_received = 0;
-        while (timestamps_received < PTP_CLOCK_NUM_TIMESTAMPS) {
+        /* Syncronise the timestamps between the STM32's MAC and switch 0 */
+        if (events & PTP_CLOCK_EVENT_MAC_SYNC) {
 
-            tx_status = tx_queue_receive(&ptp_clock_queue_handle, &event_info, PTP_CLOCK_TIMEOUT);
-            if (tx_status != TX_SUCCESS) error_handler();
+            /* Create a dummy sync packet that will look convincing enough to make
+             * the STM32's MAC timestamp it */
+            nx_status = ptp_create_dummy_sync(&packet_ptr);
+            if (nx_status != NX_SUCCESS) {
+#if DEBUG
+                error_handler();
+#endif
+                continue;
+            };
 
-            assert(event_info.port == PORT_HOST);
+            /* Save packet pointer for callback filtering and length for timestamp corrections */
+            dummy_packet_ptr    = packet_ptr;
+            dummy_packet_length = packet_ptr->nx_packet_length;
 
-            switch (event_info.event) {
-                case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
-                    mac_tx_timestamp = event_info.time;
-                    timestamps_received++;
-                    break;
-                }
-                case PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP: {
-                    switch_rx_timestamp = event_info.time;
-                    timestamps_received++;
-                    break;
-                }
-                case PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP: {
-                    switch_tx_timestamp = event_info.time;
-                    timestamps_received++;
-                    break;
-                }
-                case PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP: {
-                    mac_rx_timestamp = event_info.time;
-                    timestamps_received++;
-                    break;
-                }
-                default:
-                    error_handler();
-                    break;
-            }
-        }
-
-        /* Note: The TX and RX threads handle releasing packets */
-        dummy_packet_ptr = NULL;
-
-        /* The switch's egress timestamp in this scenario is for the start of
-         * the META frame so we must subtract the time it took to send the PTP
-         * packet and the time between frames (AH1704 p65).
-         *
-         * Note: An Ethernet packet cannot be shorter than 64 bytes.
-         */
-        if (switch_get_speed(PORT_HOST, &host_speed_mbps) != SJA1105_OK) error_handler();
-        switch_tx_correction.nanosecond  = (MAX(dummy_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
-        switch_tx_correction.second_low  = 0;
-        switch_tx_correction.second_high = 0;
-        _nx_ptp_client_utility_time_diff(&switch_tx_timestamp, &switch_tx_correction, &switch_tx_timestamp);
-
-        /* Calculate the offset between local (MAC) and remote (switch) clocks
-         * for both the TX and RX path
-         *
-         * Note: This eliminates the approximately 1000ns of combined ingress
-         *       and egress latency from the SJA1105, assuming they are equal.
-         */
-        ptp_compute_offset(&mac_tx_timestamp, &switch_rx_timestamp, &switch_tx_timestamp, &mac_rx_timestamp, &offset);
-
-        /* Adjust time */
-        if ((offset.second_high == 0) && (offset.second_low == 0)) {
-
-            /* Coarse adjustment */
-            if (ABS(offset.nanosecond) > MS_TO_NS(100)) {
-                ptp_mac_adjust_time_coarse(&offset);
+            /* Send the packet so that it bounces back into the host port */
+            event_info.event = PTP_TX_EVENT_SEND_PACKET;
+            event_info.data  = packet_ptr;
+            event_info.port  = PORT_HOST;
+            tx_status        = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
+            if (tx_status != TX_SUCCESS) {
+                nx_status = nx_packet_release(packet_ptr);
+                if (nx_status != NX_SUCCESS) error_handler();
+#if DEBUG
+                error_handler();
+#endif
+                continue;
             }
 
-            /* Fine adjustment */
+            /* Gather up all the timestamps */
+            timestamps_received = 0;
+            while (timestamps_received < PTP_CLOCK_NUM_TIMESTAMPS) {
+
+                tx_status = tx_queue_receive(&ptp_clock_queue_handle, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
+                if (tx_status != TX_SUCCESS) error_handler();
+
+                assert(event_info.port == PORT_HOST);
+
+                switch (event_info.event) {
+                    case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
+                        mac_tx_timestamp = event_info.time;
+                        timestamps_received++;
+                        break;
+                    }
+                    case PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP: {
+                        switch_rx_timestamp = event_info.time;
+                        timestamps_received++;
+                        break;
+                    }
+                    case PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP: {
+                        switch_tx_timestamp = event_info.time;
+                        timestamps_received++;
+                        break;
+                    }
+                    case PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP: {
+                        mac_rx_timestamp = event_info.time;
+                        timestamps_received++;
+                        break;
+                    }
+                    default:
+                        error_handler();
+                        break;
+                }
+            }
+
+            /* Note: The TX and RX threads handle releasing packets */
+            dummy_packet_ptr = NULL;
+
+            /* The switch's egress timestamp in this scenario is for the start of
+             * the META frame so we must subtract the time it took to send the PTP
+             * packet and the time between frames (AH1704 p65).
+             *
+             * Note: An Ethernet packet cannot be shorter than 64 bytes.
+             */
+            if (switch_get_speed(PORT_HOST, &host_speed_mbps) != SJA1105_OK) error_handler();
+            switch_tx_correction.nanosecond  = (MAX(dummy_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
+            switch_tx_correction.second_low  = 0;
+            switch_tx_correction.second_high = 0;
+            _nx_ptp_client_utility_time_diff(&switch_tx_timestamp, &switch_tx_correction, &switch_tx_timestamp);
+
+            /* Calculate the offset between local (MAC) and remote (switch) clocks
+             * for both the TX and RX path
+             *
+             * Note: This eliminates the approximately 1000ns of combined ingress
+             *       and egress latency from the SJA1105, assuming they are equal.
+             */
+            ptp_compute_offset(&mac_tx_timestamp, &switch_rx_timestamp, &switch_tx_timestamp, &mac_rx_timestamp, &offset);
+
+            /* Adjust time */
+            if ((offset.second_high == 0) && (offset.second_low == 0)) {
+
+                /* Coarse adjustment */
+                if (ABS(offset.nanosecond) > MS_TO_NS(100)) {
+                    ptp_mac_adjust_time_coarse(&offset);
+                }
+
+                /* Fine adjustment */
+                else {
+                    // TODO: control loop instead
+                    ptp_mac_adjust_time_coarse(&offset);
+                }
+            }
+
+            /* Set time */
             else {
-                // TODO: control loop instead
-                ptp_mac_adjust_time_coarse(&offset);
+                ptp_mac_set_time(&switch_rx_timestamp);
             }
         }
 
-        /* Set time */
-        else {
-            ptp_mac_set_time(&switch_rx_timestamp);
-        }
+        /* Synchronise the timestamps between switches */
+        if (events & PTP_CLOCK_EVENT_SWITCH_SYNC) {
 
-        tx_thread_sleep_ms(100);
+#if NUM_SWITCHES > 1
+
+            /* This is agnostic to the number of switches in the system */
+            for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
+
+                /* Get the offset between the two switches */
+                if (switch_get_timestamp_offsets(SWITCH0, i, &offset) != SJA1105_OK) error_handler();
+
+
+                // TODO: adjust rate slightly in CAS slave
+
+                /* Note: The switches share a common oscillator so they tick at
+                 *       the same rate, the only thing that can cause offsets is
+                 *       jitter when the application adjuststs their rates. */
+            }
+
+#else
+            error_handler();
+#endif
+        }
     }
 }
 

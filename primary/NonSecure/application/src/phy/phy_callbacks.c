@@ -13,14 +13,14 @@
 
 #include "app.h"
 #include "tx_app.h"
+#include "utils.h"
 #include "88q211x.h"
 #include "lan867x.h"
 #include "phy_callbacks.h"
 #include "phy_thread.h"
 #include "phy_utils.h"
-#include "stp_thread.h"
-#include "utils.h"
 #include "phy_platform.h"
+#include "stp_thread.h"
 
 
 TX_MUTEX             phy_mutex_handle;
@@ -265,37 +265,37 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 
 #if NUM_PHYS > 0
         case (PHY0_INT_Pin):
-            flags_to_set |= PHY_PHY0_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ0;
             break;
 #endif
 #if NUM_PHYS > 1
         case (PHY1_INT_Pin):
-            flags_to_set |= PHY_PHY1_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ1;
             break;
 #endif
 #if NUM_PHYS > 2
         case (PHY2_INT_Pin):
-            flags_to_set |= PHY_PHY2_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ2;
             break;
 #endif
 #if NUM_PHYS > 3
         case (PHY3_INT_Pin):
-            flags_to_set |= PHY_PHY3_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ3;
             break;
 #endif
 #if NUM_PHYS > 4
         case (PHY4_INT_Pin):
-            flags_to_set |= PHY_PHY4_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ4;
             break;
 #endif
 #if NUM_PHYS > 5
         case (PHY5_INT_Pin):
-            flags_to_set |= PHY_PHY5_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ5;
             break;
 #endif
 #if NUM_PHYS > 6
         case (PHY6_INT_Pin):
-            flags_to_set |= PHY_PHY6_EVENT;
+            flags_to_set |= PHY_EVENT_IRQ6;
             break;
 #endif
 #if NUM_PHYS > 7

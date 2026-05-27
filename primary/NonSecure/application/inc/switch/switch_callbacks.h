@@ -25,17 +25,26 @@ extern "C" {
 #endif
 
 
+typedef enum {
+    SWITCH_EVENT_MAINTENANCE = 1UL << 0,
+    SWITCH_EVENT_PUBLISH     = 1UL << 1,
+} switch_event_t;
+
+
 /* Imported variables */
 extern SPI_HandleTypeDef SWCH_SPI;
 extern CRC_HandleTypeDef SWCH_CRC;
 
 
 /* Exported variables */
-extern TX_MUTEX                  sja1105_mutex_handle;
+extern TX_MUTEX                  switch_mutex_handle;
 extern const sja1105_callbacks_t sja1105_callbacks;
 
 
 sja1105_status_t switch_byte_pool_init(uint8_t pool);
+
+void switch_maintenance_timer_callback(ULONG id);
+void switch_publish_timer_callback(ULONG id);
 
 
 #ifdef __cplusplus

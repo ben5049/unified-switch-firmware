@@ -14,6 +14,7 @@ extern "C" {
 
 
 #include "tx_api.h"
+#include "tx_user.h"
 #include "nx_api.h"
 #include "zenoh_generic_platform.h"
 
@@ -160,6 +161,9 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_CLOCK_THREAD_PRIORITY               (7)
 #define PTP_CLOCK_NUM_TIMESTAMPS                (4) /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 #define PTP_CLOCK_QUEUE_SIZE                    (PTP_CLOCK_NUM_TIMESTAMPS)
+
+#define PTP_MAC_SYNC_INTERVAL                   (TX_TIMER_TICKS_PER_SECOND / 20) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
+#define PTP_SWITCH_SYNC_INTERVAL                (100)
 
 #define PTP_PRINT_TIME_INTERVAL                 (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 

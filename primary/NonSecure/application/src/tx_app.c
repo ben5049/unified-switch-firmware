@@ -29,7 +29,7 @@ void tx_setup(void *memory_ptr) {
     uint8_t     thread_number = 1;
 
     /* Create mutexes */
-    status = tx_mutex_create(&sja1105_mutex_handle, "sja1105_mutex", TX_INHERIT);
+    status = tx_mutex_create(&switch_mutex_handle,  "switch_mutex",  TX_INHERIT);
     if (status != TX_SUCCESS) error_handler();
     status = tx_mutex_create(&phy_mutex_handle,     "phy_mutex",     TX_INHERIT);
     if (status != TX_SUCCESS) error_handler();
@@ -39,6 +39,8 @@ void tx_setup(void *memory_ptr) {
     /* Create event flags */
     status = tx_event_flags_create(&state_machine_events_handle, "state_machine_events_handle");
     if (status != TX_SUCCESS) error_handler();
+    status = tx_event_flags_create(&switch_events_handle,        "switch_events_handle");
+    if (status != TX_SUCCESS) error_handler();
 #if ENABLE_STP_THREAD
     status = tx_event_flags_create(&stp_events_handle,           "stp_events_handle");
     if (status != TX_SUCCESS) error_handler();
@@ -47,6 +49,8 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
 #if ENABLE_PTP_THREAD
     status = tx_event_flags_create(&ptp_tx_events_handle,        "ptp_tx_events_handle");
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_event_flags_create(&ptp_clock_events_handle,     "ptp_clock_events_handle");
     if (status != TX_SUCCESS) error_handler();
 #endif
 
@@ -141,6 +145,20 @@ void tx_setup(void *memory_ptr) {
 #if TRACE_ENABLE
     status = tx_trace_enable(TRACE_BUFFER_START, TRACE_BUFFER_SIZE, TRACE_REGISTRY_ENTRIES);
     if (status != TX_SUCCESS) error_handler();
+#endif
+
+    /* Create timers */
+    status = tx_timer_create(&switch_maintenance_timer, "switch_maintenance_timer", switch_maintenance_timer_callback, 0, SWITCH_MAINTENANCE_INTERVAL,   SWITCH_MAINTENANCE_INTERVAL,   TX_NO_ACTIVATE);
+    if (status != TX_SUCCESS) error_handler();
+    status = tx_timer_create(&switch_publish_timer,     "switch_publish_timer",     switch_publish_timer_callback,     0, SWITCH_PUBLISH_STATS_INTERVAL, SWITCH_PUBLISH_STATS_INTERVAL, TX_NO_ACTIVATE);
+    if (status != TX_SUCCESS) error_handler();
+#if ENABLE_PTP_THREAD
+    status = tx_timer_create(&ptp_mac_sync_timer,       "ptp_mac_sync_timer",       ptp_mac_sync_timer_callback,       0, PTP_MAC_SYNC_INTERVAL,         PTP_MAC_SYNC_INTERVAL,         TX_NO_ACTIVATE);
+    if (status != TX_SUCCESS) error_handler();
+#if NUM_SWITCHES > 1
+    status = tx_timer_create(&ptp_switch_sync_timer,    "ptp_switch_sync_timer",    ptp_switch_sync_timer_callback,    0, PTP_SWITCH_SYNC_INTERVAL,       PTP_SWITCH_SYNC_INTERVAL,       TX_NO_ACTIVATE);
+    if (status != TX_SUCCESS) error_handler();
+#endif
 #endif
 }
 

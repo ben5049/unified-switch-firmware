@@ -35,8 +35,8 @@ typedef enum {
     PTP_TX_EVENT_SEND_PACKET,
 
     /* PTP TX Event flags */
-    PTP_TX_EVENT_MGMT_FREE   = 1 << 8, /* All management routes have been used */
-    PTP_TX_EVENT_PACKET_FREE = 1 << 9, /* Ethernet driver is done with packet and it can be freed */
+    PTP_TX_EVENT_MGMT_FREE   = 1UL << 8, /* All management routes have been used */
+    PTP_TX_EVENT_PACKET_FREE = 1UL << 9, /* Ethernet driver is done with packet and it can be freed */
 
     /* PTP RX Queue event */
     PTP_RX_EVENT_RECEIVE_PACKET,
@@ -47,7 +47,11 @@ typedef enum {
     PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP,
     PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP,
 
-    PTP_TX_EVENT_ALL = 0xffffffff
+    /* PTP Clock event flags */
+    PTP_CLOCK_EVENT_MAC_SYNC    = 1UL << 10, /* Time to sync the STM32's MAC clock with the main SJA1105's */
+    PTP_CLOCK_EVENT_SWITCH_SYNC = 1UL << 11, /* Time to sync the SJA1105s' clocks together */
+
+    PTP_EVENT_ALL = 0xffffffffUL
 
 } ptp_event_t;
 
@@ -115,6 +119,10 @@ extern TX_QUEUE ptp_clock_queue_handle;
 extern uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 
 extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
+extern TX_EVENT_FLAGS_GROUP ptp_clock_events_handle;
+
+extern TX_TIMER ptp_mac_sync_timer;
+extern TX_TIMER ptp_switch_sync_timer;
 
 extern NX_PTP_CLIENT        ptp_client[NUM_PHYS];
 extern SHORT                ptp_utc_offset;
@@ -126,6 +134,10 @@ void ptp_event_thread_entry(uint32_t initial_input);
 void ptp_tx_thread_entry(uint32_t initial_input);
 void ptp_rx_thread_entry(uint32_t initial_input);
 void ptp_clock_thread_entry(uint32_t initial_input);
+
+/* Timer callbacks */
+void ptp_mac_sync_timer_callback(ULONG id);
+void ptp_switch_sync_timer_callback(ULONG id);
 
 /* Filtering functions to place in Ethernet driver to intercept packets */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);

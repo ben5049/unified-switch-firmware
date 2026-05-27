@@ -32,7 +32,7 @@ void phy_thread_entry(uint32_t initial_input) {
 
     phy_status_t phy_status  = PHY_OK;
     tx_status_t  tx_status   = TX_SUCCESS;
-    uint32_t     event_flags = 0;
+    ULONG        event_flags = 0;
 
     /* Initialise structs */
     memset((bool *) &phy_temperatures_valid, 0, sizeof(phy_temperatures_valid));
@@ -50,12 +50,14 @@ void phy_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
+        // TODO: use timer for state machine updating and temperature measuring (PHY_EVENT_UPDATE_STATE & PHY_EVENT_READ_TEMP)
+
         /* Sleep until the next wake time while also monitoring for PHY events */
         current_time = tx_time_get_ms();
         if ((int32_t) (current_time - next_wake_time) < 0) {
 
             /* Wait for an interrupt */
-            tx_status = tx_event_flags_get(&phy_events_handle, PHY_ALL_EVENTS, TX_OR_CLEAR, (ULONG *) &event_flags, MS_TO_TICKS(next_wake_time - current_time));
+            tx_status = tx_event_flags_get(&phy_events_handle, PHY_EVENT_ALL, TX_OR_CLEAR, &event_flags, MS_TO_TICKS(next_wake_time - current_time));
             if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
 
             /* Process any interrupts */
@@ -97,7 +99,7 @@ static phy_status_t phy_process_interrupts(uint32_t event_flags) {
 
     /* Call the interrupt handlers */
     for (uint_fast8_t i = 0; i < NUM_PHYS; i++) {
-        if (event_flags & (PHY_PHY0_EVENT << i)) {
+        if (event_flags & (PHY_EVENT_IRQ0 << i)) {
             status = PHY_ProcessInterrupt(phy_handles[i]);
             if (status != PHY_OK) return status;
             status = phy_state_update_interrupt(phy_handles[i], tx_time_get_ms());

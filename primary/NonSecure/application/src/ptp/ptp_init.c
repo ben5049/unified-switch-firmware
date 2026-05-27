@@ -128,15 +128,16 @@ tx_status_t ptp_start() {
     bool        incl_srcpt;
     uint32_t    msw, lsw;
 
-    /* Check all switches trap PTP frames */
-    for (uint_fast8_t i = 0; i < NUM_SWITCHES; i++) {
+    for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
+
+        /* Check all switches trap PTP frames */
         if (SJA1105_MACAddrTrapTest(&switch_handles[i], ptp_dst_addr, &trapped, &send_meta, &incl_srcpt) != SJA1105_OK) return TX_ERROR;
         assert(trapped);
         assert(send_meta);
         assert(incl_srcpt);
 
         /* Cache the MAC address used as a source by META frames */
-        if (SJA1105_GetSRCMETA(&switch_handles[0], &msw, &lsw) != SJA1105_OK) return TX_ERROR;
+        if (SJA1105_GetSRCMETA(&switch_handles[i], &msw, &lsw) != SJA1105_OK) return TX_ERROR;
         if (i == 0) {
             srcmeta_msw = msw;
             srcmeta_lsw = lsw;
@@ -167,7 +168,9 @@ tx_status_t ptp_start() {
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
-    status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_tx_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
+    status = tx_event_flags_get(&ptp_clock_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 
     /* Start the TX thread before the PTP clients to avoid queues building up */
@@ -191,6 +194,18 @@ tx_status_t ptp_start() {
 
 
 tx_status_t ptp_stop() {
+
+    tx_status_t status = TX_NOT_DONE;
+
     // TODO: stop threads
-    return -1;
+
+    /* Stop timers */
+    status = tx_timer_deactivate(&ptp_mac_sync_timer);
+    if (status != TX_SUCCESS) error_handler();
+#if NUM_SWITCHES > 1
+    status = tx_timer_deactivate(&ptp_switch_sync_timer);
+    if (status != TX_SUCCESS) error_handler();
+#endif
+
+    return TX_NOT_DONE;
 }

@@ -13,11 +13,11 @@ extern "C" {
 #endif
 
 
-#include "tx_api.h"
 #include "stdint.h"
 #include "stdatomic.h"
 #include "hal.h"
 
+#include "tx_app.h"
 #include "config.h"
 #include "sja1105.h"
 #include "phy_thread.h"
@@ -27,7 +27,7 @@ extern "C" {
 
 typedef enum {
     SWITCH0 = 0,
-#if HW_VERSION == 5
+#if NUM_SWITCHES > 1
     SWITCH1 = 1
 #endif
 } switch_index_t;
@@ -69,10 +69,13 @@ typedef struct {
 
 
 /* Exported variables */
-extern uint8_t          switch_thread_stack[SWITCH_THREAD_STACK_SIZE];
-extern TX_THREAD        switch_thread_handle;
-extern sja1105_handle_t switch_handles[NUM_SWITCHES];
-extern switch_info_t    switch_info[NUM_SWITCHES];
+extern uint8_t              switch_thread_stack[SWITCH_THREAD_STACK_SIZE];
+extern TX_THREAD            switch_thread_handle;
+extern sja1105_handle_t     switch_handles[NUM_SWITCHES];
+extern switch_info_t        switch_info[NUM_SWITCHES];
+extern TX_EVENT_FLAGS_GROUP switch_events_handle;
+extern TX_TIMER             switch_maintenance_timer;
+extern TX_TIMER             switch_publish_timer;
 
 /* Exported functions */
 sja1105_status_t switch_init(void);

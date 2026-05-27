@@ -19,7 +19,7 @@
 #include "sja1105.h"
 
 
-TX_MUTEX sja1105_mutex_handle;
+TX_MUTEX switch_mutex_handle;
 alignas(32) static UCHAR switch0_byte_pool_buffer[SWITCH_MEM_POOL_SIZE];
 static TX_BYTE_POOL switch0_byte_pool;
 #if HW_VERSION == 5
@@ -168,7 +168,7 @@ static sja1105_status_t sja1105_take_mutex(uint32_t timeout, void *context) {
     if (tx_thread_identify() == TX_NULL) return status;
 
     /* Take the mutex and work out the status */
-    switch (tx_mutex_get(&sja1105_mutex_handle, MS_TO_TICKS(timeout))) {
+    switch (tx_mutex_get(&switch_mutex_handle, MS_TO_TICKS(timeout))) {
         case TX_SUCCESS:
             status = SJA1105_OK;
             break;
@@ -190,7 +190,7 @@ static sja1105_status_t sja1105_give_mutex(void *context) {
     /* Don't give the mutex if the kernel hasn't started */
     if (tx_thread_identify() == TX_NULL) return status;
 
-    if (tx_mutex_put(&sja1105_mutex_handle) != TX_SUCCESS) status = SJA1105_MUTEX_ERROR;
+    if (tx_mutex_put(&switch_mutex_handle) != TX_SUCCESS) status = SJA1105_MUTEX_ERROR;
 
     return status;
 }
@@ -358,3 +358,12 @@ const sja1105_callbacks_t sja1105_callbacks = {
     .callback_crc_accumulate       = &sja1105_crc_accumulate,
     .callback_write_log            = &log_info,
 };
+
+
+void switch_maintenance_timer_callback(ULONG id) {
+    if (tx_event_flags_set(&switch_events_handle, SWITCH_EVENT_MAINTENANCE, TX_OR) != TX_SUCCESS) error_handler();
+}
+
+void switch_publish_timer_callback(ULONG id) {
+    if (tx_event_flags_set(&switch_events_handle, SWITCH_EVENT_PUBLISH, TX_OR) != TX_SUCCESS) error_handler();
+}

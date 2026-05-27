@@ -19,17 +19,22 @@ extern "C" {
 #include "dp83867.h"
 #endif
 
+
 /* Note: these must be in order */
-#define PHY_PHY0_EVENT ((ULONG) 1 << 0)
-#define PHY_PHY1_EVENT ((ULONG) 1 << 1)
-#define PHY_PHY2_EVENT ((ULONG) 1 << 2)
-#define PHY_PHY3_EVENT ((ULONG) 1 << 3)
+typedef enum {
+    PHY_EVENT_IRQ0 = 1UL << 0,
+    PHY_EVENT_IRQ1 = 1UL << 1,
+    PHY_EVENT_IRQ2 = 1UL << 2,
+    PHY_EVENT_IRQ3 = 1UL << 3,
 #if HW_VERSION == 5
-#define PHY_PHY4_EVENT ((ULONG) 1 << 4)
-#define PHY_PHY5_EVENT ((ULONG) 1 << 5)
-#define PHY_PHY6_EVENT ((ULONG) 1 << 6)
+    PHY_EVENT_IRQ4 = 1UL << 4,
+    PHY_EVENT_IRQ5 = 1UL << 5,
+    PHY_EVENT_IRQ6 = 1UL << 6,
 #endif
-#define PHY_ALL_EVENTS ((ULONG) 0xffffffff)
+    PHY_EVENT_UPDATE_STATE = 1UL << 16,
+    PHY_EVENT_READ_TEMP    = 1UL << 17,
+    PHY_EVENT_ALL          = 0xffffffffUL
+} phy_thread_event_t;
 
 
 extern const phy_callbacks_t phy_callbacks_88q2112;
