@@ -27,10 +27,10 @@ uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
 TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 
 
-static volatile NX_PACKET   *ptp_tx_packet = NULL;  /* Packet pointer of management frame */
-static volatile port_index_t ptp_tx_port;           /* Port the management frame will be sent through */
-static volatile uint8_t      ptp_ptp_tx_send_count; /* How many switches the management frame is required to pass through */
-static volatile uint8_t      tx_send_count;         /* How many switches the management frame has passed through */
+static volatile NX_PACKET   *ptp_tx_packet = NULL; /* Packet pointer of management frame */
+static volatile port_index_t ptp_tx_port;          /* Port the management frame will be sent through */
+static volatile uint8_t      ptp_tx_send_count;    /* How many switches the management frame is required to pass through */
+static volatile uint8_t      tx_send_count;        /* How many switches the management frame has passed through */
 
 
 static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_mgmt_free_t reason, void *context) {
@@ -48,7 +48,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
     if (port == ptp_tx_port) {
 
         /* This is the last switch in the chain, get the timestamp */
-        if (dev->config->switch_id == (ptp_ptp_tx_send_count - 1)) {
+        if (dev->config->switch_id == (ptp_tx_send_count - 1)) {
 
             NX_PTP_TIME timestamp;
             NX_PACKET  *packet_ptr = (NX_PACKET *) ptp_tx_packet;
@@ -71,7 +71,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
             /* Send the transmit timestamp to the clock sync thread */
             if (port == PORT_HOST) {
                 ptp_event_info_t event_info;
-                event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
+                event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
                 event_info.time  = timestamp;
                 event_info.port  = PORT_HOST;
                 if (tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) error_handler();
@@ -92,7 +92,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
         assert(tx_send_count <= NUM_SWITCHES);
 
         /* PTP Packet fully sent, let the tx thread know */
-        if (tx_send_count == ptp_ptp_tx_send_count) {
+        if (tx_send_count == ptp_tx_send_count) {
             if (tx_event_flags_set(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR) != TX_SUCCESS) {
                 status = SJA1105_ERROR;
                 return status;
@@ -147,10 +147,10 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                     /* Create a management route for the packet */
                     if (switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port) != SJA1105_OK) error_handler();
-                    ptp_ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
+                    ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
 
                     /* Send the packet */
-                    nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, (NX_PACKET *) ptp_tx_packet);
+                    nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr);
                     if (nx_status != NX_SUCCESS) error_handler();
                     ptp_event_counters.tx_packets_sent[event_info.port]++;
 
@@ -167,8 +167,8 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                         /* Management route freed */
                         if (tx_status == TX_SUCCESS) {
-                            ptp_ptp_tx_send_count = 0;
-                            tx_send_count         = 0;
+                            ptp_tx_send_count = 0;
+                            tx_send_count     = 0;
                             break;
                         }
 

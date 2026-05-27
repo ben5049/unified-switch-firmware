@@ -144,19 +144,19 @@ extern uint32_t __TRACE_SIZE__;
 #define NX_INTERNAL_PTP_EVENT_THREAD_STACK_SIZE (1024)
 #define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY   (6)
 
-#define PTP_EVENT_THREAD_STACK_SIZE             (1024)
+#define PTP_EVENT_THREAD_STACK_SIZE             (1024 * 2)
 #define PTP_EVENT_THREAD_PRIORITY               (5)
 #define PTP_EVENT_QUEUE_SIZE                    (10)
 
-#define PTP_TX_THREAD_STACK_SIZE                (1024)
+#define PTP_TX_THREAD_STACK_SIZE                (1024 * 2)
 #define PTP_TX_THREAD_PRIORITY                  (4)
 #define PTP_TX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
 
-#define PTP_RX_THREAD_STACK_SIZE                (1024)
+#define PTP_RX_THREAD_STACK_SIZE                (1024 * 2)
 #define PTP_RX_THREAD_PRIORITY                  (4)
 #define PTP_RX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 received PTP packets per port */
 
-#define PTP_CLOCK_THREAD_STACK_SIZE             (1024)
+#define PTP_CLOCK_THREAD_STACK_SIZE             (1024 * 2)
 #define PTP_CLOCK_THREAD_PRIORITY               (7)
 #define PTP_CLOCK_QUEUE_SIZE                    (NUM_PHYS * 4) /* Only need to store 4 timestamps: MAC TX/RX and switch TX/RX*/
 

@@ -107,7 +107,7 @@ static void ptp_set_ingress_correction() {
 
     uint32_t correction;
 
-    correction  = (switch_handles[0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 120 : 800;
+    correction  = (switch_handles[SWITCH0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 120 : 800;
     correction += 2 * HZ_TO_NS(PTP_CLK_FREQ);             /* 2 * PTP_CLK_PER */
     correction  = (1 << 31) | (HZ_TO_NS(1) - correction); /* Ingress correction is subtracted so convert to two's complement */
 
@@ -120,7 +120,7 @@ static void ptp_set_egress_correction() {
 
     uint32_t correction;
 
-    correction  = (switch_handles[0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 40 : 400;
+    correction  = (switch_handles[SWITCH0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 40 : 400;
     correction += (1 * HZ_TO_NS(PTP_CLK_FREQ)) + (4 * 20); /* 1 * PTP_CLK_PER + 4 * TX_CLK_PER (Note: RMII TX_CLK is always 50MHz (20ns)) */
 
     WRITE_REG(heth.Instance->MACTSECNR, correction);

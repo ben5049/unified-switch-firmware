@@ -106,7 +106,7 @@ typedef struct {
 extern TX_THREAD ptp_event_thread_handle;
 extern uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
 extern TX_THREAD ptp_tx_thread_handle;
-extern uint8_t   ptp_tx_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
+extern uint8_t   ptp_tx_thread_stack[PTP_TX_THREAD_STACK_SIZE];
 extern TX_THREAD ptp_rx_thread_handle;
 extern uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 extern TX_THREAD ptp_clock_thread_handle;

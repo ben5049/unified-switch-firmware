@@ -7,12 +7,16 @@
 
 #include "stdint.h"
 
+#include "eth.h"
+
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
 #include "nx_link.h"
 #include "ptp_thread.h"
 #include "utils.h"
+#include "switch_thread.h"
+#include "switch_utils.h"
 
 
 TX_THREAD ptp_clock_thread_handle;
@@ -38,9 +42,41 @@ static uint8_t             dummy_packet_data[44] = {
 };
 
 
+/* Set the STM32 MAC timestamp counter */
+static void ptp_mac_set_coarse_time(NX_PTP_TIME *target_time) {
+
+    TX_INTERRUPT_SAVE_AREA
+
+    uint32_t        tickstart;
+    ETH_TimeTypeDef time;
+
+    TX_DISABLE
+
+    /* Wait for MAC to be ready */
+    tickstart = HAL_GetTick();
+    while (__HAL_ETH_GET_PTP_CONTROL(&heth, ETH_MACTSCR_TSUPDT) != 0) {
+        if ((HAL_GetTick() - tickstart) > 100) {
+            error_handler();
+            return;
+        }
+    }
+
+    /* Format time */
+    time.Seconds     = target_time->second_low;
+    time.NanoSeconds = target_time->nanosecond;
+
+    /* Set the time */
+    HAL_ETH_PTP_SetTime(&heth, &time);
+
+    TX_RESTORE
+}
+
+
 /* This thread synchronises the SJA1105 clocks with each other (if there are
  * multiple) and the STM32 timestamp clock with the main SJA1105 clock. */
 void ptp_clock_thread_entry(uint32_t initial_input) {
+
+    TX_INTERRUPT_SAVE_AREA
 
     nx_status_t nx_status = NX_SUCCESS;
     tx_status_t tx_status = TX_SUCCESS;
@@ -48,12 +84,21 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     NX_PACKET       *packet_ptr;
     ptp_event_info_t event_info;
 
-    NX_PTP_TIME mac_tx_timestamp;
-    NX_PTP_TIME switch_rx_timestamp;
-    NX_PTP_TIME switch_tx_timestamp;
-    NX_PTP_TIME mac_rx_timestamp;
+    NX_PTP_TIME mac_tx_timestamp;    /* t1 */
+    NX_PTP_TIME switch_rx_timestamp; /* t2 */
+    NX_PTP_TIME switch_tx_timestamp; /* t3 */
+    NX_PTP_TIME mac_rx_timestamp;    /* t4 */
 
-    uint8_t timestamps_received;
+    NX_PTP_TIME switch_tx_correction;
+
+    NX_PTP_TIME a;
+    NX_PTP_TIME b;
+
+    uint8_t  timestamps_received;
+    uint8_t  dummy_packet_length;
+    uint16_t host_speed_mbps;
+
+    ETH_TimeTypeDef time; // TODO: remove when control loop implemented
 
     while (1) {
 
@@ -68,14 +113,15 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
         /* Add Ethernet header */
         nx_status = nx_link_ethernet_header_add(&nx_ip_instance, PRIMARY_INTERFACE, packet_ptr,
                                                 PTP_ETHERNET_ADDR_MSB, PTP_ETHERNET_ADDR_LSB,
-                                                NX_LINK_ETHERNET_PTP); // TODO: NX_PHYSICAL_HEADER??
+                                                NX_LINK_ETHERNET_PTP);
         if (nx_status != NX_SUCCESS) error_handler();
 
         /* Enable egress timestamping for this packet */
         packet_ptr->nx_packet_interface_capability_flag |= NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP;
 
-        /* Save pointer for callback filtering */
-        dummy_packet_ptr = packet_ptr;
+        /* Save packet pointer for callback filtering and length for timestamp corrections */
+        dummy_packet_ptr    = packet_ptr;
+        dummy_packet_length = packet_ptr->nx_packet_length;
 
         /* Send the packet so that it bounces back into the host port */
         event_info.event = PTP_TX_EVENT_SEND_PACKET;
@@ -85,11 +131,10 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
         if (tx_status != TX_SUCCESS) error_handler();
 
         /* Gather up all the timestamps */
-        // TODO: add timeout
         timestamps_received = 0;
         while (timestamps_received < 4) {
 
-            tx_status = tx_queue_receive(&ptp_clock_queue_handle, &event_info, PTP_CLOCK_TIMEOUT); // TODO: change
+            tx_status = tx_queue_receive(&ptp_clock_queue_handle, &event_info, PTP_CLOCK_TIMEOUT);
             if (tx_status != TX_SUCCESS) error_handler();
 
             assert(event_info.port == PORT_HOST);
@@ -122,15 +167,54 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
         }
 
         /* Note: The TX and RX threads handle releasing packets */
+        dummy_packet_ptr = NULL;
 
-        /* TODO: calculate offset between local and remote clocks in each direction */
+        /* The switch's egress timestamp in this scenario is for the start of
+         * the META frame so we must subtract the time it took to send the PTP
+         * packet and the time before the META frame started (AH1704 p65) */
+        if (switch_get_speed(PORT_HOST, &host_speed_mbps) != SJA1105_OK) error_handler();
+        switch_tx_correction.nanosecond  = (MAX(dummy_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
+        switch_tx_correction.second_low  = 0;
+        switch_tx_correction.second_high = 0;
+        _nx_ptp_client_utility_time_diff(&switch_tx_timestamp, &switch_tx_correction, &switch_tx_timestamp);
 
-        UNUSED(mac_tx_timestamp);
-        UNUSED(switch_rx_timestamp);
-        UNUSED(switch_tx_timestamp);
-        UNUSED(mac_rx_timestamp);
+        /* Calculate the offset between local (MAC) and remote (switch) clocks
+         * for both the TX and RX path */
 
-        tx_thread_sleep_ms(1000);
+        /* Compute A = t2 - t1 */
+        _nx_ptp_client_utility_time_diff(&switch_rx_timestamp, &mac_tx_timestamp, &a);
+
+        /* Compute B = t4 - t3 */
+        _nx_ptp_client_utility_time_diff(&mac_rx_timestamp, &switch_tx_timestamp, &b);
+
+        /* Compute offset = (B - A) / 2 */
+        _nx_ptp_client_utility_time_diff(&b, &a, &a);
+        _nx_ptp_client_utility_time_div_by_2(&a);
+
+        /* Fine correction */
+        // TODO: control loop instead of setting?
+        if ((a.second_high == 0) && (a.second_low == 0)) {
+
+            TX_DISABLE
+
+            time.Seconds = 0;
+            if (a.nanosecond > 0) {
+                time.NanoSeconds = a.nanosecond;
+                HAL_ETH_PTP_AddTimeOffset(&heth, HAL_ETH_PTP_NEGATIVE_UPDATE, &time);
+            } else {
+                time.NanoSeconds = -a.nanosecond;
+                HAL_ETH_PTP_AddTimeOffset(&heth, HAL_ETH_PTP_POSITIVE_UPDATE, &time);
+            }
+
+            TX_RESTORE
+        }
+
+        /* Coarse correction */
+        else {
+            ptp_mac_set_coarse_time(&switch_rx_timestamp);
+        }
+
+        tx_thread_sleep_ms(100);
     }
 }
 

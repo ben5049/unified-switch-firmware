@@ -90,6 +90,22 @@ end:
 }
 
 
+sja1105_status_t switch_get_speed(port_index_t port, uint16_t *speed) {
+
+    sja1105_status_t status = SJA1105_OK;
+    sja1105_speed_t  speed_enum;
+
+    status = SJA1105_PortGetSpeed(
+        port_to_switch_handle(port),
+        port_to_switch_port(port),
+        &speed_enum);
+
+    *speed = SJA1105_SPEED_ENUM_TO_MBPS(speed_enum);
+
+    return status;
+}
+
+
 /* Given a port index, create a management route to that port from the host port */
 sja1105_status_t switch_create_mgmt_route(port_index_t port, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context) {
 

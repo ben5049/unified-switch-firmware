@@ -140,6 +140,7 @@ sja1105_status_t switch_enable_forwarding(port_index_t port);
 bool             switch_port_is_dynamic(port_index_t port);
 sja1105_status_t switch_update_speed(port_index_t port, uint16_t speed);
 sja1105_status_t switch_update_speed_from_phy(phy_index_t phy);
+sja1105_status_t switch_get_speed(port_index_t port, uint16_t *speed);
 sja1105_status_t switch_create_mgmt_route(port_index_t port, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context);
 sja1105_status_t switch_free_mgmt_route(uint8_t depth);
 void             switch_format_timestamp(uint64_t timestamp_raw, NX_PTP_TIME *timestamp);

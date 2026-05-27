@@ -71,7 +71,8 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                     /* META frame lost, drop the PTP packet since it cannot be timestamped.
                      * Also flush the queues to prevent alignment issues. */
                     if (tx_status != TX_SUCCESS) {
-                        nx_packet_release(ptp_packet);
+                        nx_status = nx_packet_release(ptp_packet);
+                        if (nx_status != NX_SUCCESS) error_handler();
 
                         /* Flush both queues */
                         tx_status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
@@ -95,7 +96,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                     if (port == PORT_HOST) {
 
                         /* Send switch timestamp */
-                        event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
+                        event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
                         event_info.time  = timestamp;
                         event_info.port  = PORT_HOST;
                         tx_status        = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
@@ -107,6 +108,10 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         event_info.port = PORT_HOST;
                         tx_status       = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
                         if (tx_status != TX_SUCCESS) error_handler();
+
+                        /* Release the packet */
+                        nx_status = nx_packet_release(ptp_packet);
+                        if (nx_status != NX_SUCCESS) error_handler();
                     }
 
                     /* Packet was sent by an external device */
@@ -185,6 +190,7 @@ void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
     ((uint32_t *) packet_ptr->nx_packet_data_start)[1] = time->second_low;
     ((uint32_t *) packet_ptr->nx_packet_data_start)[2] = time->second_high;
 }
+
 
 void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
     time->nanosecond  = ((uint32_t *) packet_ptr->nx_packet_data_start)[0];
