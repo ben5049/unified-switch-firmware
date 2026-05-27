@@ -15,20 +15,11 @@ extern "C" {
 
 #include "stdint.h"
 #include "stdatomic.h"
-#include "tx_api.h"
-#include "nx_api.h"
-#include "nxd_ptp_client.h"
 
+#include "tx_app.h"
 #include "nx_app.h"
 #include "phy_thread.h"
 
-
-#define COPY_NX_TIMESTAMP(into, from)            \
-    do {                                         \
-        (into).nanosecond  = (from).nanosecond;  \
-        (into).second_low  = (from).second_low;  \
-        (into).second_high = (from).second_high; \
-    } while (0)
 
 #define PTP_MSG_SIZE_WORDS ((sizeof(ptp_event_info_t) + 3) / 4) /* Round up */
 
@@ -130,19 +121,19 @@ extern SHORT                ptp_utc_offset;
 extern ptp_event_counters_t ptp_event_counters;
 
 
+/* Thread functions */
 void ptp_event_thread_entry(uint32_t initial_input);
 void ptp_tx_thread_entry(uint32_t initial_input);
 void ptp_rx_thread_entry(uint32_t initial_input);
 void ptp_clock_thread_entry(uint32_t initial_input);
 
+/* Filtering functions to place in Ethernet driver to intercept packets */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
 uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
 uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]);
 uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
 
-void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
-void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
-
+/* Callbacks for PTP client */
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);
 UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data);
 

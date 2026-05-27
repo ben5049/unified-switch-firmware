@@ -16,6 +16,7 @@
 #include "utils.h"
 #include "ptp_init.h"
 #include "ptp_thread.h"
+#include "ptp_utils.h"
 #include "switch_thread.h"
 
 
@@ -32,15 +33,6 @@
 #define PTP_COUNTER_INCREMENT (20) /* 20ns */
 #define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
 
-
-const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB),       /* Index 0: 0x0E */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 1: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 16), /* Index 2: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 3: 0xC2 */
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 4: 0x80 */
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8)   /* Index 5: 0x01 */
-};
 
 volatile uint32_t srcmeta_msw;
 volatile uint32_t srcmeta_lsw;
@@ -201,52 +193,4 @@ tx_status_t ptp_start() {
 tx_status_t ptp_stop() {
     // TODO: stop threads
     return -1;
-}
-
-
-/* Drain all items from a PTP queue and release any packets */
-tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
-
-    tx_status_t      status = TX_SUCCESS;
-    ptp_event_info_t event_info;
-    NX_PACKET       *packet;
-
-    /* Loop until all packets released or error occured */
-    do {
-
-        /* Get an event */
-        status = tx_queue_receive(queue_ptr, &event_info, TX_NO_WAIT);
-
-        /* Ensure the data pointer actually contains a packet before releasing */
-        if (status == TX_SUCCESS) {
-            switch (event_info.event) {
-
-                case PTP_TX_EVENT_SEND_PACKET:
-                case PTP_RX_EVENT_RECEIVE_PACKET:
-                    packet = event_info.packet_ptr;
-                    if (nx_packet_release(packet) != NX_SUCCESS) {
-                        status = TX_ERROR;
-                        return status;
-                    };
-                    break;
-
-                default:
-                    break;
-            }
-        }
-
-        /* Empty queue */
-        else if (status == TX_QUEUE_EMPTY) {
-            status = TX_SUCCESS;
-            break;
-        }
-
-        /* Unknown error */
-        else {
-            break;
-        }
-
-    } while (1);
-
-    return status;
 }

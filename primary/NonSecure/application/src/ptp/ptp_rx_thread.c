@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "ptp_thread.h"
 #include "ptp_init.h"
+#include "ptp_utils.h"
 #include "switch_utils.h"
 
 
@@ -182,20 +183,6 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             error_handler();
         }
     }
-}
-
-
-void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
-    ((uint32_t *) packet_ptr->nx_packet_data_start)[0] = time->nanosecond;
-    ((uint32_t *) packet_ptr->nx_packet_data_start)[1] = time->second_low;
-    ((uint32_t *) packet_ptr->nx_packet_data_start)[2] = time->second_high;
-}
-
-
-void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
-    time->nanosecond  = ((uint32_t *) packet_ptr->nx_packet_data_start)[0];
-    time->second_low  = ((uint32_t *) packet_ptr->nx_packet_data_start)[1];
-    time->second_high = ((uint32_t *) packet_ptr->nx_packet_data_start)[2];
 }
 
 

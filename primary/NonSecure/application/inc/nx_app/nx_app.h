@@ -16,6 +16,7 @@ extern "C" {
 #include "stdint.h"
 #include "tx_api.h"
 #include "nx_api.h"
+#include "nx_link.h"
 #include "nxd_dhcp_client.h"
 #include "nxd_ptp_client.h"
 

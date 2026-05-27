@@ -7,11 +7,6 @@
 
 #include "stdint.h"
 
-#include "hal.h"
-#include "tx_api.h"
-#include "nx_api.h"
-#include "nxd_ptp_client.h"
-#include "nx_stm32_eth_driver.h"
 
 #include "app.h"
 #include "tx_app.h"
@@ -19,6 +14,7 @@
 #include "utils.h"
 #include "ptp_thread.h"
 #include "ptp_init.h"
+#include "ptp_utils.h"
 
 
 SHORT ptp_utc_offset = 0;
@@ -37,27 +33,21 @@ ptp_event_counters_t ptp_event_counters;
 NX_PTP_CLIENT *connected_to_master = NULL;
 uint8_t        grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
 
+
 // TODO: stop instances when links go down + restart when up
 //       also need to elect new master on port down rather than
 //       waiting for timeout
 
 
-/* Convert 48-bit MAC address to 64-bit EUI */
-static inline void write_port_identity_eui(uint8_t *port_identity) {
-    port_identity[0] = MAC_ADDR_OCTET1;
-    port_identity[1] = MAC_ADDR_OCTET2;
-    port_identity[2] = MAC_ADDR_OCTET3;
-    port_identity[3] = 0xff;
-    port_identity[4] = 0xfe;
-    port_identity[5] = MAC_ADDR_OCTET4;
-    port_identity[6] = MAC_ADDR_OCTET5;
-    port_identity[7] = MAC_ADDR_OCTET6;
-}
+/* Event callback for NetX PTP client */
+UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data) {
 
+    ptp_event_info_t event_info = {
+        .event = event,
+        .data  = event_data,
+        .port  = (phy_index_t) callback_data};
 
-static inline void write_port_identity_number(uint8_t *port_identity, uint16_t number) {
-    port_identity[8] = (uint8_t) ((number + 1) >> 8);
-    port_identity[9] = (uint8_t) (number + 1); /* Indexed from 1 */
+    return tx_queue_send(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
 }
 
 

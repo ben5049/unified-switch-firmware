@@ -17,16 +17,12 @@ extern "C" {
 #include "nx_app.h"
 
 
-extern const uint8_t ptp_dst_addr[MAC_ADDR_SIZE];
-
 extern volatile uint32_t srcmeta_msw;
 extern volatile uint32_t srcmeta_lsw;
 
 
 tx_status_t ptp_start(void);
 tx_status_t ptp_stop(void);
-
-tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr);
 
 
 #ifdef __cplusplus

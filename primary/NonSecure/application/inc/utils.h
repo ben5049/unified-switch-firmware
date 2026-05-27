@@ -29,6 +29,7 @@ extern "C" {
 /* Because of the multiply, care should be taken when putting large values into these functions (>4,000,000) to make sure the don't overflow */
 #define TICKS_TO_MS(ticks)        (((ticks) * 1000) / TX_TIMER_TICKS_PER_SECOND)
 #define MS_TO_TICKS(ms)           (((ms) * TX_TIMER_TICKS_PER_SECOND) / 1000)
+#define MS_TO_NS(ms)              (1000000 * (ms))
 
 #define HZ_TO_NS(hz)              (1000000000 / (hz))
 #define MHZ_TO_NS(mhz)            (HZ_TO_NS(1000000) / (mhz))
@@ -37,6 +38,7 @@ extern "C" {
 #define MAX(a, b)                 ((a) > (b) ? (a) : (b))
 #define MAX3(a, b, c)             (MAX(MAX((a), (b)), (c)))
 #define CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
+#define ABS(a)                    ((a) > 0 ? (a) : -(a))
 
 #define MAC_ADDR_MSW(o1, o2)      (((uint32_t) (o1) << 8) | \
                               ((uint32_t) (o2)))

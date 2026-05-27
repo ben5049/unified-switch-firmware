@@ -158,11 +158,12 @@ extern uint32_t __TRACE_SIZE__;
 
 #define PTP_CLOCK_THREAD_STACK_SIZE             (1024 * 2)
 #define PTP_CLOCK_THREAD_PRIORITY               (7)
-#define PTP_CLOCK_QUEUE_SIZE                    (NUM_PHYS * 4) /* Only need to store 4 timestamps: MAC TX/RX and switch TX/RX*/
+#define PTP_CLOCK_NUM_TIMESTAMPS                (4) /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
+#define PTP_CLOCK_QUEUE_SIZE                    (PTP_CLOCK_NUM_TIMESTAMPS)
 
-#define PTP_PRINT_TIME_INTERVAL                 (10000)        /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_PRINT_TIME_INTERVAL                 (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)          /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)   /* The subpriority of this device for BMCA. Default for an end instance is 248 */
 #define PTP_DOMAIN                              (0)
 #define PTP_VLAN                                (0)
 
