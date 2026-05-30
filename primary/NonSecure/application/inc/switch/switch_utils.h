@@ -135,15 +135,20 @@ static inline port_index_t switch_id_port_to_port(switch_index_t switch_id, uint
 }
 
 sja1105_status_t switch_byte_pool_init_all();
+
 sja1105_status_t switch_disable_forwarding(port_index_t port);
 sja1105_status_t switch_enable_forwarding(port_index_t port);
+
 bool             switch_port_is_dynamic(port_index_t port);
 sja1105_status_t switch_update_speed(port_index_t port, uint16_t speed);
 sja1105_status_t switch_update_speed_from_phy(phy_index_t phy);
 sja1105_status_t switch_get_speed(port_index_t port, uint16_t *speed);
+
 sja1105_status_t switch_create_mgmt_route(port_index_t port, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context);
 sja1105_status_t switch_free_mgmt_route(uint8_t depth);
-void             switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp);
+
+sja1105_status_t switch_get_time(switch_index_t i, NX_PTP_TIME *time);
+sja1105_status_t switch_set_time_all(NX_PTP_TIME *time);
 sja1105_status_t switch_get_egress_timestamp(port_index_t port, uint8_t tsreg, NX_PTP_TIME *timestamp);
 sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, port_index_t *port, NX_PTP_TIME *timestamp);
 #if NUM_SWITCHES > 1

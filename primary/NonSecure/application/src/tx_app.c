@@ -56,15 +56,15 @@ void tx_setup(void *memory_ptr) {
 
     /* Create queues */
 #if ENABLE_PTP_THREAD
-    status = tx_queue_create(&ptp_event_queue_handle,     "ptp_event_queue",     PTP_MSG_SIZE_WORDS, ptp_event_queue_stack,     sizeof(ptp_event_queue_stack));
+    status = tx_queue_create(&ptp_event_queue_handle,     "ptp_event_queue",     PTP_CLIENT_MSG_SIZE_WORDS, ptp_event_queue_stack,     sizeof(ptp_event_queue_stack));
     if (status != TX_SUCCESS) error_handler();
-    status = tx_queue_create(&ptp_tx_queue_handle,        "ptp_tx_queue",        PTP_MSG_SIZE_WORDS, ptp_tx_queue_stack,        sizeof(ptp_tx_queue_stack));
+    status = tx_queue_create(&ptp_tx_queue_handle,        "ptp_tx_queue",        PTP_PACKET_MSG_SIZE_WORDS, ptp_tx_queue_stack,        sizeof(ptp_tx_queue_stack));
     if (status != TX_SUCCESS) error_handler();
-    status = tx_queue_create(&ptp_rx_packet_queue_handle, "ptp_rx_packet_queue", PTP_MSG_SIZE_WORDS, ptp_rx_packet_queue_stack, sizeof(ptp_rx_packet_queue_stack));
+    status = tx_queue_create(&ptp_rx_packet_queue_handle, "ptp_rx_packet_queue", PTP_PACKET_MSG_SIZE_WORDS, ptp_rx_packet_queue_stack, sizeof(ptp_rx_packet_queue_stack));
     if (status != TX_SUCCESS) error_handler();
-    status = tx_queue_create(&ptp_rx_meta_queue_handle,   "ptp_rx_meta_queue",   PTP_MSG_SIZE_WORDS, ptp_rx_meta_queue_stack,   sizeof(ptp_rx_meta_queue_stack));
+    status = tx_queue_create(&ptp_rx_meta_queue_handle,   "ptp_rx_meta_queue",   PTP_PACKET_MSG_SIZE_WORDS, ptp_rx_meta_queue_stack,   sizeof(ptp_rx_meta_queue_stack));
     if (status != TX_SUCCESS) error_handler();
-    status = tx_queue_create(&ptp_clock_queue_handle,     "ptp_clock_queue",     PTP_MSG_SIZE_WORDS, ptp_clock_queue_stack,     sizeof(ptp_clock_queue_stack));
+    status = tx_queue_create(&ptp_clock_queue_handle,     "ptp_clock_queue",     PTP_PACKET_MSG_SIZE_WORDS, ptp_clock_queue_stack,     sizeof(ptp_clock_queue_stack));
     if (status != TX_SUCCESS) error_handler();
 #endif
 

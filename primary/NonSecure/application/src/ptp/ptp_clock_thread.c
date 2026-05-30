@@ -21,7 +21,7 @@ TX_THREAD ptp_clock_thread_handle;
 uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
 
 TX_QUEUE ptp_clock_queue_handle;
-uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 TX_EVENT_FLAGS_GROUP ptp_clock_events_handle;
 
@@ -45,7 +45,8 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                         NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr,
                         VOID *callback_data) {
 
-    nx_status_t status = NX_SUCCESS;
+    tx_status_t tx_status = TX_SUCCESS;
+    nx_status_t status    = NX_SUCCESS;
 
     switch (operation) {
 
@@ -53,27 +54,23 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
         case NX_PTP_CLIENT_CLOCK_INIT:
             break;
 
-        /* Set clock */
-        // TODO: Set all switch clocks and stm32 clock if this client is connected to the grandmaster
+        /* Set all switch clocks and stm32 clock if this client is connected to
+         * the grandmaster
+         *
+         * Note: This should be done as little as possible since it can corrupt
+         *       time stamps.
+         */
         case NX_PTP_CLIENT_CLOCK_SET:
-            // TX_DISABLE
 
-            // /* Get Start Tick*/
-            // tickstart = HAL_GetTick();
+            if ((port_index_t) callback_data == port_connected_to_master) {
 
-            // /* Wait to get PTP control or timeout occurred */
-            // while (((HAL_GetTick() - tickstart) > HAL_PTP_TIMEOUT)) {
-            //     if (__HAL_ETH_GET_PTP_CONTROL(&eth_handle, ETH_MACTSCR_TSUPDT) == 0) {
-            //         NX_PTP_Status = NX_WAIT_ERROR;
-            //         break;
-            //     }
-            // }
+                /* Set the switch times */
+                if (switch_set_time_all(time_ptr) != SJA1105_OK) error_handler();
 
-            // time.Seconds     = time_ptr->second_low;
-            // time.NanoSeconds = time_ptr->nanosecond;
-            // HAL_ETH_PTP_SetTime(&eth_handle, &time);
+                /* Set the STM32's MAC time */
+                ptp_mac_set_time(time_ptr);
+            }
 
-            // TX_RESTORE
             break;
 
         /* Extract timestamp from packet */
@@ -83,24 +80,11 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
             ptp_packet_extract_timestamp(packet_ptr, time_ptr);
             break;
 
-        /* Get clock. Use the local PTP clock which the application synchronises to SWITCH0 */
-        /* TODO: God knows what this function does */
+        /* Get clock */
         case NX_PTP_CLIENT_CLOCK_GET:
 
-            // TX_DISABLE
-
-            // HAL_ETH_PTP_GetTime(&eth_handle, &time);
-            // sec1 = time.Seconds;
-            // ns   = time.NanoSeconds;
-            // HAL_ETH_PTP_GetTime(&eth_handle, &time);
-            // sec2                  = time.Seconds;
-            // time_ptr->second_high = 0;
-
-            // /* The offset standard deviation is below 50 ns */
-            // time_ptr->second_low = ns < 500000000UL ? sec2 : sec1;
-            // time_ptr->nanosecond = (LONG) ns;
-
-            // TX_RESTORE
+            /* Use the local PTP clock which the application synchronises to SWITCH0 */
+            ptp_mac_get_time(time_ptr);
             break;
 
         /* Adjust clock */
@@ -134,8 +118,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     nx_status_t nx_status = NX_SUCCESS;
     tx_status_t tx_status = TX_SUCCESS;
 
-    ULONG            events;
-    ptp_event_info_t event_info;
+    ULONG                   events;
+    ptp_packet_event_info_t event_info;
 
     NX_PACKET *packet_ptr;
 
@@ -150,6 +134,16 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     uint8_t  timestamps_received;
     uint16_t dummy_packet_length;
     uint16_t host_speed_mbps;
+
+    uint32_t new_ptp_clock_rate;
+    uint32_t ptp_clock_rates[NUM_SWITCHES] = {
+        [SWITCH0] = SJA1105_PTP_CLK_RATE_DEFAULT,
+#if NUM_SWITCHES > 1
+        [SWITCH1] = SJA1105_PTP_CLK_RATE_DEFAULT,
+#endif
+    };
+    uint8_t skip_switch_sync[NUM_SWITCHES] = {0};
+
 
     /* Start the timers */
     tx_status = tx_timer_activate(&ptp_mac_sync_timer);
@@ -189,10 +183,10 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             dummy_packet_length = packet_ptr->nx_packet_length;
 
             /* Send the packet so that it bounces back into the host port */
-            event_info.event = PTP_TX_EVENT_SEND_PACKET;
-            event_info.data  = packet_ptr;
-            event_info.port  = PORT_HOST;
-            tx_status        = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
+            event_info.event      = PTP_TX_EVENT_SEND_PACKET;
+            event_info.packet_ptr = packet_ptr;
+            event_info.port       = PORT_HOST;
+            tx_status             = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
             if (tx_status != TX_SUCCESS) {
                 nx_status = nx_packet_release(packet_ptr);
                 if (nx_status != NX_SUCCESS) error_handler();
@@ -207,7 +201,7 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             while (timestamps_received < PTP_CLOCK_NUM_TIMESTAMPS) {
 
                 tx_status = tx_queue_receive(&ptp_clock_queue_handle, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
-                if (tx_status != TX_SUCCESS) error_handler();
+                if (tx_status != TX_SUCCESS) error_handler(); // TODO: my does disconnecting a device cause this to fail???
 
                 assert(event_info.port == PORT_HOST);
 
@@ -290,15 +284,40 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             /* This is agnostic to the number of switches in the system */
             for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
 
+                /* After reaching equilibrium skip PTP_SWITCH_SYNC_SKIP syncs since they aren't necessary */
+                if (skip_switch_sync[i]) {
+                    skip_switch_sync[i]--;
+                    continue;
+                }
+
                 /* Get the offset between the two switches */
                 if (switch_get_timestamp_offsets(SWITCH0, i, &offset) != SJA1105_OK) error_handler();
 
+                assert(offset.second_high == 0);
+                assert(offset.second_low == 0);
 
-                // TODO: adjust rate slightly in CAS slave
-
-                /* Note: The switches share a common oscillator so they tick at
+                /* Adjust the PTP clock rate to sync slave with master within +-3
+                 * ticks (+-24ns)
+                 *
+                 * Note: The switches share a common oscillator so they tick at
                  *       the same rate, the only thing that can cause offsets is
-                 *       jitter when the application adjuststs their rates. */
+                 *       jitter when the application adjusts their rates.
+                 */
+                if (offset.nanosecond > (SJA1105_NS_PER_TS_TICK * 3)) {
+                    new_ptp_clock_rate = SJA1105_PTP_CLK_RATE_SLIGHTLY_FASTER;
+                } else if (offset.nanosecond < -(SJA1105_NS_PER_TS_TICK * 3)) {
+                    new_ptp_clock_rate = SJA1105_PTP_CLK_RATE_SLIGHTLY_SLOWER;
+                } else {
+                    new_ptp_clock_rate  = SJA1105_PTP_CLK_RATE_DEFAULT;
+                    skip_switch_sync[i] = PTP_SWITCH_SYNC_SKIP;
+                }
+
+                /* Write the new rate */
+                if (new_ptp_clock_rate != ptp_clock_rates[i]) {
+                    ptp_clock_rates[i] = new_ptp_clock_rate;
+                    if (SJA1105_SetPTPClockRate(&switch_handles[i], ptp_clock_rates[i]) != SJA1105_OK) error_handler();
+                    LOG_INFO("Switch %d current offset = %li ns", i, offset.nanosecond);
+                }
             }
 
 #else
@@ -311,8 +330,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
 
 uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp) {
 
-    bool             filter = false;
-    ptp_event_info_t event_info;
+    bool                    filter = false;
+    ptp_packet_event_info_t event_info;
 
     if ((dummy_packet_ptr != NULL) && (packet_ptr == dummy_packet_ptr)) {
 

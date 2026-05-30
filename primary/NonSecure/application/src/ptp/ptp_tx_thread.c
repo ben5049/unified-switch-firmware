@@ -23,7 +23,7 @@ TX_THREAD ptp_tx_thread_handle;
 uint8_t   ptp_tx_thread_stack[PTP_TX_THREAD_STACK_SIZE];
 
 TX_QUEUE ptp_tx_queue_handle;
-uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 
@@ -71,7 +71,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
 
             /* Send the transmit timestamp to the clock sync thread */
             if (port == PORT_HOST) {
-                ptp_event_info_t event_info;
+                ptp_packet_event_info_t event_info;
                 event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
                 event_info.time  = timestamp;
                 event_info.port  = PORT_HOST;
@@ -114,8 +114,8 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
     tx_status_t tx_status = TX_SUCCESS;
     nx_status_t nx_status = NX_SUCCESS;
 
-    ptp_event_info_t event_info;
-    uint32_t         event_flags;
+    ptp_packet_event_info_t event_info;
+    uint32_t                event_flags;
 
     uint8_t  depth    = 0;
     uint32_t attempts = 0;
@@ -249,9 +249,9 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         /* Queue the packet to be sent */
         filter_packet = true;
 
-        uint8_t          port_idx;
-        port_index_t     port_number;
-        ptp_event_info_t event_info;
+        uint8_t                 port_idx;
+        port_index_t            port_number;
+        ptp_packet_event_info_t event_info;
 
         /* Extract the port */
         port_idx    = header_size + PTP_HEADER_PORT_OFFSET;                         /* Index into the packet */

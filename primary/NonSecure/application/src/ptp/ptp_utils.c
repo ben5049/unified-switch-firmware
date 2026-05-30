@@ -45,7 +45,7 @@ static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
 };
 
 
-void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
+void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, const NX_PTP_TIME *time) {
     ((uint32_t *) packet_ptr->nx_packet_data_start)[0] = time->nanosecond;
     ((uint32_t *) packet_ptr->nx_packet_data_start)[1] = time->second_low;
     ((uint32_t *) packet_ptr->nx_packet_data_start)[2] = time->second_high;
@@ -157,7 +157,7 @@ void ptp_mac_adjust_time_coarse(NX_PTP_TIME *offset_time) {
 
 
 /* Set the STM32 MAC timestamp counter */
-void ptp_mac_set_time(NX_PTP_TIME *target_time) {
+void ptp_mac_set_time(NX_PTP_TIME *time_ptr) {
 
     TX_INTERRUPT_SAVE_AREA
 
@@ -176,8 +176,8 @@ void ptp_mac_set_time(NX_PTP_TIME *target_time) {
     }
 
     /* Format time */
-    time.Seconds     = target_time->second_low;
-    time.NanoSeconds = target_time->nanosecond;
+    time.Seconds     = time_ptr->second_low;
+    time.NanoSeconds = time_ptr->nanosecond;
 
     /* Set the time */
     HAL_ETH_PTP_SetTime(&heth, &time);
@@ -186,12 +186,38 @@ void ptp_mac_set_time(NX_PTP_TIME *target_time) {
 }
 
 
+void ptp_mac_get_time(NX_PTP_TIME *time_ptr) {
+
+    TX_INTERRUPT_SAVE_AREA
+
+    ETH_TimeTypeDef time;
+    uint32_t        sec1;
+    uint32_t        sec2;
+    uint32_t        ns;
+
+    TX_DISABLE
+
+    HAL_ETH_PTP_GetTime(&heth, &time);
+    sec1 = time.Seconds;
+    ns   = time.NanoSeconds;
+    HAL_ETH_PTP_GetTime(&heth, &time);
+    sec2                  = time.Seconds;
+    time_ptr->second_high = 0;
+
+    /* The offset standard deviation is below 50 ns */
+    time_ptr->second_low = ns < 500000000UL ? sec2 : sec1;
+    time_ptr->nanosecond = (LONG) ns;
+
+    TX_RESTORE
+}
+
+
 /* Drain all items from a PTP queue and release any packets */
 tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
 
-    tx_status_t      status = TX_SUCCESS;
-    ptp_event_info_t event_info;
-    NX_PACKET       *packet;
+    tx_status_t             status = TX_SUCCESS;
+    ptp_packet_event_info_t event_info;
+    NX_PACKET              *packet;
 
     /* Loop until all packets released or error occured */
     do {
@@ -212,7 +238,9 @@ tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
                     };
                     break;
 
+                /* This function was called on a non-packet queue */
                 default:
+                    error_handler();
                     break;
             }
         }

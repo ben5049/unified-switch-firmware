@@ -755,6 +755,12 @@ VOID _nx_ptp_client_utility_dec64(LONG *a_hi, ULONG *a_lo);
 VOID _nx_ptp_client_utility_neg64(LONG *a_hi, ULONG *a_lo);
 
 
+UINT _nx_ptp_client_ethernet_receive_notify(NX_IP *ip_ptr, UINT interface_index, NX_PACKET *packet_ptr,
+                                            ULONG physical_address_msw, ULONG physical_address_lsw,
+                                            UINT packet_type, UINT header_size, VOID *context,
+                                            struct NX_LINK_TIME_STRUCT *time_ptr);
+
+
 /* Determine if a C++ compiler is being used.  If so, complete the standard
    C conditional started above.  */
 #ifdef __cplusplus

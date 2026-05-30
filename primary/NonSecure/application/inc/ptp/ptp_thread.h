@@ -21,7 +21,8 @@ extern "C" {
 #include "phy_thread.h"
 
 
-#define PTP_MSG_SIZE_WORDS ((sizeof(ptp_event_info_t) + 3) / 4) /* Round up */
+#define PTP_CLIENT_MSG_SIZE_WORDS ((sizeof(ptp_client_event_info_t) + 3) / 4) /* Round up */
+#define PTP_PACKET_MSG_SIZE_WORDS ((sizeof(ptp_packet_event_info_t) + 3) / 4) /* Round up */
 
 
 typedef enum {
@@ -58,14 +59,24 @@ typedef enum {
 typedef struct {
     ptp_event_t event;
     union {
-        void                 *data;
-        NX_PACKET            *packet_ptr;
-        NX_PTP_CLIENT_MASTER *master;
-        NX_PTP_CLIENT_SYNC   *sync;
-        NX_PTP_TIME           time;
+        struct {
+            NX_PTP_CLIENT_MASTER master;
+            uint8_t              _grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
+        };
+        NX_PTP_CLIENT_SYNC sync;
     };
     port_index_t port;
-} ptp_event_info_t;
+} ptp_client_event_info_t;
+
+
+typedef struct {
+    ptp_event_t event;
+    union {
+        NX_PACKET  *packet_ptr;
+        NX_PTP_TIME time;
+    };
+    port_index_t port;
+} ptp_packet_event_info_t;
 
 typedef struct {
 
@@ -76,7 +87,10 @@ typedef struct {
     atomic_uint_fast32_t tx_timestamps_missed[NUM_PORTS];
 
     /* RX */
-    atomic_uint_fast32_t rx_no_meta;
+    atomic_uint_fast32_t rx_meta;      /* Number of META frames filtered */
+    atomic_uint_fast32_t rx_packets;   /* Number of PTP packets filtered */
+    atomic_uint_fast32_t rx_no_meta;   /* Expected a META frame but didn't get one */
+    atomic_uint_fast32_t rx_wrong_dst; /* gPTP Ethertype but wrong destination address */
     atomic_uint_fast32_t rx_invalid_vlan;
     atomic_uint_fast32_t rx_meta_dropped;
     atomic_uint_fast32_t rx_packets_dropped;
@@ -108,15 +122,15 @@ extern TX_THREAD ptp_clock_thread_handle;
 extern uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
 
 extern TX_QUEUE ptp_event_queue_handle;
-extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_tx_queue_handle;
-extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_rx_packet_queue_handle;
-extern uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_rx_meta_queue_handle;
-extern uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_clock_queue_handle;
-extern uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+extern uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 extern TX_EVENT_FLAGS_GROUP ptp_clock_events_handle;
@@ -124,9 +138,10 @@ extern TX_EVENT_FLAGS_GROUP ptp_clock_events_handle;
 extern TX_TIMER ptp_mac_sync_timer;
 extern TX_TIMER ptp_switch_sync_timer;
 
-extern NX_PTP_CLIENT        ptp_client[NUM_PHYS];
-extern SHORT                ptp_utc_offset;
-extern ptp_event_counters_t ptp_event_counters;
+extern NX_PTP_CLIENT         ptp_client[NUM_PHYS];
+extern SHORT                 ptp_utc_offset;
+extern ptp_event_counters_t  ptp_event_counters;
+extern volatile port_index_t port_connected_to_master;
 
 
 /* Thread functions */

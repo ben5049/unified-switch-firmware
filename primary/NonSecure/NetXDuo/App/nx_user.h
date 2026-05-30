@@ -86,13 +86,11 @@
 
 /* If defined, the link driver is able to specify extra capability, such as
    checksum offloading features. */
-
 #define NX_ENABLE_INTERFACE_CAPABILITY
-
 
 /* NX_PHYSICAL_HEADER Specifies the size in bytes of the physical header of
    the frame. */
-#define NX_PHYSICAL_HEADER 20
+#define NX_PHYSICAL_HEADER                      20
 
 /* NX_PHYSICAL_TRAILER specifies the size in bytes of the physical packet
    trailer and is typically used to reserve storage for things like Ethernet
@@ -167,9 +165,7 @@
 /* Defined, allows the stack to use two packet pools, one with large payload
    size and one with smaller payload size. By default this option is not
    enabled. */
-
 #define NX_ENABLE_DUAL_PACKET_POOL
-
 
 /*****************************************************************************/
 /***************** Configuration options for Packet **************************/
@@ -294,7 +290,13 @@
 
 /* This defines specifies the number of ThreadX timer ticks in one second.
    The default value is based on ThreadX timer interrupt. */
-#define NX_IP_PERIODIC_RATE (TX_TIMER_TICKS_PER_SECOND)
+/*
+#ifdef TX_TIMER_TICKS_PER_SECOND
+#define NX_IP_PERIODIC_RATE         			TX_TIMER_TICKS_PER_SECOND
+#else
+#define NX_IP_PERIODIC_RATE         			100
+#endif
+*/
 
 /* Defined, NX_ENABLE_IP_RAW_PACKET_FILTER allows an application to install a
    filter for incoming raw packets. This feature is disabled by default. */
@@ -313,7 +315,7 @@
 */
 
 /* Defined, this option enables random IP id. By default IP id is increased by one for each packet.
- */
+*/
 /*
 #define NX_ENABLE_IP_ID_RANDOMIZATION
 */
@@ -636,7 +638,7 @@
    pool from being starved. By default this symbol is not defined, thus there
    is no limit on the number of out of order packets being queued in the TCP
    socket. */
-#define NX_TCP_MAX_OUT_OF_ORDER_PACKETS 8
+#define NX_TCP_MAX_OUT_OF_ORDER_PACKETS 	    8
 
 /* Defined, enables the optional TCP keepalive timer. The default settings is
    not enabled. */

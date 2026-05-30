@@ -23,9 +23,9 @@ TX_THREAD ptp_rx_thread_handle;
 uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 
 TX_QUEUE ptp_rx_packet_queue_handle;
-uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 TX_QUEUE ptp_rx_meta_queue_handle;
-uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_MSG_SIZE_WORDS];
+uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 
 void ptp_rx_thread_entry(uint32_t initial_input) {
@@ -33,15 +33,15 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
     tx_status_t tx_status = TX_SUCCESS;
     nx_status_t nx_status = NX_SUCCESS;
 
-    ptp_event_info_t event_info;
+    ptp_packet_event_info_t event_info;
 
     NX_PACKET   *ptp_packet;
     NX_PTP_TIME  timestamp;
     port_index_t port;
 
-    bool                   client_found = false;
-    NX_LINK_RECEIVE_QUEUE *nx_receive_queue_ptr;
-    UINT                   header_size;
+    // bool                   client_found = false; // TODO: remove
+    // NX_LINK_RECEIVE_QUEUE *nx_receive_queue_ptr;
+    UINT header_size;
 
 #if DEBUG
     uint32_t enqueued;
@@ -121,50 +121,58 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         /* Store the resulting timestamp in the packet */
                         ptp_packet_insert_timestamp(ptp_packet, &timestamp);
 
-                        /* Iterate through the receive callbacks to find the one for this port */
-                        client_found         = false;
-                        nx_receive_queue_ptr = nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head;
-                        while (nx_receive_queue_ptr) {
+                        // /* Iterate through the receive callbacks to find the one for this port */
+                        // client_found         = false;
+                        // nx_receive_queue_ptr = nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head;
+                        // while (nx_receive_queue_ptr) {
 
-                            /* PTP Client found */
-                            if ((NX_PTP_CLIENT *) nx_receive_queue_ptr->context == &ptp_client[port]) {
+                        //     /* PTP Client found */
+                        //     if ((NX_PTP_CLIENT *) nx_receive_queue_ptr->context == &ptp_client[port]) {
 
-                                /* Parse information from the packet header */
-                                nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
-                                if (nx_status != NX_SUCCESS) error_handler();
+                        //         /* Parse information from the packet header */
+                        //         nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
+                        //         if (nx_status != NX_SUCCESS) error_handler();
 
-                                /* Call the packet receive callback
-                                 *
-                                 * Note: _nx_ptp_client_ethernet_receive_notify doesn't use the following:
-                                 *   - ip_ptr
-                                 *   - interface_index
-                                 *   - physical_address_msw
-                                 *   - physical_address_lsw
-                                 *   - packet_type
-                                 *   - time_ptr
-                                 */
-                                nx_status = nx_receive_queue_ptr->callback(NULL, 0, ptp_packet, 0, 0, 0, header_size, nx_receive_queue_ptr->context, NULL);
-                                if (nx_status != NX_SUCCESS) error_handler();
+                        //         /* Call the packet receive callback
+                        //          *
+                        //          * Note: _nx_ptp_client_ethernet_receive_notify doesn't use the following:
+                        //          *   - ip_ptr
+                        //          *   - interface_index
+                        //          *   - physical_address_msw
+                        //          *   - physical_address_lsw
+                        //          *   - packet_type
+                        //          *   - time_ptr
+                        //          */
+                        //         nx_status = nx_receive_queue_ptr->callback(NULL, 0, ptp_packet, 0, 0, 0, header_size, nx_receive_queue_ptr->context, NULL);
+                        //         if (nx_status != NX_SUCCESS) error_handler();
 
-                                /* Packet was consumed */
-                                client_found = true;
-                                break;
-                            }
+                        //         /* Packet was consumed */
+                        //         client_found = true;
+                        //         break;
+                        //     }
 
-                            /* Move to the next queue */
-                            nx_receive_queue_ptr = nx_receive_queue_ptr->next_ptr;
-                            if (nx_receive_queue_ptr == nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head) {
-                                break;
-                            }
-                        }
+                        //     /* Move to the next queue */
+                        //     nx_receive_queue_ptr = nx_receive_queue_ptr->next_ptr;
+                        //     if (nx_receive_queue_ptr == nx_ip_instance.nx_ip_interface[PRIMARY_INTERFACE].nx_interface_link_receive_queue_head) {
+                        //         break;
+                        //     }
+                        // }
 
-                        /* Reached the end of the queue and found no callback */
-                        if (!client_found) {
-                            nx_status = nx_packet_release(ptp_packet);
-                            if (nx_status != NX_SUCCESS) error_handler();
-                            ptp_event_counters.rx_client_not_found[port]++;
-                            LOG_WARNING("PTP RX Couldn't route packet to client");
-                        }
+                        // /* Reached the end of the queue and found no callback */
+                        // if (!client_found) {
+                        //     nx_status = nx_packet_release(ptp_packet);
+                        //     if (nx_status != NX_SUCCESS) error_handler();
+                        //     ptp_event_counters.rx_client_not_found[port]++;
+                        //     LOG_WARNING("PTP RX Couldn't route packet to client");
+                        // }
+
+                        /* Parse information from the packet header */
+                        nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
+                        if (nx_status != NX_SUCCESS) error_handler();
+
+                        /* Notify the client */
+                        nx_status = _nx_ptp_client_ethernet_receive_notify(NULL, 0, ptp_packet, 0, 0, 0, header_size, &ptp_client[port], NULL);
+                        if (nx_status != NX_SUCCESS) error_handler();
                     }
 
                     else {
@@ -194,8 +202,9 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
     bool filter_packet = false;
 
-    ptp_event_info_t event_info;
+    ptp_packet_event_info_t event_info;
 
+    ULONG  dst_msw, dst_lsw;
     ULONG  src_msw, src_lsw;
     USHORT ether_type;
     USHORT vlan_tag;
@@ -205,8 +214,8 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
     /* Get info from the header */
     nx_status = nx_link_ethernet_header_parse(
         packet_ptr,
-        NULL,
-        NULL,
+        &dst_msw,
+        &dst_lsw,
         &src_msw,
         &src_lsw,
         &ether_type,
@@ -224,6 +233,9 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
     /* META Frame */
     if ((src_msw == srcmeta_msw) && (src_lsw == srcmeta_lsw)) {
 
+        /* Filter out all META frames, regardless of VLAN */
+        filter_packet = true;
+
         // TODO: Check if META frames are VLAN tagged
 
         /* Queue the packet to be sent */
@@ -240,47 +252,63 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             LOG_ERROR("PTP RX Dropped meta frame");
             nx_status = nx_packet_release(packet_ptr);
             if (nx_status != NX_SUCCESS) error_handler();
+        } else {
+            ptp_event_counters.rx_meta++;
         }
     }
 
     /* PTP packet */
     if (ether_type == NX_LINK_ETHERNET_PTP) {
 
-        /* Filter out all PTP packets, regardless of VLAN */
+        /* Filter out all PTP packets, regardless of VLAN or address */
         filter_packet = true;
 
-        /* Only pass packets with the correct VLAN to the rx thread */
-        if ((vlan_tag_valid != NX_TRUE) || ((vlan_tag & NX_LINK_VLAN_ID_MASK) == PTP_VLAN)) {
+        /* PTP but using different destination (non-gPTP, probably E2E broadcast address) */
+        // TODO: get MAC_FLTRES & MAC_FLT and check match
+        if ((((dst_lsw & 0xff0000ff) != PTP_ETHERNET_ADDR_LSB) || (dst_msw != PTP_ETHERNET_ADDR_MSB))) {
+            ptp_event_counters.rx_wrong_dst++;
+            nx_status = nx_packet_release(packet_ptr);
+            if (nx_status != NX_SUCCESS) error_handler();
+        }
 
-            /* Store the receive timestamp at the start of the packet */
-            NX_PTP_TIME timestamp;
-            timestamp.nanosecond  = ts[0];
-            timestamp.second_low  = ts[1];
-            timestamp.second_high = 0;
-            ptp_packet_insert_timestamp(packet_ptr, &timestamp);
+        /* Correct address */
+        else {
 
-            /* Queue the packet to be processed */
-            event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
-            event_info.packet_ptr = packet_ptr;
-            tx_status             = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
-            if (tx_status != TX_SUCCESS) {
+            /* Only pass packets with the correct VLAN to the rx thread */
+            if ((vlan_tag_valid != NX_TRUE) || ((vlan_tag & NX_LINK_VLAN_ID_MASK) == PTP_VLAN)) {
+
+                /* Store the receive timestamp at the start of the packet */
+                NX_PTP_TIME timestamp;
+                timestamp.nanosecond  = ts[0];
+                timestamp.second_low  = ts[1];
+                timestamp.second_high = 0;
+                ptp_packet_insert_timestamp(packet_ptr, &timestamp);
+
+                /* Queue the packet to be processed */
+                event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
+                event_info.packet_ptr = packet_ptr;
+                tx_status             = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
+                if (tx_status != TX_SUCCESS) {
 #if DEBUG
-                error_handler();
+                    error_handler();
 #endif
 
-                /* Queue is full, release the packet instead */
-                ptp_event_counters.rx_packets_dropped++;
-                LOG_ERROR("PTP RX Dropped PTP packet");
+                    /* Queue is full, release the packet instead */
+                    ptp_event_counters.rx_packets_dropped++;
+                    LOG_ERROR("PTP RX Dropped PTP packet");
+                    nx_status = nx_packet_release(packet_ptr);
+                    if (nx_status != NX_SUCCESS) error_handler();
+                } else {
+                    ptp_event_counters.rx_packets++;
+                }
+            }
+
+            /* Invalid VLAN */
+            else {
+                ptp_event_counters.rx_invalid_vlan++;
                 nx_status = nx_packet_release(packet_ptr);
                 if (nx_status != NX_SUCCESS) error_handler();
             }
-        }
-
-        /* Invalid VLAN */
-        else {
-            ptp_event_counters.rx_invalid_vlan++;
-            nx_status = nx_packet_release(packet_ptr);
-            if (nx_status != NX_SUCCESS) error_handler();
         }
     }
 

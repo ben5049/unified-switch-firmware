@@ -736,10 +736,10 @@ NX_PTP_CLIENT *client_ptr = (NX_PTP_CLIENT *)(socket_ptr -> nx_udp_socket_reserv
 /*    NetX link layer                                                     */
 /*                                                                        */
 /**************************************************************************/
-static UINT _nx_ptp_client_ethernet_receive_notify(NX_IP *ip_ptr, UINT interface_index, NX_PACKET *packet_ptr,
-                                                   ULONG physical_address_msw, ULONG physical_address_lsw,
-                                                   UINT packet_type, UINT header_size, VOID *context,
-                                                   struct NX_LINK_TIME_STRUCT *time_ptr)
+UINT _nx_ptp_client_ethernet_receive_notify(NX_IP *ip_ptr, UINT interface_index, NX_PACKET *packet_ptr,
+                                            ULONG physical_address_msw, ULONG physical_address_lsw,
+                                            UINT packet_type, UINT header_size, VOID *context,
+                                            struct NX_LINK_TIME_STRUCT *time_ptr)
 {
 TX_INTERRUPT_SAVE_AREA
 NX_PTP_CLIENT *client_ptr = (NX_PTP_CLIENT *)context;

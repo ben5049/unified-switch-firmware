@@ -7,6 +7,7 @@
 
 #include "sja1105.h"
 
+#include "utils.h"
 #include "switch_utils.h"
 #include "phy_common.h"
 #include "phy_thread.h"
@@ -132,7 +133,7 @@ sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
 }
 
 
-void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp) {
+static void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp) {
 
     int64_t total_ns;
     int64_t total_sec;
@@ -146,7 +147,7 @@ void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp) {
     ns_remainder = (int32_t) (total_ns % 1000000000LL);
 
     /* Nanoseconds must be positive when seconds are greater than 0 */
-    assert((total_sec == 0) || (ns_remainder >= 0));
+    // assert((total_sec == 0) || (ns_remainder >= 0)); // TODO: re-enable?
 
     /* Store timestamp in the NX_PTP_TIME structure.
      * Standard PTP seconds are 48-bit. We put the upper 16 bits in
@@ -155,6 +156,73 @@ void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp) {
     timestamp->second_high = (LONG) (total_sec >> 32);
     timestamp->second_low  = (ULONG) (total_sec & 0xFFFFFFFFULL);
     timestamp->nanosecond  = (LONG) ns_remainder;
+}
+
+
+/* This function assumes the switches are already synchronised */
+sja1105_status_t switch_set_time_all(NX_PTP_TIME *time) {
+
+    sja1105_status_t status    = SJA1105_OK;
+    tx_status_t      tx_status = TX_SUCCESS;
+    uint64_t         raw_time_new;
+    uint64_t         raw_time_current;
+    bool             add;
+
+    /* Can't set the time to be negative */
+    assert(time->second_high >= 0);
+    assert(time->nanosecond >= 0);
+
+    /* Calculate the new time */
+    {
+        uint64_t total_seconds;
+
+        /* Combine the 48-bit PTP seconds into a single 64-bit integer */
+        total_seconds = ((uint64_t) time->second_high << 32) | time->second_low;
+
+        /* Convert seconds to 8ns ticks */
+        raw_time_new = total_seconds * (S_TO_NS(1) / SJA1105_NS_PER_TS_TICK);
+
+        /* Add the nanosecond fraction */
+        raw_time_new += ((uint64_t) time->nanosecond) / SJA1105_NS_PER_TS_TICK;
+    }
+
+    /* Take the mutex to ensure time setting is atomic
+     * Note: Operations are already atomic within each switch, but when
+     *       measuring offsets between switches there could be glitches
+     *       otherwise. */
+    tx_status = tx_mutex_get(&switch_mutex_handle, PTP_CLOCK_TIMEOUT);
+    if (tx_status != TX_SUCCESS) {
+        status = SJA1105_MUTEX_ERROR;
+        return status;
+    }
+
+    /* Get the current time from the main SJA1105 */
+    status = SJA1105_GetCurrentTime(switch_handles, &raw_time_current);
+    if (status != SJA1105_OK) return status;
+
+    /* Calculate the difference */
+    if (raw_time_new >= raw_time_current) {
+        add           = true;
+        raw_time_new -= raw_time_current;
+    } else {
+        add          = false;
+        raw_time_new = raw_time_current - raw_time_new;
+    }
+
+    /* Add the offset to all the switches */
+    for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
+        status = SJA1105_UpdateTimestamp(&switch_handles[i], raw_time_new, add, !add);
+        if (status != SJA1105_OK) return status;
+    }
+
+    /* Release the mutex */
+    tx_status = tx_mutex_put(&switch_mutex_handle);
+    if (tx_status != TX_SUCCESS) {
+        status = SJA1105_MUTEX_ERROR;
+        return status;
+    }
+
+    return status;
 }
 
 

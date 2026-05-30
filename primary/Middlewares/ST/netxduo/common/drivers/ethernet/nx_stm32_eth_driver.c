@@ -2398,7 +2398,6 @@ static VOID  _nx_driver_hardware_packet_received(VOID)
 
   while (HAL_ETH_ReadData(&eth_handle, (void **)&received_packet_ptr) == HAL_OK)
   {
-
 #ifdef NX_DRIVER_ENABLE_PTP
     /* Save PTP timestamp */
     HAL_ETH_PTP_GetRxTimestamp(&eth_handle, &timestamp);
