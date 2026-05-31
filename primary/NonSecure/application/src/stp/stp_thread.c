@@ -127,11 +127,11 @@ void stp_thread_entry(uint32_t initial_input) {
     //
     //    /* Create the NetX STP instance used to send BPDUs */
     //    nx_status = nx_stp_init(&nx_ip_instance, "nx_stp_instance", &stp_events_handle);
-    //    if (nx_status != NX_SUCCESS) error_handler();
+    //    NX_CHECK(nx_status);
     //
     //    /* Initialise the STP ThreadX byte pool */
     //    tx_status = stp_byte_pool_init();
-    //    if (tx_status != TX_SUCCESS) error_handler();
+    //    TX_CHECK(tx_status);
     //
     //    /* Create and start the bridge */
     //    bridge = STP_CreateBridge(5, 0, NUM_VLANS, &stp_callbacks, mac_address, 100);
@@ -181,7 +181,7 @@ void stp_thread_entry(uint32_t initial_input) {
     //                        /* Process and release the BPDU */
     //                        validate_and_process_bpdu(received_packet->nx_packet_prepend_ptr, received_packet->nx_packet_length); // TODO: Check return codes
     //                        nx_status = _nx_packet_release(received_packet);
-    //                        if (nx_status != NX_SUCCESS) error_handler();
+    //                        NX_CHECK(nx_status);
     //                    }
     //                }
     //

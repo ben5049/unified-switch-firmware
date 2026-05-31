@@ -36,8 +36,9 @@ static volatile uint8_t      tx_send_count;        /* How many switches the mana
 
 static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_mgmt_free_t reason, void *context) {
 
-    sja1105_status_t status = SJA1105_OK;
-    port_index_t     port   = (port_index_t) context;
+    sja1105_status_t switch_status = SJA1105_OK;
+    tx_status_t      tx_status     = TX_SUCCESS;
+    port_index_t     port          = (port_index_t) context;
 
     /* An error has occured */
     if (reason != SJA1105_MGMT_FREE_USED) {
@@ -55,8 +56,8 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
             NX_PACKET  *packet_ptr = (NX_PACKET *) ptp_tx_packet;
 
             /* Get the timestamp */
-            status = switch_get_egress_timestamp(port, PTP_TX_TSREG, &timestamp);
-            if (status != SJA1105_OK) return status;
+            switch_status = switch_get_egress_timestamp(port, PTP_TX_TSREG, &timestamp);
+            if (switch_status != SJA1105_OK) return switch_status;
 
             /* No timestamp. Could be because frame never reached MAC egress port.
              * This could be because the PHY has no link */
@@ -75,7 +76,8 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
                 event_info.time  = timestamp;
                 event_info.port  = PORT_HOST;
-                if (tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) error_handler();
+                tx_status        = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
+                TX_CHECK(tx_status);
             }
 
             /* Call PTP client notification callback */
@@ -94,25 +96,24 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
 
         /* PTP Packet fully sent, let the tx thread know */
         if (tx_send_count == ptp_tx_send_count) {
-            if (tx_event_flags_set(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR) != TX_SUCCESS) {
-                status = SJA1105_ERROR;
-                return status;
-            }
+            tx_status = tx_event_flags_set(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR);
+            TX_CHECK(tx_status);
         }
     }
 
     else {
-        status = SJA1105_ERROR;
+        switch_status = SJA1105_ERROR;
     }
 
-    return status;
+    return switch_status;
 }
 
 
 void ptp_tx_thread_entry(uint32_t initial_input) {
 
-    tx_status_t tx_status = TX_SUCCESS;
-    nx_status_t nx_status = NX_SUCCESS;
+    tx_status_t      tx_status     = TX_SUCCESS;
+    nx_status_t      nx_status     = NX_SUCCESS;
+    sja1105_status_t switch_status = SJA1105_OK;
 
     ptp_packet_event_info_t event_info;
     uint32_t                event_flags;
@@ -147,12 +148,13 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                     tx_send_count = 0;
 
                     /* Create a management route for the packet */
-                    if (switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port) != SJA1105_OK) error_handler();
+                    switch_status = switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port);
+                    SWITCH_CHECK(switch_status);
                     ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
 
                     /* Send the packet */
                     nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr);
-                    if (nx_status != NX_SUCCESS) error_handler();
+                    NX_CHECK(nx_status);
                     ptp_event_counters.tx_packets_sent[event_info.port]++;
 
                     /* Get confirmation the packet has been sent through the switch */
@@ -161,7 +163,8 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                         /* Attempt to free management route. If successful this will
                          * get the egress timestamp and pass it to the PTP client too. */
-                        if (switch_free_mgmt_route(depth) != SJA1105_OK) error_handler();
+                        switch_status = switch_free_mgmt_route(depth);
+                        SWITCH_CHECK(switch_status);
 
                         /* Attempt to get confirmation the packet has made it through the switch */
                         tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, 1);
@@ -218,7 +221,9 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
  * and shouldn't be sent. */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 
-    bool filter_packet = false;
+    tx_status_t tx_status     = TX_SUCCESS;
+    nx_status_t nx_status     = NX_SUCCESS;
+    bool        filter_packet = false;
 
     USHORT ether_type;
     USHORT vlan_tag;
@@ -226,16 +231,17 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
     UINT   header_size;
 
     /* Get info from the header */
-    if (nx_link_ethernet_header_parse(
-            packet_ptr,
-            NULL,
-            NULL,
-            NULL,
-            NULL,
-            &ether_type,
-            &vlan_tag,
-            &vlan_tag_valid,
-            &header_size) != NX_SUCCESS) error_handler();
+    nx_status = nx_link_ethernet_header_parse(
+        packet_ptr,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        &ether_type,
+        &vlan_tag,
+        &vlan_tag_valid,
+        &header_size);
+    NX_CHECK(nx_status);
 
     /* Packet has already been filtered */
     if (packet_ptr == ptp_tx_packet) {
@@ -266,15 +272,16 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         event_info.port       = port_number;
 
         /* Queue the event */
-        if (tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) {
-#if DEBUG
-            error_handler();
-#endif
+        tx_status = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
+        if (tx_status != TX_SUCCESS) {
+
+            DEBUG_STOP();
 
             /* Queue is full, release the packet instead */
             ptp_event_counters.tx_packets_dropped[port_number]++;
             LOG_ERROR("PTP TX Dropped packet");
-            if (nx_packet_release(packet_ptr) != NX_SUCCESS) error_handler();
+            nx_status = nx_packet_release(packet_ptr);
+            NX_CHECK(nx_status);
         }
     }
 

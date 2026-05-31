@@ -23,6 +23,7 @@
 
 #include "app.h"
 #include "switch_thread.h"
+#include "switch_utils.h"
 #include "phy_thread.h"
 #include "utils.h"
 #include "static_checks.h"
@@ -39,6 +40,9 @@ log_handle_t *loggers[NUM_LOGGERS] = {&hlog_setup, &hlog_generic, &hlog_phy, &hl
 
 
 int main(void) {
+
+    log_status_t     log_status    = LOGGING_OK;
+    sja1105_status_t switch_status = SJA1105_OK;
 
     /* Static assertions */
     CHECK_BASIC_TYPES();
@@ -60,24 +64,23 @@ int main(void) {
     if (!test_nvm()) error_handler();
 
     /* Start setup logger */
-    log_status_t log_status;
     log_status = log_init(&hlog_setup, LOGGER_ID_ROOT_NS, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
     LOG_INFO("Starting non-secure firmware");
 
     /* Start other loggers */
     log_status = log_init(&hlog_generic, LOGGER_ID_0, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
     log_status = log_init(&hlog_phy, LOGGER_ID_1, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
     log_status = log_init(&hlog_sw, LOGGER_ID_2, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
     log_status = log_init(&hlog_comms, LOGGER_ID_3, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
     log_status = log_init(&hlog_system, LOGGER_ID_4, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
     log_status = log_init(&hlog_network, LOGGER_ID_5, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    if (log_status != LOGGING_OK) error_handler();
+    LOG_CHECK(log_status);
 
 #if UART_LOGGING_ENABLE
     if (!s_uart_logging_enabled()) LOG_WARNING("UART Logging not enabled in secure firmware");
@@ -97,8 +100,8 @@ int main(void) {
     LOG_INFO("3V3 Regulator changed to FPWM mode");
 
     /* Initialise the switch */
-    sja1105_status_t switch_status = switch_init();
-    if (switch_status != SJA1105_OK) error_handler();
+    switch_status = switch_init();
+    SWITCH_CHECK(switch_status);
     LOG_INFO("SJA1105(s) initialised");
 
     /* Ethernet MAC can now be initialised (requires switch REFCLK) */

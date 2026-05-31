@@ -20,6 +20,10 @@ extern "C" {
 #include "error.h"
 
 
+#define SWITCH_CHECK(status)                    \
+    if ((status) != SJA1105_OK) error_handler()
+
+
 static inline sja1105_handle_t *port_to_switch_handle(port_index_t port) {
 #if HW_VERSION == 4
     return &switch_handles[0];

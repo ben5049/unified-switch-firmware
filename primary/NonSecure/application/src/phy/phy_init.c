@@ -266,11 +266,8 @@ phy_status_t phys_init() {
         status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], &phy_info[i]);
         if (status != PHY_OK) {
             LOG_ERROR("Failed to initialise PHY %d", i);
-#if DEBUG
-            error_handler();
-#else
+            DEBUG_STOP();
             phy_info[i].connection_state = PHY_STATE_ERROR_UNRECOVERABLE; /* Allowed to continue in degraded state */
-#endif
         }
     }
 
@@ -286,12 +283,8 @@ phy_status_t phys_init() {
         status = PHY_EnableInterrupts(phy_handles[i]);
         if ((status != PHY_OK) && (status != PHY_NOT_IMPLEMENTED_ERROR)) error_handler(); // TODO: re-enable when implemented
         status = PHY_EnableTemperatureSensor(phy_handles[i]);
-        if ((status != PHY_OK) && (status != PHY_NOT_IMPLEMENTED_ERROR)) error_handler(); // TODO: re-enable when implemented
+        PHY_CHECK(status);
     }
-
-    /* TODO: Perform other configuration */
-
-    /* TODO: Enable End to End Transparent Clock and PTP hardware acceleration */
 
     /* Update PHY info with info from initialisation */
     for (phy_index_t i = 0; i < NUM_PHYS; i++) {

@@ -52,7 +52,7 @@
 //         bool send_meta  = false;
 //         bool incl_srcpt = false;
 //         status          = SJA1105_MACAddrTrapTest(&hsw0, bpdu_dest_address, &trapped, &send_meta, &incl_srcpt);
-//         if (status != SJA1105_OK) error_handler(); /* TODO: Handle this properly */
+//         SWITCH_CHECK(status); /* TODO: Handle this properly */
 //
 //         /* Trapped by MAC filters: success */
 //         if (trapped && incl_srcpt) {
@@ -85,7 +85,7 @@
 //
 //     status = SJA1105_PortSetLearning(&hsw0, portIndex, enable);
 //
-//     if (status != SJA1105_OK) error_handler();
+//     SWITCH_CHECK(status);
 // }
 //
 //
@@ -95,7 +95,7 @@
 //
 //     status = SJA1105_PortSetForwarding(&hsw0, portIndex, enable);
 //
-//     if (status != SJA1105_OK) error_handler();
+//     SWITCH_CHECK(status);
 // }
 //
 //
@@ -197,7 +197,7 @@
 //     void* memory_ptr;
 //
 //     int status = tx_byte_allocate(&stp_byte_pool, &memory_ptr, size, TX_NO_WAIT);
-//     if (status != TX_SUCCESS) error_handler();
+//     TX_CHECK(status);
 //
 //     memset(memory_ptr, 0, size);
 //

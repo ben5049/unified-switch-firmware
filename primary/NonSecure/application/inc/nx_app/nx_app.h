@@ -23,6 +23,10 @@ extern "C" {
 #include "config.h"
 
 
+#define NX_CHECK(status)                        \
+    if ((status) != NX_SUCCESS) error_handler()
+
+
 /* Copy all the NetX Duo return codes into an enum for easier use */
 typedef enum {
     NX_STATUS_SUCCESS              = NX_SUCCESS,

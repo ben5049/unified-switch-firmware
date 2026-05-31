@@ -14,6 +14,7 @@
 #include "switch_thread.h"
 #include "switch_callbacks.h"
 #include "switch_diagnostics.h"
+#include "switch_utils.h"
 #include "sja1105.h"
 #include "utils.h"
 
@@ -32,8 +33,8 @@ sja1105_stats_detailed_t stats_ext[NUM_SWITCHES];
 /* This thread perform regular maintenance for the switch and publishes periodic diagnostic messages */
 void switch_thread_entry(uint32_t initial_input) {
 
-    sja1105_status_t status    = SJA1105_OK;
-    tx_status_t      tx_status = TX_SUCCESS;
+    sja1105_status_t switch_status = SJA1105_OK;
+    tx_status_t      tx_status     = TX_SUCCESS;
     uint32_t         events;
 
 #if DEBUG
@@ -45,14 +46,14 @@ void switch_thread_entry(uint32_t initial_input) {
     /* Clear stats structs */
     memset(stats_ext, 0, sizeof(stats_ext));
 
-    status = init_switch_diagnostics();
-    if (status != SJA1105_OK) error_handler();
+    switch_status = init_switch_diagnostics();
+    SWITCH_CHECK(switch_status);
 
     /* Start the timers */
     tx_status = tx_timer_activate(&switch_maintenance_timer);
-    if (tx_status != TX_SUCCESS) error_handler();
+    TX_CHECK(tx_status);
     tx_status = tx_timer_activate(&switch_publish_timer);
-    if (tx_status != TX_SUCCESS) error_handler();
+    TX_CHECK(tx_status);
 
     while (1) {
 
@@ -64,7 +65,7 @@ void switch_thread_entry(uint32_t initial_input) {
             &events,
             MAX(SWITCH_MAINTENANCE_INTERVAL, SWITCH_PUBLISH_STATS_INTERVAL) * 5 /* Break out of deadlocks */
         );
-        if (tx_status != TX_SUCCESS) error_handler();
+        TX_CHECK(tx_status);
 
         /* Check if maintenance is necessary */
         if (events & SWITCH_EVENT_MAINTENANCE) {
@@ -72,24 +73,24 @@ void switch_thread_entry(uint32_t initial_input) {
 
                 /* Make sure local copies of tables match the copy on the switch chip
                  * (this doesn't check for differences, it only updates the internal copy) */
-                status = SJA1105_ReadAllTables(&switch_handles[i]);
-                if (status != SJA1105_OK) error_handler();
+                switch_status = SJA1105_ReadAllTables(&switch_handles[i]);
+                SWITCH_CHECK(switch_status);
 
-                /* Check the status registers for issues (including RAM parity errors) */
-                status = SJA1105_CheckStatusRegisters(&switch_handles[i]);
-                if (status == SJA1105_RAM_PARITY_ERROR) {
+                /* Check the switch_status registers for issues (including RAM parity errors) */
+                switch_status = SJA1105_CheckStatusRegisters(&switch_handles[i]);
+                if (switch_status == SJA1105_RAM_PARITY_ERROR) {
                     LOG_WARNING("RAM Parity error detected in switch %d", i);
-                    status = switch_reset(i);
+                    switch_status = switch_reset(i);
                 }
-                if (status != SJA1105_OK) error_handler();
+                SWITCH_CHECK(switch_status);
 
                 /* Read out the stats */
 #if SWITCH_GET_EXTENDED_STATS
-                status = SJA1105_ReadStatsDetailed(&switch_handles[i], &stats_ext[i]);
-                if (status != SJA1105_OK) error_handler();
+                switch_status = SJA1105_ReadStatsDetailed(&switch_handles[i], &stats_ext[i]);
+                SWITCH_CHECK(switch_status);
 #else
-                status = SJA1105_ReadStatsMAC(&switch_handles[i], &stats_ext[i].mac);
-                if (status != SJA1105_OK) error_handler();
+                switch_status = SJA1105_ReadStatsMAC(&switch_handles[i], &stats_ext[i].mac);
+                SWITCH_CHECK(switch_status);
 #endif
 
                 /* Certain errors can cause memory leaks under exceptional conditions.
@@ -102,21 +103,21 @@ void switch_thread_entry(uint32_t initial_input) {
 
                         LOG_WARNING("High error count in switch %d", i);
 
-                        status = switch_reset(i);
-                        if (status != SJA1105_OK) error_handler();
+                        switch_status = switch_reset(i);
+                        SWITCH_CHECK(switch_status);
                     }
                 }
 
                 /* Free any management routes that have been used */
-                status = SJA1105_ManagementRouteFree(&switch_handles[i], false);
-                if (status != SJA1105_OK) error_handler();
+                switch_status = SJA1105_ManagementRouteFree(&switch_handles[i], false);
+                SWITCH_CHECK(switch_status);
 
                 /* TODO: Occasionally check no important MAC addresses have been learned
                  * by accident? (PTP, STP, etc) */
 
                 /* Read the temperature */
-                status = SJA1105_ReadTemperature(&switch_handles[i], &switch_info[i].temperature);
-                if (status != SJA1105_OK) error_handler();
+                switch_status = SJA1105_ReadTemperature(&switch_handles[i], &switch_info[i].temperature);
+                SWITCH_CHECK(switch_status);
                 switch_info[i].temperature_valid = true;
             }
         }
@@ -125,14 +126,14 @@ void switch_thread_entry(uint32_t initial_input) {
         if (events & SWITCH_EVENT_PUBLISH) {
 
             /* Attempt to publish the diagnostics */
-            status = publish_switch_diagnostics(tx_time_get_ms());
-            if (status != SJA1105_OK) error_handler();
+            switch_status = publish_switch_diagnostics(tx_time_get_ms());
+            SWITCH_CHECK(switch_status);
         }
 
         /* If the current thread holds the switch mutex when it shouldn't report an error */
 #if DEBUG
         tx_status = tx_mutex_info_get(&switch_mutex_handle, NULL, NULL, &mutex_owner, NULL, NULL, NULL);
-        if (tx_status != TX_SUCCESS) error_handler();
+        TX_CHECK(tx_status);
         assert(mutex_owner != &switch_thread_handle);
 #endif
     }

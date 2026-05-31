@@ -96,6 +96,7 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth) {
         }
     }
     if (heth->ErrorCode & HAL_ETH_ERROR_MAC) {
+        error_handler();
     }
 #if (USE_HAL_ETH_REGISTER_CALLBACKS == 1)
     if (heth->ErrorCode & HAL_ETH_ERROR_INVALID_CALLBACK) {
@@ -105,6 +106,7 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth) {
 }
 
 
+/* Note: Logging isn't possible here since we've run out of stack to log with */
 void thread_stack_error_handler(TX_THREAD *thread_ptr) {
     error_handler();
 }

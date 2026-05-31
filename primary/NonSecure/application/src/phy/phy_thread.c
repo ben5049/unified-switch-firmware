@@ -13,6 +13,7 @@
 #include "lan867x.h"
 #include "phy_thread.h"
 #include "phy_callbacks.h"
+#include "phy_utils.h"
 #include "utils.h"
 #include "tx_app.h"
 
@@ -41,7 +42,7 @@ void phy_thread_entry(uint32_t initial_input) {
 
     /* Initialise PHYs */
     phy_status = phys_init();
-    if (phy_status != PHY_OK) error_handler();
+    PHY_CHECK(phy_status);
 
     /* Setup timing control variables (done in ms) */
     uint32_t current_time   = tx_time_get_ms();
@@ -63,7 +64,7 @@ void phy_thread_entry(uint32_t initial_input) {
             /* Process any interrupts */
             if (event_flags && (tx_status != TX_NO_EVENTS)) {
                 phy_status = phy_process_interrupts(event_flags);
-                if (phy_status != PHY_OK) error_handler();
+                PHY_CHECK(phy_status);
 
                 /* Go to the start of the loop and go back to sleep if necessary */
                 continue;
@@ -78,14 +79,14 @@ void phy_thread_entry(uint32_t initial_input) {
         /* Update PHY state machines */
         for (phy_index_t i = 0; i < NUM_PHYS; i++) {
             phy_status = phy_state_update_poll(phy_handles[i], current_time);
-            if (phy_status != PHY_OK) error_handler();
+            PHY_CHECK(phy_status);
         }
 
         /* Read temperatures */
         if ((current_time - last_temp_read) >= PHY_TEMPERATURE_READ_INTERVAL) {
             for (phy_index_t i = 0; i < NUM_PHYS; i++) {
                 phy_status = PHY_ReadTemperature(phy_handles[i], &(phy_temperatures[i]), &(phy_temperatures_valid[i]));
-                if (phy_status != PHY_OK) error_handler();
+                PHY_CHECK(phy_status);
             }
             last_temp_read = current_time;
         }

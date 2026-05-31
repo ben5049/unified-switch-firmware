@@ -57,6 +57,7 @@ static inline void ptp_unpack_master_message(ptp_client_event_info_t *event_info
 /* Event callback for NetX PTP client */
 UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_data, VOID *callback_data) {
 
+    tx_status_t             status = TX_SUCCESS;
     ptp_client_event_info_t event_info;
 
     event_info.event = event;
@@ -88,7 +89,8 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
     }
 
     /* Send the event to the queue */
-    if (tx_queue_send(&ptp_event_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) error_handler();
+    status = tx_queue_send(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
+    TX_CHECK(status);
 
     return NX_SUCCESS;
 }
@@ -189,13 +191,13 @@ void ptp_event_thread_entry(uint32_t initial_input) {
             sizeof(nx_internal_ptp_stack[i]),
             &ptp_clock_callback,
             (void *) i);
-        if (nx_status != NX_SUCCESS) error_handler();
+        NX_CHECK(nx_status);
     }
 
     /* Enable master mode initially on all ports with the lowest priority so
      * it is only used as a last restort. */
     nx_status = ptp_reset_all_clients();
-    if (nx_status != NX_SUCCESS) error_handler();
+    NX_CHECK(nx_status);
 
     while (1) {
 
@@ -269,7 +271,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                             /* Stop the client */
                             nx_status = nx_ptp_client_stop(&ptp_client[i]);
-                            if (nx_status != NX_SUCCESS) error_handler();
+                            NX_CHECK(nx_status);
 
                             /* Apply the new master config */
                             nx_status = nx_ptp_client_master_enable(
@@ -282,7 +284,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                 master.nx_ptp_client_master_offset_scaled_log_variance,
                                 master.nx_ptp_client_master_steps_removed + 1,
                                 NX_PTP_MASTER_TIME_SRC_PTP);
-                            if (nx_status != NX_SUCCESS) error_handler();
+                            NX_CHECK(nx_status);
 
                             /* Inject the grandmaster's identity */
                             ptp_client[i].ptp_master.nx_ptp_client_master_grandmaster_identity = grandmaster_identity;
@@ -297,7 +299,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                 NX_PTP_TRANSPORT_SPECIFIC_802,
                                 &ptp_event_callback,
                                 (void *) i);
-                            if (nx_status != NX_SUCCESS) error_handler();
+                            NX_CHECK(nx_status);
                         }
 
                         LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x",
@@ -321,10 +323,8 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                     case PTP_CLIENT_EVENT_TIMEOUT: {
 
-#if DEBUG
                         /* Only the port connected to the master should be able to time out */
                         assert(event_info.port == port_connected_to_master);
-#endif
 
                         port_connected_to_master   = NUM_PORTS;
                         client_connected_to_master = NULL;
@@ -332,7 +332,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                         /* Reset all clients to begin looking for a new master */
                         nx_status = ptp_reset_all_clients();
-                        if (nx_status != NX_SUCCESS) error_handler();
+                        NX_CHECK(nx_status);
 
                         LOG_INFO("PTP: Master clock TIMEOUT");
                         break;
@@ -377,15 +377,9 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
             /* Get and print the time */
             nx_status = nx_ptp_client_time_get(client_connected_to_master, &time);
-            if (nx_status != NX_SUCCESS) {
-                error_handler();
-                continue;
-            }
+            NX_CHECK(nx_status);
             nx_status = nx_ptp_client_utility_convert_time_to_date(&time, -ptp_utc_offset, &date);
-            if (nx_status != NX_SUCCESS) {
-                error_handler();
-                continue;
-            }
+            NX_CHECK(nx_status);
             LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n",
                      date.day, date.month, date.year,
                      date.hour, date.minute, date.second, date.nanosecond);

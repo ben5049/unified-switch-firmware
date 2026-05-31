@@ -353,9 +353,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Should be unreachable, go back to waiting for link */
                 next_state = PHY_STATE_WAIT_FOR_LINK;
                 interval   = PHY_WAIT_INTERVAL(hphy);
-#if DEBUG
-                error_handler();
-#endif
+                DEBUG_STOP();
                 break;
             }
 
@@ -370,9 +368,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_ERROR_UNRECOVERABLE: {
                 next_state = current_state;
                 interval   = 60000; /* Large number: don't need to bother checking again since this state is a dead end */
-#if DEBUG
-                error_handler();
-#endif
+                DEBUG_STOP();
                 break;
             }
 
@@ -383,13 +379,13 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             }
         }
 
-            /* Check for zero delay loops */
-#if DEBUG
+        /* Check for zero delay loops */
         if ((next_state == current_state) && (interval == 0)) {
             status = PHY_SW_DEADLOCK;
+            LOG_WARNING("PHY State machine detected zero delay loop");
+            DEBUG_STOP();
             goto end;
         }
-#endif
 
         current_state = next_state;
         transitions++;
@@ -397,11 +393,10 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
 
     /* Check for livelocks */
     if (transitions >= MAX_TRANSITIONS) {
-        LOG_WARNING("PHY State machine detected >%d transitions back-to-back", MAX_TRANSITIONS);
-#if DEBUG
         status = PHY_SW_DEADLOCK;
+        LOG_WARNING("PHY State machine detected >%d transitions back-to-back", transitions);
+        DEBUG_STOP();
         goto end;
-#endif
     }
 
 end:

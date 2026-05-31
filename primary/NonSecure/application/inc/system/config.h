@@ -162,13 +162,16 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_CLOCK_NUM_TIMESTAMPS              (4) /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 #define PTP_CLOCK_QUEUE_SIZE                  (PTP_CLOCK_NUM_TIMESTAMPS)
 
+#define PTP_ENABLE_MAC_SYNC                   (1)
 #define PTP_MAC_SYNC_INTERVAL                 (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
+
+#define PTP_ENABLE_SWITCH_SYNC                (1)
 #define PTP_SWITCH_SYNC_INTERVAL              (100)
-#define PTP_SWITCH_SYNC_SKIP                  (4)                              /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
+#define PTP_SWITCH_SYNC_SKIP                  (4)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 
-#define PTP_PRINT_TIME_INTERVAL               (10000)                          /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_PRINT_TIME_INTERVAL               (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY        (248)                            /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_CLIENT_MASTER_SUB_PRIORITY        (248)   /* The subpriority of this device for BMCA. Default for an end instance is 248 */
 #define PTP_DOMAIN                            (0)
 #define PTP_VLAN                              (0)
 
@@ -201,7 +204,7 @@ extern uint32_t __TRACE_SIZE__;
 
 #define SWITCH_MAINTENANCE_INTERVAL       (500)                     /* Time between performing switch maintenance operations in ms */
 #define SWITCH_PUBLISH_STATS_INTERVAL     (1000)                    /* Time between publishing switch statistic in ms */
-#define SWITCH_GET_EXTENDED_STATS         (DEBUG == 1)              /* Get the extented statistics too (uses lots of stack) */
+#define SWITCH_GET_EXTENDED_STATS         (DEBUG ? true : false)    /* Get the extented statistics too (uses lots of stack) */
 
 #define SWITCH_MEM_POOL_SIZE              (1024 * sizeof(uint32_t)) /* 1024 Words should be enough for most variable length tables. TODO: Check */
 

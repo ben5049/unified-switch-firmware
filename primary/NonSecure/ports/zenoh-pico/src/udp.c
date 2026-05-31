@@ -81,7 +81,8 @@ void _z_free_endpoint_udp(_z_sys_net_endpoint_t *ep) {
 
 z_result_t _z_open_udp_unicast(_z_sys_net_socket_t *sock, const _z_sys_net_endpoint_t rep, uint32_t tout) {
 
-    _z_res_t status = Z_OK;
+    _z_res_t    z_status  = Z_OK;
+    nx_status_t nx_status = NX_SUCCESS;
 
     /* Store the timeout */
     sock->timeout = tout;
@@ -89,36 +90,39 @@ z_result_t _z_open_udp_unicast(_z_sys_net_socket_t *sock, const _z_sys_net_endpo
     /* Allocate memory for the socket */
     sock->udp_socket = z_malloc(sizeof(NX_UDP_SOCKET));
     if (sock->udp_socket == NULL) {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
-        return status;
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
+        return z_status;
     }
 
     /* Create the socket */
-    if (nx_udp_socket_create(
-            &nx_ip_instance,
-            sock->udp_socket,
-            "UDP Server Socket",
-            NX_IP_NORMAL,
-            (Z_FEATURE_FRAGMENTATION == 1) ? NX_FRAGMENT_OKAY : NX_DONT_FRAGMENT,
-            NX_IP_TIME_TO_LIVE,
-            5) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
+    nx_status = nx_udp_socket_create(
+        &nx_ip_instance,
+        sock->udp_socket,
+        "UDP Server Socket",
+        NX_IP_NORMAL,
+        (Z_FEATURE_FRAGMENTATION == 1) ? NX_FRAGMENT_OKAY : NX_DONT_FRAGMENT,
+        NX_IP_TIME_TO_LIVE,
+        5);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
         z_free(sock->udp_socket);
-        return status;
+        return z_status;
     }
 
     /* Bind to port */
-    if (nx_udp_socket_bind(sock->udp_socket, NX_ANY_PORT, sock->timeout) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
-        if (nx_udp_socket_delete(sock->udp_socket) != NX_SUCCESS) error_handler();
+    nx_status = nx_udp_socket_bind(sock->udp_socket, NX_ANY_PORT, sock->timeout);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
+        nx_status = nx_udp_socket_delete(sock->udp_socket);
+        NX_CHECK(nx_status);
         z_free(sock->udp_socket);
-        return status;
+        return z_status;
     }
 
-    return status;
+    return z_status;
 }
 
 z_result_t _z_listen_udp_unicast(_z_sys_net_socket_t *sock, const _z_sys_net_endpoint_t rep, uint32_t tout) {
@@ -232,12 +236,13 @@ size_t _z_send_udp_unicast(const _z_sys_net_socket_t sock, const uint8_t *ptr, s
 
     TX_INTERRUPT_SAVE_AREA
 
-    _z_res_t        status      = Z_OK;
+    _z_res_t        z_status    = Z_OK;
+    nx_status_t     nx_status   = NX_SUCCESS;
     uint32_t        bytes_sent  = SIZE_MAX;
     NX_PACKET      *data_packet = NULL;
     NX_PACKET_POOL *nx_packet_pool;
 
-    UNUSED(status);
+    UNUSED(z_status);
 
     /* Select the packet pool to use. 4 Bytes on the end for the CRC, and another 16 for safety */
     if ((len + NX_PHYSICAL_HEADER + sizeof(NX_IPV4_HEADER) + sizeof(NX_UDP_HEADER) + 4 + 16) > SMALL_PACKET_SIZE) {
@@ -247,25 +252,30 @@ size_t _z_send_udp_unicast(const _z_sys_net_socket_t sock, const uint8_t *ptr, s
     }
 
     /* Allocate a packet */
-    if (nx_packet_allocate(nx_packet_pool, &data_packet, NX_UDP_PACKET, sock.timeout) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
+    nx_status = nx_packet_allocate(nx_packet_pool, &data_packet, NX_UDP_PACKET, sock.timeout);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
         return bytes_sent;
     }
 
     /* Append the message to send */
-    if (nx_packet_data_append(data_packet, (uint8_t *) ptr, len, nx_packet_pool, sock.timeout) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
-        if (nx_packet_release(data_packet) != NX_SUCCESS) error_handler();
+    nx_status = nx_packet_data_append(data_packet, (uint8_t *) ptr, len, nx_packet_pool, sock.timeout);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
+        nx_status = nx_packet_release(data_packet);
+        NX_CHECK(nx_status);
         return bytes_sent;
     }
 
     /* Send the packet */
-    if (nx_udp_socket_send(sock.udp_socket, data_packet, rep.ip_address, rep.port) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
-        if (nx_packet_release(data_packet) != NX_SUCCESS) error_handler();
+    nx_status = nx_udp_socket_send(sock.udp_socket, data_packet, rep.ip_address, rep.port);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
+        nx_status = nx_packet_release(data_packet);
+        NX_CHECK(nx_status);
         return bytes_sent;
     }
 
@@ -291,59 +301,68 @@ size_t _z_send_udp_unicast(const _z_sys_net_socket_t sock, const uint8_t *ptr, s
 
 z_result_t _z_open_udp_multicast(_z_sys_net_socket_t *sock, const _z_sys_net_endpoint_t rep, _z_sys_net_endpoint_t *lep, uint32_t tout, const char *iface) {
 
-    _z_res_t status = Z_OK;
-    uint32_t subnet_mask;
+    _z_res_t    z_status  = Z_OK;
+    nx_status_t nx_status = NX_SUCCESS;
+    uint32_t    subnet_mask;
 
     sock->timeout    = tout;
     sock->udp_socket = z_malloc(sizeof(NX_UDP_SOCKET));
     if (sock->udp_socket == NULL) return _Z_ERR_GENERIC;
 
-    if (nx_udp_socket_create(&nx_ip_instance, sock->udp_socket, "UDP Multicast",
-                             NX_IP_NORMAL, (Z_FEATURE_FRAGMENTATION == 1) ? NX_FRAGMENT_OKAY : NX_DONT_FRAGMENT,
-                             NX_IP_TIME_TO_LIVE, 5) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
+    nx_status = nx_udp_socket_create(&nx_ip_instance, sock->udp_socket, "UDP Multicast",
+                                     NX_IP_NORMAL, (Z_FEATURE_FRAGMENTATION == 1) ? NX_FRAGMENT_OKAY : NX_DONT_FRAGMENT,
+                                     NX_IP_TIME_TO_LIVE, 5);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
         z_free(sock->udp_socket);
-        return status;
+        return z_status;
     }
 
-    if (nx_udp_socket_bind(sock->udp_socket, NX_ANY_PORT, sock->timeout) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        if (nx_udp_socket_delete(sock->udp_socket) != NX_SUCCESS) error_handler();
+    nx_status = nx_udp_socket_bind(sock->udp_socket, NX_ANY_PORT, sock->timeout);
+    if (nx_status != NX_SUCCESS) {
+        z_status  = _Z_ERR_GENERIC;
+        nx_status = nx_udp_socket_delete(sock->udp_socket);
+        NX_CHECK(nx_status);
         z_free(sock->udp_socket);
-        return status;
+        return z_status;
     }
 
     /* Store information about the endpoint */
-    nx_ip_address_get(&nx_ip_instance, (ULONG *) &(lep->ip_address), (ULONG *) &subnet_mask);
+    nx_status = nx_ip_address_get(&nx_ip_instance, (ULONG *) &(lep->ip_address), (ULONG *) &subnet_mask);
+    NX_CHECK(nx_status);
     lep->port = sock->udp_socket->nx_udp_socket_port;
 
-    return status;
+    return z_status;
 }
 
 z_result_t _z_listen_udp_multicast(_z_sys_net_socket_t *sock, const _z_sys_net_endpoint_t rep, uint32_t tout, const char *iface, const char *join) {
 
-    _z_res_t status = Z_OK;
+    _z_res_t    z_status  = Z_OK;
+    nx_status_t nx_status = NX_SUCCESS;
 
     sock->timeout    = tout;
     sock->udp_socket = z_malloc(sizeof(NX_UDP_SOCKET));
     if (sock->udp_socket == NULL) return _Z_ERR_GENERIC;
 
-    if (nx_udp_socket_create(&nx_ip_instance, sock->udp_socket, "UDP Multicast",
-                             NX_IP_NORMAL, (Z_FEATURE_FRAGMENTATION == 1) ? NX_FRAGMENT_OKAY : NX_DONT_FRAGMENT,
-                             NX_IP_TIME_TO_LIVE, 5) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        goto free;
+    nx_status = nx_udp_socket_create(&nx_ip_instance, sock->udp_socket, "UDP Multicast",
+                                     NX_IP_NORMAL, (Z_FEATURE_FRAGMENTATION == 1) ? NX_FRAGMENT_OKAY : NX_DONT_FRAGMENT,
+                                     NX_IP_TIME_TO_LIVE, 5);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        goto free_socket;
     }
 
-    if (nx_udp_socket_bind(sock->udp_socket, NX_ANY_PORT, sock->timeout) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        goto delete;
+    nx_status = nx_udp_socket_bind(sock->udp_socket, NX_ANY_PORT, sock->timeout);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        goto delete_socket;
     }
 
     /* Join the multicast group */
-    if (nx_ipv4_multicast_interface_join(&nx_ip_instance, rep.ip_address, PRIMARY_INTERFACE) != NX_SUCCESS) {
-        status = _Z_ERR_GENERIC;
-        goto unbind;
+    nx_status = nx_ipv4_multicast_interface_join(&nx_ip_instance, rep.ip_address, PRIMARY_INTERFACE);
+    if (nx_status != NX_SUCCESS) {
+        z_status = _Z_ERR_GENERIC;
+        goto unbind_socket;
     }
 
     /* TODO: In Zenoh "join" can pipe-delimit multiple IP addresses */
@@ -359,37 +378,45 @@ z_result_t _z_listen_udp_multicast(_z_sys_net_socket_t *sock, const _z_sys_net_e
     }
     if (!slot_found) error_handler();
 
-    return status;
+    return z_status;
 
-unbind:
-    if (nx_udp_socket_unbind(sock->udp_socket) != NX_SUCCESS) error_handler();
-    delete : if (nx_udp_socket_delete(sock->udp_socket) != NX_SUCCESS) error_handler();
-free:
+unbind_socket:
+    nx_status = nx_udp_socket_unbind(sock->udp_socket);
+    NX_CHECK(nx_status);
+
+delete_socket:
+    nx_status = nx_udp_socket_delete(sock->udp_socket);
+    NX_CHECK(nx_status);
+
+free_socket:
     z_free(sock->udp_socket);
 
-    return status;
+    return z_status;
 }
 
 
 void _z_close_udp_multicast(_z_sys_net_socket_t *sockrecv, _z_sys_net_socket_t *socksend, const _z_sys_net_endpoint_t rep, const _z_sys_net_endpoint_t lep) {
 
-    _z_res_t status = Z_OK;
+    _z_res_t    z_status  = Z_OK;
+    nx_status_t nx_status = NX_SUCCESS;
+    bool        slot_found;
 
     UNUSED(lep);
-    UNUSED(status);
+    UNUSED(z_status);
 
     /* Close the receive socket */
     if (sockrecv != NULL) {
 
         /* Attempt to leave the multicast group */
-        if (nx_ipv4_multicast_interface_leave(&nx_ip_instance, rep.ip_address, PRIMARY_INTERFACE) != NX_SUCCESS) {
-            status = _Z_ERR_GENERIC;
-            _Z_ERROR_LOG(status);
+        nx_status = nx_ipv4_multicast_interface_leave(&nx_ip_instance, rep.ip_address, PRIMARY_INTERFACE);
+        if (nx_status != NX_SUCCESS) {
+            z_status = _Z_ERR_GENERIC;
+            _Z_ERROR_LOG(z_status);
             error_handler();
         }
 
         /* Delete the IP address of the group. TODO: is this still necessary */
-        bool slot_found = false;
+        slot_found = false;
         for (uint_fast8_t i = 0; !slot_found && (i < NX_MAX_MULTICAST_GROUPS); i++) {
             if (!(zenoh_udp_multicast_groups_valid[i] && (zenoh_udp_multicast_groups_list[i] == rep.ip_address))) continue;
             zenoh_udp_multicast_groups_valid[i] = false;
@@ -403,8 +430,8 @@ void _z_close_udp_multicast(_z_sys_net_socket_t *sockrecv, _z_sys_net_socket_t *
 
     /* Socket is NULL */
     else {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
         error_handler();
     }
 
@@ -412,7 +439,7 @@ void _z_close_udp_multicast(_z_sys_net_socket_t *sockrecv, _z_sys_net_socket_t *
     if ((socksend != NULL) && (socksend != sockrecv)) {
 
         /* Delete the IP address of the group. TODO: is this still necessary */
-        bool slot_found = false;
+        slot_found = false;
         for (uint_fast8_t i = 0; !slot_found && (i < NX_MAX_MULTICAST_GROUPS); i++) {
             if (!(zenoh_udp_multicast_groups_valid[i] && (zenoh_udp_multicast_groups_list[i] == rep.ip_address))) continue;
             zenoh_udp_multicast_groups_valid[i] = false;
@@ -430,8 +457,8 @@ void _z_close_udp_multicast(_z_sys_net_socket_t *sockrecv, _z_sys_net_socket_t *
 
     /* Socket is NULL */
     else {
-        status = _Z_ERR_GENERIC;
-        _Z_ERROR_LOG(status);
+        z_status = _Z_ERR_GENERIC;
+        _Z_ERROR_LOG(z_status);
         error_handler();
     }
 }
@@ -482,9 +509,10 @@ size_t _z_read_udp_multicast(const _z_sys_net_socket_t sock, uint8_t *ptr, size_
 
         /* Discard loopback */
         nx_status = nx_udp_source_extract(data_packet, &source_ip, &source_port);
-        if (nx_status != NX_SUCCESS) error_handler();
+        NX_CHECK(nx_status);
         if (lep.port == source_port) {
-            if (nx_packet_release(data_packet) != NX_SUCCESS) error_handler();
+            nx_status = nx_packet_release(data_packet);
+            NX_CHECK(nx_status);
             continue;
         }
 
@@ -494,7 +522,8 @@ size_t _z_read_udp_multicast(const _z_sys_net_socket_t sock, uint8_t *ptr, size_
             if (nx_status != NX_SUCCESS) {
                 status = _Z_ERR_GENERIC;
                 _Z_ERROR_LOG(status);
-                if (nx_packet_release(data_packet) != NX_SUCCESS) error_handler();
+                nx_status = nx_packet_release(data_packet);
+                NX_CHECK(nx_status);
                 bytes_read = SIZE_MAX;
                 return bytes_read;
             }
@@ -504,7 +533,8 @@ size_t _z_read_udp_multicast(const _z_sys_net_socket_t sock, uint8_t *ptr, size_
         else {
             status = _Z_ERR_GENERIC;
             _Z_ERROR_LOG(status);
-            if (nx_packet_release(data_packet) != NX_SUCCESS) error_handler();
+            nx_status = nx_packet_release(data_packet);
+            NX_CHECK(nx_status);
             bytes_read = SIZE_MAX;
             return bytes_read;
         }

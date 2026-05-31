@@ -42,12 +42,14 @@ static volatile NX_PACKET *dummy_packet_ptr = NULL; /* Packet pointer of dummy p
 
 
 void ptp_mac_sync_timer_callback(ULONG id) {
-    if (tx_event_flags_set(&ptp_clock_events_handle, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR) != TX_SUCCESS) error_handler();
+    tx_status_t status = tx_event_flags_set(&ptp_clock_events_handle, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR);
+    TX_CHECK(status);
 }
 
 
 void ptp_switch_sync_timer_callback(ULONG id) {
-    if (tx_event_flags_set(&ptp_clock_events_handle, PTP_CLOCK_EVENT_SWITCH_SYNC, TX_OR) != TX_SUCCESS) error_handler();
+    tx_status_t status = tx_event_flags_set(&ptp_clock_events_handle, PTP_CLOCK_EVENT_SWITCH_SYNC, TX_OR);
+    TX_CHECK(status);
 }
 
 
@@ -55,8 +57,9 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                         NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr,
                         VOID *callback_data) {
 
-    tx_status_t tx_status = TX_SUCCESS;
-    nx_status_t status    = NX_SUCCESS;
+    tx_status_t      tx_status     = TX_SUCCESS;
+    nx_status_t      nx_status     = NX_SUCCESS;
+    sja1105_status_t switch_status = SJA1105_OK;
 
     UNUSED(tx_status); // TODO: use or remove
 
@@ -77,7 +80,8 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
             if ((port_index_t) callback_data == port_connected_to_master) {
 
                 /* Set the switch times */
-                if (switch_set_time_all(time_ptr) != SJA1105_OK) error_handler();
+                switch_status = switch_set_time_all(time_ptr);
+                SWITCH_CHECK(switch_status);
 
                 /* Set the STM32's MAC time */
                 ptp_mac_set_time(time_ptr);
@@ -115,11 +119,11 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
             break;
 
         default:
-            status = NX_PTP_PARAM_ERROR;
+            nx_status = NX_PTP_PARAM_ERROR;
             break;
     }
 
-    return status;
+    return nx_status;
 }
 
 
@@ -127,8 +131,9 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
  * multiple) and the STM32's MAC timestamp clock with the main SJA1105 clock. */
 void ptp_clock_thread_entry(uint32_t initial_input) {
 
-    nx_status_t nx_status = NX_SUCCESS;
-    tx_status_t tx_status = TX_SUCCESS;
+    nx_status_t      nx_status     = NX_SUCCESS;
+    tx_status_t      tx_status     = TX_SUCCESS;
+    sja1105_status_t switch_status = SJA1105_OK;
 
     ULONG                   events;
     ptp_packet_event_info_t event_info;
@@ -159,10 +164,10 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
 
     /* Start the timers */
     tx_status = tx_timer_activate(&ptp_mac_sync_timer);
-    if (tx_status != TX_SUCCESS) error_handler();
+    TX_CHECK(tx_status);
 #if NUM_SWITCHES > 1
     tx_status = tx_timer_activate(&ptp_switch_sync_timer);
-    if (tx_status != TX_SUCCESS) error_handler();
+    TX_CHECK(tx_status);
 #endif
 
     while (1) {
@@ -175,7 +180,9 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             &events,
             MAX(PTP_MAC_SYNC_INTERVAL, PTP_SWITCH_SYNC_INTERVAL) * 5 /* Break out of deadlocks */
         );
-        if (tx_status != TX_SUCCESS) error_handler();
+        TX_CHECK(tx_status);
+
+#if PTP_ENABLE_MAC_SYNC
 
         /* Syncronise the timestamps between the STM32's MAC and switch 0 */
         if (events & PTP_CLOCK_EVENT_MAC_SYNC) {
@@ -184,9 +191,7 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
              * the STM32's MAC timestamp it */
             nx_status = ptp_create_dummy_sync(&packet_ptr);
             if (nx_status != NX_SUCCESS) {
-#if DEBUG
-                error_handler();
-#endif
+                DEBUG_STOP();
                 continue;
             };
 
@@ -201,10 +206,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             tx_status             = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
             if (tx_status != TX_SUCCESS) {
                 nx_status = nx_packet_release(packet_ptr);
-                if (nx_status != NX_SUCCESS) error_handler();
-#if DEBUG
-                error_handler();
-#endif
+                NX_CHECK(nx_status);
+                DEBUG_STOP();
                 continue;
             }
 
@@ -268,7 +271,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
              *
              * Note: An Ethernet packet cannot be shorter than 64 bytes.
              */
-            if (switch_get_speed(PORT_HOST, &host_speed_mbps) != SJA1105_OK) error_handler();
+            switch_status = switch_get_speed(PORT_HOST, &host_speed_mbps);
+            SWITCH_CHECK(switch_status);
             switch_tx_correction.nanosecond  = (MAX(dummy_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
             switch_tx_correction.second_low  = 0;
             switch_tx_correction.second_high = 0;
@@ -303,6 +307,10 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             }
         }
 
+#endif
+
+#if PTP_ENABLE_SWITCH_SYNC
+
         /* Synchronise the timestamps between switches */
         if (events & PTP_CLOCK_EVENT_SWITCH_SYNC) {
 
@@ -318,7 +326,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 }
 
                 /* Get the offset between the two switches */
-                if (switch_get_timestamp_offsets(SWITCH0, i, &offset) != SJA1105_OK) error_handler();
+                switch_status = switch_get_timestamp_offsets(SWITCH0, i, &offset);
+                SWITCH_CHECK(switch_status);
 
                 assert(offset.second_high == 0);
                 assert(offset.second_low == 0);
@@ -342,7 +351,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 /* Write the new rate */
                 if (new_ptp_clock_rate != ptp_clock_rates[i]) {
                     ptp_clock_rates[i] = new_ptp_clock_rate;
-                    if (SJA1105_SetPTPClockRate(&switch_handles[i], ptp_clock_rates[i]) != SJA1105_OK) error_handler();
+                    switch_status      = SJA1105_SetPTPClockRate(&switch_handles[i], ptp_clock_rates[i]);
+                    SWITCH_CHECK(switch_status);
                     LOG_INFO("Switch %d current offset = %li ns", i, offset.nanosecond);
                 }
             }
@@ -351,12 +361,15 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             error_handler();
 #endif
         }
+
+#endif
     }
 }
 
 
 uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp) {
 
+    tx_status_t             status = TX_SUCCESS;
     bool                    filter = false;
     ptp_packet_event_info_t event_info;
 
@@ -367,7 +380,8 @@ uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp
         event_info.event = PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP;
         event_info.time  = *timestamp;
         event_info.port  = PORT_HOST;
-        if (tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT) != TX_SUCCESS) error_handler();
+        status           = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
+        TX_CHECK(status);
     }
 
     return filter;

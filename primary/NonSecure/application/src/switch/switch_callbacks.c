@@ -28,7 +28,7 @@ static TX_BYTE_POOL switch1_byte_pool;
 #endif
 
 
-#if defined(DEBUG) && (HW_VERSION == 5)
+#if DEBUG && (HW_VERSION == 5)
 
 /* Small state machine to check CRC calculations aren't interrupted */
 typedef enum {
@@ -104,9 +104,7 @@ static void sja1105_write_cs_pin(sja1105_pinstate_t state, void *context) {
     }
 
     /* Both switches shouldn't be selected at the same time */
-#if DEBUG
-    if (sw0_sel && sw1_sel) error_handler();
-#endif
+    assert(!(sw0_sel && sw1_sel));
 }
 
 static sja1105_status_t sja1105_spi_transmit(const uint32_t *data, uint16_t size, uint32_t timeout, void *context) {
@@ -361,9 +359,12 @@ const sja1105_callbacks_t sja1105_callbacks = {
 
 
 void switch_maintenance_timer_callback(ULONG id) {
-    if (tx_event_flags_set(&switch_events_handle, SWITCH_EVENT_MAINTENANCE, TX_OR) != TX_SUCCESS) error_handler();
+    tx_status_t status = tx_event_flags_set(&switch_events_handle, SWITCH_EVENT_MAINTENANCE, TX_OR);
+    TX_CHECK(status);
 }
 
+
 void switch_publish_timer_callback(ULONG id) {
-    if (tx_event_flags_set(&switch_events_handle, SWITCH_EVENT_PUBLISH, TX_OR) != TX_SUCCESS) error_handler();
+    tx_status_t status = tx_event_flags_set(&switch_events_handle, SWITCH_EVENT_PUBLISH, TX_OR);
+    TX_CHECK(status);
 }

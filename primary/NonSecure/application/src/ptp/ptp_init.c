@@ -34,8 +34,8 @@
 #define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
 
 
-volatile uint32_t srcmeta_msw;
-volatile uint32_t srcmeta_lsw;
+volatile uint32_t srcmeta_msw = 0;
+volatile uint32_t srcmeta_lsw = 0;
 
 
 static tx_status_t ptp_configure() {
@@ -201,10 +201,10 @@ tx_status_t ptp_stop() {
 
     /* Stop timers */
     status = tx_timer_deactivate(&ptp_mac_sync_timer);
-    if (status != TX_SUCCESS) error_handler();
+    TX_CHECK(status);
 #if NUM_SWITCHES > 1
     status = tx_timer_deactivate(&ptp_switch_sync_timer);
-    if (status != TX_SUCCESS) error_handler();
+    TX_CHECK(status);
 #endif
 
     return TX_NOT_DONE;

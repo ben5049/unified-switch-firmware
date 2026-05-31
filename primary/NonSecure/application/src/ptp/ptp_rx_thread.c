@@ -30,8 +30,9 @@ uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 void ptp_rx_thread_entry(uint32_t initial_input) {
 
-    tx_status_t tx_status = TX_SUCCESS;
-    nx_status_t nx_status = NX_SUCCESS;
+    tx_status_t      tx_status     = TX_SUCCESS;
+    nx_status_t      nx_status     = NX_SUCCESS;
+    sja1105_status_t switch_status = SJA1105_OK;
 
     ptp_packet_event_info_t event_info;
 
@@ -73,13 +74,13 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                      * Also flush the queues to prevent alignment issues. */
                     if (tx_status != TX_SUCCESS) {
                         nx_status = nx_packet_release(ptp_packet);
-                        if (nx_status != NX_SUCCESS) error_handler();
+                        NX_CHECK(nx_status);
 
                         /* Flush both queues */
                         tx_status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
-                        if (tx_status != TX_SUCCESS) return error_handler();
+                        TX_CHECK(tx_status);
                         tx_status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
-                        if (tx_status != TX_SUCCESS) return error_handler();
+                        TX_CHECK(tx_status);
 
                         ptp_event_counters.rx_no_meta++;
                         LOG_ERROR("PTP RX No META frame found");
@@ -87,10 +88,11 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                     }
 
                     /* Parse META frame for timestamp and port then free it */
-                    if (switch_parse_and_free_meta_frame(
-                            event_info.packet_ptr,
-                            &port,
-                            &timestamp) != SJA1105_OK) error_handler();
+                    switch_status = switch_parse_and_free_meta_frame(
+                        event_info.packet_ptr,
+                        &port,
+                        &timestamp);
+                    SWITCH_CHECK(switch_status);
 
                     /* Packet was sent by us to synchronise switch clock with
                      * STM32 MAC clock */
@@ -101,18 +103,18 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         event_info.time  = timestamp;
                         event_info.port  = PORT_HOST;
                         tx_status        = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
-                        if (tx_status != TX_SUCCESS) error_handler();
+                        TX_CHECK(tx_status);
 
                         /* Send MAC timestamp */
                         event_info.event = PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP;
                         ptp_packet_extract_timestamp(ptp_packet, &event_info.time);
                         event_info.port = PORT_HOST;
                         tx_status       = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
-                        if (tx_status != TX_SUCCESS) error_handler();
+                        TX_CHECK(tx_status);
 
                         /* Release the packet */
                         nx_status = nx_packet_release(ptp_packet);
-                        if (nx_status != NX_SUCCESS) error_handler();
+                        NX_CHECK(nx_status);
                     }
 
                     /* Packet was sent by an external device */
@@ -131,7 +133,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
 
                         //         /* Parse information from the packet header */
                         //         nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
-                        //         if (nx_status != NX_SUCCESS) error_handler();
+                        //         NX_CHECK(nx_status);
 
                         //         /* Call the packet receive callback
                         //          *
@@ -144,7 +146,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         //          *   - time_ptr
                         //          */
                         //         nx_status = nx_receive_queue_ptr->callback(NULL, 0, ptp_packet, 0, 0, 0, header_size, nx_receive_queue_ptr->context, NULL);
-                        //         if (nx_status != NX_SUCCESS) error_handler();
+                        //         NX_CHECK(nx_status);
 
                         //         /* Packet was consumed */
                         //         client_found = true;
@@ -161,18 +163,18 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         // /* Reached the end of the queue and found no callback */
                         // if (!client_found) {
                         //     nx_status = nx_packet_release(ptp_packet);
-                        //     if (nx_status != NX_SUCCESS) error_handler();
+                        //     NX_CHECK(nx_status);
                         //     ptp_event_counters.rx_client_not_found[port]++;
                         //     LOG_WARNING("PTP RX Couldn't route packet to client");
                         // }
 
                         /* Parse information from the packet header */
                         nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
-                        if (nx_status != NX_SUCCESS) error_handler();
+                        NX_CHECK(nx_status);
 
                         /* Notify the client */
                         nx_status = _nx_ptp_client_ethernet_receive_notify(NULL, 0, ptp_packet, 0, 0, 0, header_size, &ptp_client[port], NULL);
-                        if (nx_status != NX_SUCCESS) error_handler();
+                        NX_CHECK(nx_status);
                     }
 
                     else {
@@ -226,7 +228,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
     /* Ignore garbage packet */
     if (nx_status != NX_SUCCESS) {
         nx_status = nx_packet_release(packet_ptr);
-        if (nx_status != NX_SUCCESS) error_handler();
+        NX_CHECK(nx_status);
         goto end;
     }
 
@@ -243,15 +245,13 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
         event_info.packet_ptr = packet_ptr;
         tx_status             = tx_queue_send(&ptp_rx_meta_queue_handle, &event_info, TX_NO_WAIT);
         if (tx_status != TX_SUCCESS) {
-#if DEBUG
-            error_handler();
-#endif
+            DEBUG_STOP();
 
             /* Queue is full, release the packet instead */
             ptp_event_counters.rx_meta_dropped++;
             LOG_ERROR("PTP RX Dropped meta frame");
             nx_status = nx_packet_release(packet_ptr);
-            if (nx_status != NX_SUCCESS) error_handler();
+            NX_CHECK(nx_status);
         } else {
             ptp_event_counters.rx_meta++;
         }
@@ -268,7 +268,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
         if ((((dst_lsw & 0xff0000ff) != PTP_ETHERNET_ADDR_LSB) || (dst_msw != PTP_ETHERNET_ADDR_MSB))) {
             ptp_event_counters.rx_wrong_dst++;
             nx_status = nx_packet_release(packet_ptr);
-            if (nx_status != NX_SUCCESS) error_handler();
+            NX_CHECK(nx_status);
         }
 
         /* Correct address */
@@ -297,7 +297,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                     ptp_event_counters.rx_packets_dropped++;
                     LOG_ERROR("PTP RX Dropped PTP packet");
                     nx_status = nx_packet_release(packet_ptr);
-                    if (nx_status != NX_SUCCESS) error_handler();
+                    NX_CHECK(nx_status);
                 } else {
                     ptp_event_counters.rx_packets++;
                 }
@@ -307,7 +307,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             else {
                 ptp_event_counters.rx_invalid_vlan++;
                 nx_status = nx_packet_release(packet_ptr);
-                if (nx_status != NX_SUCCESS) error_handler();
+                NX_CHECK(nx_status);
             }
         }
     }

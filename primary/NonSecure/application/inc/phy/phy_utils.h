@@ -13,6 +13,10 @@ extern "C" {
 #endif
 
 
+#define PHY_CHECK(status)                   \
+    if ((status) != PHY_OK) error_handler()
+
+
 #include "stdbool.h"
 
 #include "phy_common.h"

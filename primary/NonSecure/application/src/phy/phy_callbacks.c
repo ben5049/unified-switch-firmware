@@ -309,5 +309,5 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 
     /* Set the flag */
     status = tx_event_flags_set(&phy_events_handle, flags_to_set, TX_OR);
-    if (status != TX_SUCCESS) error_handler();
+    TX_CHECK(status);
 }

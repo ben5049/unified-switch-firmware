@@ -49,10 +49,13 @@ extern "C" {
                                       ((uint32_t) (o5) << 8) |  \
                                       ((uint32_t) (o6)))
 
+#define LOG_CHECK(s)                     \
+    if (s != LOGGING_OK) error_handler()
+
 #define LOG_INFO(format, ...)                                         \
     ({                                                                \
         log_status_t _s = _LOG(LOG_TYPE_INFO, format, ##__VA_ARGS__); \
-        if (_s != LOGGING_OK) error_handler();                        \
+        LOG_CHECK(_s);                                                \
         _s;                                                           \
     })
 #define LOG_INFO_NO_CHECK(format, ...) _LOG(LOG_TYPE_INFO, format, ##__VA_ARGS__)
@@ -61,7 +64,7 @@ extern "C" {
 #define LOG_WARNING(format, ...)                                         \
     ({                                                                   \
         log_status_t _s = _LOG(LOG_TYPE_WARNING, format, ##__VA_ARGS__); \
-        if (_s != LOGGING_OK) error_handler();                           \
+        LOG_CHECK(_s);                                                   \
         _s;                                                              \
     })
 #define LOG_WARNING_NO_CHECK(format, ...) _LOG(LOG_TYPE_WARNING, format, ##__VA_ARGS__)
@@ -70,7 +73,7 @@ extern "C" {
 #define LOG_ERROR(format, ...)                                         \
     ({                                                                 \
         log_status_t _s = _LOG(LOG_TYPE_ERROR, format, ##__VA_ARGS__); \
-        if (_s != LOGGING_OK) error_handler();                         \
+        LOG_CHECK(_s);                                                 \
         _s;                                                            \
     })
 #define LOG_ERROR_NO_CHECK(format, ...) _LOG(LOG_TYPE_ERROR, format, ##__VA_ARGS__)
