@@ -208,7 +208,6 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 continue;
             }
 
-
             /* Gather up all the timestamps */
             timestamps_received = MAC_SYNC_TIMESTAMP_NONE;
             while (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {

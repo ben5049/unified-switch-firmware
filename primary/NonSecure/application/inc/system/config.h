@@ -142,41 +142,41 @@ extern uint32_t __TRACE_SIZE__;
 /* PTP Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NX_INTERNAL_PTP_EVENT_THREAD_STACK_SIZE (1024)
-#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY   (6)
+#define NX_INTERNAL_PTP_THREAD_STACK_SIZE     (1024 * 2)
+#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY (6)
 
-#define PTP_EVENT_THREAD_STACK_SIZE             (1024 * 2)
-#define PTP_EVENT_THREAD_PRIORITY               (5)
-#define PTP_EVENT_QUEUE_SIZE                    (10)
+#define PTP_EVENT_THREAD_STACK_SIZE           (1024 * 2)
+#define PTP_EVENT_THREAD_PRIORITY             (5)
+#define PTP_EVENT_QUEUE_SIZE                  (10)
 
-#define PTP_TX_THREAD_STACK_SIZE                (1024 * 2)
-#define PTP_TX_THREAD_PRIORITY                  (4)
-#define PTP_TX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
+#define PTP_TX_THREAD_STACK_SIZE              (1024 * 2)
+#define PTP_TX_THREAD_PRIORITY                (4)
+#define PTP_TX_QUEUE_SIZE                     (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
 
-#define PTP_RX_THREAD_STACK_SIZE                (1024 * 2)
-#define PTP_RX_THREAD_PRIORITY                  (4)
-#define PTP_RX_QUEUE_SIZE                       (NUM_PHYS * 10) /* Buffer up to 10 received PTP packets per port */
+#define PTP_RX_THREAD_STACK_SIZE              (1024 * 2)
+#define PTP_RX_THREAD_PRIORITY                (4)
+#define PTP_RX_QUEUE_SIZE                     (NUM_PHYS * 10) /* Buffer up to 10 received PTP packets per port */
 
-#define PTP_CLOCK_THREAD_STACK_SIZE             (1024 * 2)
-#define PTP_CLOCK_THREAD_PRIORITY               (7)
-#define PTP_CLOCK_NUM_TIMESTAMPS                (4) /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
-#define PTP_CLOCK_QUEUE_SIZE                    (PTP_CLOCK_NUM_TIMESTAMPS)
+#define PTP_CLOCK_THREAD_STACK_SIZE           (1024 * 2)
+#define PTP_CLOCK_THREAD_PRIORITY             (7)
+#define PTP_CLOCK_NUM_TIMESTAMPS              (4) /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
+#define PTP_CLOCK_QUEUE_SIZE                  (PTP_CLOCK_NUM_TIMESTAMPS)
 
-#define PTP_MAC_SYNC_INTERVAL                   (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
-#define PTP_SWITCH_SYNC_INTERVAL                (100)
-#define PTP_SWITCH_SYNC_SKIP                    (4)                              /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
+#define PTP_MAC_SYNC_INTERVAL                 (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
+#define PTP_SWITCH_SYNC_INTERVAL              (100)
+#define PTP_SWITCH_SYNC_SKIP                  (4)                              /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 
-#define PTP_PRINT_TIME_INTERVAL                 (10000)                          /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_PRINT_TIME_INTERVAL               (10000)                          /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY          (248)                            /* The subpriority of this device for BMCA. Default for an end instance is 248 */
-#define PTP_DOMAIN                              (0)
-#define PTP_VLAN                                (0)
+#define PTP_CLIENT_MASTER_SUB_PRIORITY        (248)                            /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_DOMAIN                            (0)
+#define PTP_VLAN                              (0)
 
-#define PTP_CLK_FREQ                            (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
+#define PTP_CLK_FREQ                          (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
 
-#define PTP_ETHERNET_ADDR_MSB                   (0x0180)
-#define PTP_ETHERNET_ADDR_LSB                   (0xc200000e)
-#define PTP_HEADER_PORT_OFFSET                  (28)
+#define PTP_ETHERNET_ADDR_MSB                 (0x0180)
+#define PTP_ETHERNET_ADDR_LSB                 (0xc200000e)
+#define PTP_HEADER_PORT_OFFSET                (28)
 
 /* Management route variables */
 #define PTP_TX_TIMEOUT    (500) /* The maximum number of ms to wait to send a packet */

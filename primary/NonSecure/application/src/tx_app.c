@@ -28,6 +28,18 @@ void tx_setup(void *memory_ptr) {
     tx_status_t status        = TX_SUCCESS;
     uint8_t     thread_number = 1;
 
+    /* Enable tracex */
+#if TRACE_ENABLE
+    status = tx_trace_enable(TRACE_BUFFER_START, TRACE_BUFFER_SIZE, TRACE_REGISTRY_ENTRIES);
+    if (status != TX_SUCCESS) error_handler();
+#endif
+
+
+#ifdef TX_ENABLE_STACK_CHECKING
+    status = tx_thread_stack_error_notify(thread_stack_error_handler);
+    if (status != TX_SUCCESS) error_handler();
+#endif
+
     /* Create mutexes */
     status = tx_mutex_create(&switch_mutex_handle,  "switch_mutex",  TX_INHERIT);
     if (status != TX_SUCCESS) error_handler();
@@ -141,12 +153,6 @@ void tx_setup(void *memory_ptr) {
     ptp_clock_thread_handle.logger     = &hlog_network;
     background_thread_handle.logger    = &hlog_generic;
 
-    /* Enable tracex */
-#if TRACE_ENABLE
-    status = tx_trace_enable(TRACE_BUFFER_START, TRACE_BUFFER_SIZE, TRACE_REGISTRY_ENTRIES);
-    if (status != TX_SUCCESS) error_handler();
-#endif
-
     /* Create timers */
     status = tx_timer_create(&switch_maintenance_timer, "switch_maintenance_timer", switch_maintenance_timer_callback, 0, SWITCH_MAINTENANCE_INTERVAL,   SWITCH_MAINTENANCE_INTERVAL,   TX_NO_ACTIVATE);
     if (status != TX_SUCCESS) error_handler();
@@ -160,6 +166,8 @@ void tx_setup(void *memory_ptr) {
     if (status != TX_SUCCESS) error_handler();
 #endif
 #endif
+
+
 }
 
 // clang-format on

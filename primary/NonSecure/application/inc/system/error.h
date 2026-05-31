@@ -13,7 +13,11 @@ extern "C" {
 #endif
 
 
+#include "tx_app.h"
+
+
 void error_handler(void);
+void thread_stack_error_handler(TX_THREAD *thread_ptr);
 
 
 #ifdef __cplusplus

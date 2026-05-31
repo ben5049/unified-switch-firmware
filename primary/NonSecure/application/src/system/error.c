@@ -7,6 +7,8 @@
 
 #include "main.h"
 
+#include "error.h"
+#include "utils.h"
 #include "secure_nsc.h"
 
 
@@ -100,4 +102,9 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth) {
         error_handler();
     }
 #endif
+}
+
+
+void thread_stack_error_handler(TX_THREAD *thread_ptr) {
+    error_handler();
 }
