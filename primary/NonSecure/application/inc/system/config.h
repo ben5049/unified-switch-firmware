@@ -43,7 +43,7 @@ extern uint32_t __TRACE_SIZE__;
 /* Logging Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_LOGGERS         (7)
+#define NUM_LOGGERS         (8)
 #define LOG_BASE            ((uint32_t) &__LOG_START__)
 #define LOG_BUFFER_SIZE     ((uint32_t) &__LOG_SIZE__)
 #define LOG_TIMEOUT         (100)  /* ms */
@@ -157,15 +157,13 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_RX_THREAD_PRIORITY                (4)
 #define PTP_RX_QUEUE_SIZE                     (NUM_PHYS * 10) /* Buffer up to 10 received PTP packets per port */
 
-#define PTP_CLOCK_THREAD_STACK_SIZE           (1024 * 2)
-#define PTP_CLOCK_THREAD_PRIORITY             (7)
-#define PTP_CLOCK_NUM_TIMESTAMPS              (4) /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
-#define PTP_CLOCK_QUEUE_SIZE                  (PTP_CLOCK_NUM_TIMESTAMPS)
-
-#define PTP_ENABLE_MAC_SYNC                   (1)
+#define PTP_MAC_SYNC_THREAD_STACK_SIZE        (1024 * 2)
+#define PTP_MAC_SYNC_THREAD_PRIORITY          (7)
 #define PTP_MAC_SYNC_INTERVAL                 (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
+#define PTP_MAC_SYNC_QUEUE_SIZE               (4)                              /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 
-#define PTP_ENABLE_SWITCH_SYNC                (1)
+#define PTP_SWITCH_SYNC_THREAD_STACK_SIZE     (1024 * 2)
+#define PTP_SWITCH_SYNC_THREAD_PRIORITY       (7)
 #define PTP_SWITCH_SYNC_INTERVAL              (100)
 #define PTP_SWITCH_SYNC_SKIP                  (4)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 

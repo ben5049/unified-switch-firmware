@@ -34,8 +34,8 @@ static bool     test_nvm(void);
 static uint32_t logging_timestamp_callback(void *context);
 
 
-log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network;
-log_handle_t *loggers[NUM_LOGGERS] = {&hlog_setup, &hlog_generic, &hlog_phy, &hlog_sw, &hlog_comms, &hlog_system, &hlog_network};
+log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network, hlog_ptp;
+log_handle_t *loggers[NUM_LOGGERS] = {&hlog_setup, &hlog_generic, &hlog_phy, &hlog_sw, &hlog_comms, &hlog_system, &hlog_network, &hlog_ptp};
 
 
 int main(void) {
@@ -68,18 +68,10 @@ int main(void) {
     LOG_INFO("Starting non-secure firmware");
 
     /* Start other loggers */
-    log_status = log_init(&hlog_generic, LOGGER_ID_0, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    LOG_CHECK(log_status);
-    log_status = log_init(&hlog_phy, LOGGER_ID_1, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    LOG_CHECK(log_status);
-    log_status = log_init(&hlog_sw, LOGGER_ID_2, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    LOG_CHECK(log_status);
-    log_status = log_init(&hlog_comms, LOGGER_ID_3, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    LOG_CHECK(log_status);
-    log_status = log_init(&hlog_system, LOGGER_ID_4, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    LOG_CHECK(log_status);
-    log_status = log_init(&hlog_network, LOGGER_ID_5, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
-    LOG_CHECK(log_status);
+    for (uint_fast8_t i = 1; i < NUM_LOGGERS; i++) {
+        log_status = log_init(loggers[i], LOGGER_ID_0 + i, (uint8_t *) LOG_BASE, LOG_BUFFER_SIZE, LOGGING_TIMEOUT, &logging_timestamp_callback, NULL);
+        LOG_CHECK(log_status);
+    }
 
 #if UART_LOGGING_ENABLE
     if (!s_uart_logging_enabled()) LOG_WARNING("UART Logging not enabled in secure firmware");

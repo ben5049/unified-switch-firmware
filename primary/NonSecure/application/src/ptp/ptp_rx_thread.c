@@ -103,14 +103,14 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                     event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
                     event_info.time  = timestamp;
                     event_info.port  = PORT_HOST;
-                    tx_status        = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
+                    tx_status        = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
                     TX_CHECK(tx_status);
 
                     /* Send MAC timestamp */
                     event_info.event = PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP;
                     ptp_packet_extract_timestamp(ptp_packet, &event_info.time);
                     event_info.port = PORT_HOST;
-                    tx_status       = tx_queue_send(&ptp_clock_queue_handle, &event_info, TX_NO_WAIT);
+                    tx_status       = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
                     TX_CHECK(tx_status);
 
                     /* Release the packet */

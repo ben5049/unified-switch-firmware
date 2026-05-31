@@ -24,8 +24,8 @@ void mpu_config(void);
 int  main(void);
 
 
-extern log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network;
-extern log_handle_t* loggers[];
+extern log_handle_t  hlog_setup, hlog_generic, hlog_phy, hlog_sw, hlog_comms, hlog_system, hlog_network, hlog_ptp;
+extern log_handle_t* loggers[NUM_LOGGERS];
 
 
 #ifdef __cplusplus

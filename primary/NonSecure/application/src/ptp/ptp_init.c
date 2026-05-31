@@ -176,13 +176,15 @@ tx_status_t ptp_start() {
     if (status != TX_SUCCESS) return status;
     status = tx_queue_flush(&ptp_event_queue_handle);
     if (status != TX_SUCCESS) return status;
-    status = tx_queue_flush(&ptp_clock_queue_handle);
+    status = tx_queue_flush(&ptp_mac_sync_queue_handle);
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
     status = tx_event_flags_get(&ptp_tx_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
-    status = tx_event_flags_get(&ptp_clock_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_mac_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
+    status = tx_event_flags_get(&ptp_switch_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 
     /* Start the TX thread before the PTP clients to avoid queues building up */
@@ -197,8 +199,10 @@ tx_status_t ptp_start() {
     status = tx_thread_resume(&ptp_rx_thread_handle);
     if (status != TX_SUCCESS) return status;
 
-    /* Start the clock sync thread last since it relies on both TX and RX threads */
-    status = tx_thread_resume(&ptp_clock_thread_handle);
+    /* Start the sync threads last since they rely on both TX and RX threads */
+    status = tx_thread_resume(&ptp_mac_sync_thread_handle);
+    if (status != TX_SUCCESS) return status;
+    status = tx_thread_resume(&ptp_switch_sync_thread_handle);
     if (status != TX_SUCCESS) return status;
 
     return status;

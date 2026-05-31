@@ -119,8 +119,10 @@ extern TX_THREAD ptp_tx_thread_handle;
 extern uint8_t   ptp_tx_thread_stack[PTP_TX_THREAD_STACK_SIZE];
 extern TX_THREAD ptp_rx_thread_handle;
 extern uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
-extern TX_THREAD ptp_clock_thread_handle;
-extern uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
+extern TX_THREAD ptp_mac_sync_thread_handle;
+extern uint8_t   ptp_mac_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
+extern TX_THREAD ptp_switch_sync_thread_handle;
+extern uint8_t   ptp_switch_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
 
 extern TX_QUEUE ptp_event_queue_handle;
 extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS];
@@ -130,11 +132,12 @@ extern TX_QUEUE ptp_rx_packet_queue_handle;
 extern uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_rx_meta_queue_handle;
 extern uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
-extern TX_QUEUE ptp_clock_queue_handle;
-extern uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
+extern TX_QUEUE ptp_mac_sync_queue_handle;
+extern uint32_t ptp_mac_sync_queue_stack[PTP_MAC_SYNC_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
-extern TX_EVENT_FLAGS_GROUP ptp_clock_events_handle;
+extern TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_handle;
+extern TX_EVENT_FLAGS_GROUP ptp_switch_sync_events_handle;
 
 extern TX_TIMER ptp_mac_sync_timer;
 extern TX_TIMER ptp_switch_sync_timer;
@@ -150,6 +153,8 @@ void ptp_event_thread_entry(uint32_t initial_input);
 void ptp_tx_thread_entry(uint32_t initial_input);
 void ptp_rx_thread_entry(uint32_t initial_input);
 void ptp_clock_thread_entry(uint32_t initial_input);
+void ptp_mac_sync_thread_entry(uint32_t initial_input);
+void ptp_switch_sync_thread_entry(uint32_t initial_input);
 
 /* Timer callbacks */
 void ptp_mac_sync_timer_callback(ULONG id);
