@@ -1841,7 +1841,7 @@ static UINT  _nx_driver_hardware_initialize(NX_IP_DRIVER *driver_req_ptr)
   FilterConfig.HashMulticast = DISABLE;
   FilterConfig.DestAddrInverseFiltering = DISABLE;
   FilterConfig.PassAllMulticast = DISABLE;
-  FilterConfig.BroadcastFilter = ENABLE;
+  FilterConfig.BroadcastFilter = DISABLE;
   FilterConfig.SrcAddrInverseFiltering = DISABLE;
   FilterConfig.SrcAddrFiltering = DISABLE;
   FilterConfig.HachOrPerfectFilter = DISABLE;
@@ -2377,8 +2377,8 @@ void HAL_ETH_TxPtpCallback(uint32_t * buff, ETH_TimeStampTypeDef *timestamp)
     ts.second_low  = timestamp->TimeStampHigh;
     ts.nanosecond  = timestamp->TimeStampLow;
 
-    extern uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
-    if (ptp_clock_tx_filter_packet(release_packet, &ts)) return;
+    extern uint8_t ptp_tx_timestamp_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
+    if (ptp_tx_timestamp_filter_packet(release_packet, &ts)) return;
 
     /* call notification callback */
     nx_ptp_client_packet_timestamp_notify(nx_driver_information.nx_driver_ptp_ptr,

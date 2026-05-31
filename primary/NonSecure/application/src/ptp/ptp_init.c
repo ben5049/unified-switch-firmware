@@ -18,6 +18,7 @@
 #include "ptp_thread.h"
 #include "ptp_utils.h"
 #include "switch_thread.h"
+#include "switch_utils.h"
 
 
 /* PTP_COUNTER_INCREMENT is the resolution of the PTP clock. TimestampRolloverMode = 1 so the timer value
@@ -38,9 +39,44 @@ volatile uint32_t srcmeta_msw = 0;
 volatile uint32_t srcmeta_lsw = 0;
 
 
-static tx_status_t ptp_configure() {
+/* Set MAC ingress correction register */
+static void ptp_set_ingress_correction() {
 
-    tx_status_t status = TX_SUCCESS;
+    sja1105_status_t status = SJA1105_OK;
+    uint32_t         correction;
+    uint16_t         speed;
+
+    status = switch_get_speed(PORT_HOST, &speed);
+    SWITCH_CHECK(status);
+
+    correction  = (speed == 100) ? 120 : 800;
+    correction += 2 * HZ_TO_NS(PTP_CLK_FREQ);             /* 2 * PTP_CLK_PER */
+    correction  = (1 << 31) | (HZ_TO_NS(1) - correction); /* Ingress correction is subtracted so convert to two's complement */
+
+    WRITE_REG(heth.Instance->MACTSICNR, correction);
+}
+
+
+/* Set MAC egress correction register */
+static void ptp_set_egress_correction() {
+
+    sja1105_status_t status = SJA1105_OK;
+    uint32_t         correction;
+    uint16_t         speed;
+
+    status = switch_get_speed(PORT_HOST, &speed);
+    SWITCH_CHECK(status);
+
+    correction  = (speed == 100) ? 40 : 400;
+    correction += (1 * HZ_TO_NS(PTP_CLK_FREQ)) + (4 * 20); /* 1 * PTP_CLK_PER + 4 * TX_CLK_PER (Note: RMII TX_CLK is always 50MHz (20ns)) */
+
+    WRITE_REG(heth.Instance->MACTSECNR, correction);
+}
+
+
+static hal_status_t ptp_configure() {
+
+    hal_status_t status = HAL_OK;
 
     static_assert(PTP_CLK_FREQ <= 100000000, "PTP_CLK_FREQ too high");
     static_assert(PTP_COUNTER_ADDEND <= (1 << 31), "PTP_COUNTER_INCREMENT too small");
@@ -49,8 +85,8 @@ static tx_status_t ptp_configure() {
     ETH_PTP_ConfigTypeDef ptp_config;
 
     /* Get the current config */
-    if (HAL_ETH_PTP_GetConfig(&heth, &ptp_config) != HAL_OK) status = TX_STATUS_OPTION_ERROR;
-    if (status != TX_SUCCESS) return status;
+    status = HAL_ETH_PTP_GetConfig(&heth, &ptp_config);
+    if (status != HAL_OK) return status;
 
     /* Update the config */
     ptp_config.TimestampUpdateMode   = ENABLE; /* Fine mode */
@@ -87,46 +123,26 @@ static tx_status_t ptp_configure() {
     ptp_config.TimestampStatusMode = DISABLE; /* Don't overwrite transmit timestamps */
 
     /* Write the new config */
-    if (HAL_ETH_PTP_SetConfig(&heth, &ptp_config) != HAL_OK) status = TX_STATUS_OPTION_ERROR;
-    if (status != TX_SUCCESS) return status;
+    status = HAL_ETH_PTP_SetConfig(&heth, &ptp_config);
+    if (status != HAL_OK) return status;
+
+    /* Set ingresss and egress corrections */
+    ptp_set_ingress_correction();
+    ptp_set_egress_correction();
 
     return status;
 }
 
 
-/* Set MAC ingress correction register */
-static void ptp_set_ingress_correction() {
-
-    uint32_t correction;
-
-    correction  = (switch_handles[SWITCH0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 120 : 800;
-    correction += 2 * HZ_TO_NS(PTP_CLK_FREQ);             /* 2 * PTP_CLK_PER */
-    correction  = (1 << 31) | (HZ_TO_NS(1) - correction); /* Ingress correction is subtracted so convert to two's complement */
-
-    WRITE_REG(heth.Instance->MACTSICNR, correction);
-}
-
-
-/* Set MAC egress correction register */
-static void ptp_set_egress_correction() {
-
-    uint32_t correction;
-
-    correction  = (switch_handles[SWITCH0].config->ports[SW0_PORT_HOST].speed == SJA1105_SPEED_100M) ? 40 : 400;
-    correction += (1 * HZ_TO_NS(PTP_CLK_FREQ)) + (4 * 20); /* 1 * PTP_CLK_PER + 4 * TX_CLK_PER (Note: RMII TX_CLK is always 50MHz (20ns)) */
-
-    WRITE_REG(heth.Instance->MACTSECNR, correction);
-}
-
-
 tx_status_t ptp_start() {
 
-    tx_status_t status = TX_SUCCESS;
-    uint32_t    flags;
-    bool        trapped;
-    bool        send_meta;
-    bool        incl_srcpt;
-    uint32_t    msw, lsw;
+    tx_status_t  status     = TX_SUCCESS;
+    hal_status_t hal_status = HAL_OK;
+    uint32_t     flags;
+    bool         trapped;
+    bool         send_meta;
+    bool         incl_srcpt;
+    uint32_t     msw, lsw;
 
     for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
 
@@ -147,13 +163,9 @@ tx_status_t ptp_start() {
         }
     }
 
-    /* Configure the MAC PTP control registers */
-    status = ptp_configure();
-    if (status != TX_SUCCESS) return status;
-
-    /* Configure the MAC timestamp correction registers */
-    ptp_set_ingress_correction();
-    ptp_set_egress_correction();
+    /* Configure MAC PTP registers */
+    hal_status = ptp_configure();
+    HAL_CHECK(hal_status);
 
     /* Flush the queues. Queues containing packets must have all their packets released */
     status = ptp_flush_packet_queue(&ptp_tx_queue_handle);

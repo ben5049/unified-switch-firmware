@@ -8,16 +8,13 @@
 
 #include "stdint.h"
 #include "stdbool.h"
-#include "tx_api.h"
-#include "nx_api.h"
 
 #include "app.h"
-#include "nx_app.h"
-#include "config.h"
-#include "utils.h"
 #include "tx_app.h"
+#include "nx_app.h"
+#include "nx_link_thread.h"
+#include "utils.h"
 #include "state_machine.h"
-#include "secure_nsc.h"
 
 
 #define NULL_ADDRESS 0
@@ -32,26 +29,27 @@ static nx_status_t dhcp_record_restore(NX_DHCP *client);
 static nx_status_t dhcp_record_store(NX_DHCP *client);
 #endif
 
+
 uint32_t ip_address;
 uint32_t net_mask;
 
 TX_THREAD nx_link_thread_handle;
 uint8_t   nx_link_thread_stack[NX_LINK_THREAD_STACK_SIZE];
 
+TX_EVENT_FLAGS_GROUP link_events_handle;
+
+TX_TIMER link_check_timer;
+TX_TIMER dhcp_save_timer;
+
 
 /* This thread monitors the link state */
 void nx_link_thread_entry(uint32_t thread_input) {
 
-    uint32_t    actual_status = 0;
     nx_status_t nx_status     = NX_SUCCESS;
     tx_status_t tx_status     = TX_SUCCESS;
-    bool        linkdown      = true;
-    uint32_t    current_time;
-#if ENABLE_DHCP_RESTORE
-    uint32_t dhcp_record_next_save_time = 0;
-#else
-    UNUSED(current_time);
-#endif
+    uint32_t    actual_status = 0;
+    uint32_t    events;
+    bool        linkdown = true;
 
     /* Register the IP address change callback */
     nx_status = nx_ip_address_change_notify(&nx_ip_instance, ip_address_change_notify_callback, NULL);
@@ -61,108 +59,128 @@ void nx_link_thread_entry(uint32_t thread_input) {
     nx_status = nx_dhcp_start(&dhcp_client);
     NX_CHECK(nx_status);
 
-    /* Attempt to load and restore the DHCP record on warm boot */
 #if ENABLE_DHCP_RESTORE
+
+    /* Attempt to load and restore the DHCP record on warm boot */
     if (!s_cold_boot()) {
         nx_status = dhcp_record_restore(&dhcp_client);
     } else {
         nx_status = dhcp_record_set_stored_valid(false);
     }
     NX_CHECK(nx_status);
+
+    /* Start the timer to periodically save DHCP record */
+    tx_status = tx_timer_activate(&dhcp_save_timer);
+    TX_CHECK(tx_status);
+
 #endif
+
+    /* Start the link check timer */
+    tx_status = tx_timer_activate(&link_check_timer);
+    TX_CHECK(tx_status);
 
     while (1) {
 
-        current_time = tx_time_get_ms();
+        /* Get events */
+        tx_status = tx_event_flags_get(&link_events_handle, LINK_EVENT_LINK_CHECK | LINK_EVENT_DHCP_SAVE, TX_OR_CLEAR, &events, TX_WAIT_FOREVER);
+        TX_CHECK(tx_status);
 
-        /* Send request to check if the switch is up and running */
-        nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_LINK_ENABLED, &actual_status, 0);
+        /* Check if the link is up */
+        if (events & LINK_EVENT_LINK_CHECK) {
 
-        /* The link is up */
-        if (nx_status == NX_SUCCESS) {
+            /* Send request to check if the switch is up and running */
+            nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_LINK_ENABLED, &actual_status, 0);
 
-            /* The link just went up */
-            if (linkdown) {
+            /* The link is up */
+            if (nx_status == NX_SUCCESS) {
 
-                /* Send request to enable our MAC */
-                nx_status = nx_ip_driver_direct_command(&nx_ip_instance, NX_LINK_ENABLE, (ULONG *) &actual_status);
-                if ((nx_status != NX_SUCCESS) && (nx_status != NX_ALREADY_ENABLED)) error_handler();
+                /* The link just went up */
+                if (linkdown) {
 
-                /* Notify the state machine that the link is up */
-                tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_LINK_UP | STATE_MACHINE_UPDATE, TX_OR);
-                TX_CHECK(tx_status);
+                    linkdown = false;
 
-                /* Send request to check if an address is resolved */
-                nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_ADDRESS_RESOLVED, &actual_status, 0);
+                    /* Send request to enable our MAC */
+                    nx_status = nx_ip_driver_direct_command(&nx_ip_instance, NX_LINK_ENABLE, &actual_status);
+                    if ((nx_status != NX_SUCCESS) && (nx_status != NX_ALREADY_ENABLED)) error_handler();
 
-                /* If we have an IP address then restart DHCP to get a new IP address for the new network */
-                if (nx_status == NX_SUCCESS) {
+                    /* Notify the state machine that the link is up */
+                    tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_LINK_UP, TX_OR);
+                    TX_CHECK(tx_status);
 
-                    /* Stop DHCP */
-                    nx_status = nx_dhcp_stop(&dhcp_client);
-                    NX_CHECK(nx_status);
+                    /* Send request to check if an address is resolved */
+                    nx_status = nx_ip_interface_status_check(&nx_ip_instance, PRIMARY_INTERFACE, NX_IP_ADDRESS_RESOLVED, &actual_status, 0);
 
-                    /* Re-initialize DHCP */
-                    nx_status = nx_dhcp_reinitialize(&dhcp_client);
-                    NX_CHECK(nx_status);
+                    /* If we have an IP address then restart DHCP to get a new IP address for the new network */
+                    if (nx_status == NX_SUCCESS) {
 
-                    /* Start DHCP */
-                    nx_status = nx_dhcp_start(&dhcp_client);
-                    NX_CHECK(nx_status);
+                        /* Stop DHCP */
+                        nx_status = nx_dhcp_stop(&dhcp_client);
+                        NX_CHECK(nx_status);
 
-                    /* Attempt to restore the record */
+                        /* Re-initialize DHCP */
+                        nx_status = nx_dhcp_reinitialize(&dhcp_client);
+                        NX_CHECK(nx_status);
+
+                        /* Start DHCP */
+                        nx_status = nx_dhcp_start(&dhcp_client);
+                        NX_CHECK(nx_status);
+
 #if ENABLE_DHCP_RESTORE
-                    nx_status = dhcp_record_restore(&dhcp_client);
-                    NX_CHECK(nx_status);
+
+                        /* Attempt to restore the record */
+                        nx_status = dhcp_record_restore(&dhcp_client);
+                        NX_CHECK(nx_status);
+
 #endif
-                }
+                    }
 
-                /* An error occured */
-                else if (nx_status != NX_NOT_SUCCESSFUL) {
-                    error_handler();
-                }
+                    /* An error occured */
+                    else if (nx_status != NX_NOT_SUCCESSFUL) {
+                        error_handler();
+                    }
 
-                linkdown = false;
+                    /* Change the link up check timer to have a longer period */
+                    tx_status = tx_timer_change(&link_check_timer, NX_APP_LINK_CHECK_WHEN_UP_INTERVAL, NX_APP_LINK_CHECK_WHEN_UP_INTERVAL);
+                    TX_CHECK(tx_status);
+                }
+            }
+
+            /* The link is down */
+            else if (nx_status == NX_NOT_SUCCESSFUL) {
+
+                /* The link just went down */
+                if (!linkdown) {
+
+                    linkdown = true;
+
+                    nx_status = nx_ip_driver_direct_command(&nx_ip_instance, NX_LINK_DISABLE, &actual_status);
+                    NX_CHECK(nx_status);
+
+                    /* Set the DHCP Client's remaining lease time to 0 seconds to trigger an immediate renewal request for a DHCP address. */
+                    nx_status = nx_dhcp_client_update_time_remaining(&dhcp_client, 0);
+                    NX_CHECK(nx_status);
+
+                    /* Change the link up check timer to have a shorter period */
+                    tx_status = tx_timer_change(&link_check_timer, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL);
+                    TX_CHECK(tx_status);
+                }
+            }
+
+            /* An error occured */
+            else {
+                error_handler();
             }
         }
 
-        /* The link is down */
-        else if (nx_status == NX_NOT_SUCCESSFUL) {
-
-            /* The link just went down */
-            if (!linkdown) {
-                nx_status = nx_ip_driver_direct_command(&nx_ip_instance, NX_LINK_DISABLE, &actual_status);
-                NX_CHECK(nx_status);
-
-                /* Set the DHCP Client's remaining lease time to 0 seconds to trigger an immediate renewal request for a DHCP address. */
-                nx_status = nx_dhcp_client_update_time_remaining(&dhcp_client, 0);
-                NX_CHECK(nx_status);
-
-                linkdown = true;
-            }
-        }
-
-        /* An error occured */
-        else {
-            error_handler();
-        }
-
-        /* Periodically save the DHCP record to non-volatile memory in case of a reboot */
 #if ENABLE_DHCP_RESTORE
-        if (dhcp_record_next_save_time <= current_time) {
-            dhcp_record_next_save_time = current_time + DHCP_RECORD_SAVE_INTERVAL;
-            nx_status                  = dhcp_record_store(&dhcp_client);
+
+        /* Periodically save the DHCP record to non-volatile memory in case of a reboot or link down */
+        if (events & LINK_EVENT_DHCP_SAVE) {
+            nx_status = dhcp_record_store(&dhcp_client);
             NX_CHECK(nx_status);
         }
-#endif
 
-        /* Delay differently based on link state */
-        // TODO: Use an event from the PHY thread to wake up faster
-        if (linkdown) {
-            tx_thread_sleep_ms(NX_APP_CABLE_CONNECTION_CHECK_UP_PERIOD);
-        } else {
-            tx_thread_sleep_ms(NX_APP_CABLE_CONNECTION_CHECK_DOWN_PERIOD);
-        }
+#endif
     }
 }
 
@@ -180,7 +198,7 @@ static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
     if (ip_address != NULL_ADDRESS) {
 
         /* Notify the state machine */
-        tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED | STATE_MACHINE_UPDATE, TX_OR);
+        tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_OR);
         TX_CHECK(tx_status);
     }
 
@@ -188,9 +206,7 @@ static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
     else {
 
         /* Notify the state machine */
-        tx_status = tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_AND);
-        TX_CHECK(tx_status);
-        tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_UPDATE, TX_OR);
+        tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_UNASSIGNED, TX_OR);
         TX_CHECK(tx_status);
     }
 }
@@ -303,3 +319,15 @@ static nx_status_t dhcp_record_store(NX_DHCP *client) {
 
 
 #endif
+
+
+void link_check_timer_callback(ULONG id) {
+    tx_status_t status = tx_event_flags_set(&link_events_handle, LINK_EVENT_LINK_CHECK, TX_OR);
+    TX_CHECK(status);
+}
+
+
+void dhcp_save_timer_callback(ULONG id) {
+    tx_status_t status = tx_event_flags_set(&link_events_handle, LINK_EVENT_DHCP_SAVE, TX_OR);
+    TX_CHECK(status);
+}

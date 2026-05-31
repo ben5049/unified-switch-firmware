@@ -65,6 +65,7 @@ int main(void) {
 
 
 #if UART_LOGGING_ENABLE
+
 int _write(int file, char *ptr, int len) {
 
     hal_status_t status = HAL_OK;
@@ -85,4 +86,5 @@ int _write(int file, char *ptr, int len) {
         return -1;
     }
 }
+
 #endif

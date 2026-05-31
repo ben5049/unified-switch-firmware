@@ -30,7 +30,7 @@ uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS]
 
 ptp_event_counters_t ptp_event_counters;
 
-volatile port_index_t port_connected_to_master = NUM_PORTS;
+volatile port_index_t ptp_port_connected_to_master = NUM_PORTS;
 
 // TODO: stop instances when links go down + restart when up
 //       also need to elect new master on port down rather than
@@ -240,7 +240,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             }
 
                             /* When the client times out it will update itself to be the master with its worse clock */
-                            else if ((clock_comparison < 0) && (event_info.port == port_connected_to_master)) {
+                            else if ((clock_comparison < 0) && (event_info.port == ptp_port_connected_to_master)) {
                                 new_master = true;
                             }
                         }
@@ -251,9 +251,9 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         TX_DISABLE
 
                         /* Save the new master */
-                        port_connected_to_master   = event_info.port;
-                        client_connected_to_master = &ptp_client[port_connected_to_master];
-                        master                     = event_info.master;
+                        ptp_port_connected_to_master = event_info.port;
+                        client_connected_to_master   = &ptp_client[ptp_port_connected_to_master];
+                        master                       = event_info.master;
                         memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
                         master.nx_ptp_client_master_grandmaster_identity = grandmaster_identity;
                         ptp_event_counters.new_master++;
@@ -324,10 +324,10 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                     case PTP_CLIENT_EVENT_TIMEOUT: {
 
                         /* Only the port connected to the master should be able to time out */
-                        assert(event_info.port == port_connected_to_master);
+                        assert(event_info.port == ptp_port_connected_to_master);
 
-                        port_connected_to_master   = NUM_PORTS;
-                        client_connected_to_master = NULL;
+                        ptp_port_connected_to_master = NUM_PORTS;
+                        client_connected_to_master   = NULL;
                         ptp_event_counters.master_timeout++;
 
                         /* Reset all clients to begin looking for a new master */

@@ -20,7 +20,7 @@
 #include "phy_thread.h"
 #include "phy_utils.h"
 #include "phy_platform.h"
-#include "stp_thread.h"
+#include "nx_link_thread.h"
 
 
 TX_MUTEX             phy_mutex_handle;
@@ -160,7 +160,8 @@ static phy_status_t phy_callback_give_mutex(void *context) {
 
 static phy_status_t phy_callback_event(phy_event_t event, void *context) {
 
-    phy_status_t status = PHY_OK;
+    phy_status_t phy_status = PHY_OK;
+    tx_status_t  tx_status  = TX_SUCCESS;
 
     switch (event) {
 
@@ -205,7 +206,11 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
             break;
     }
 
-    return status;
+    /* Notify the link thread */
+    tx_status = tx_event_flags_set(&link_events_handle, LINK_EVENT_LINK_CHECK, TX_OR);
+    TX_CHECK(tx_status);
+
+    return phy_status;
 }
 
 const phy_callbacks_t phy_callbacks_88q2112 = {

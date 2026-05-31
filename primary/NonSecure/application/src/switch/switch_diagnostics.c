@@ -110,7 +110,7 @@ sja1105_status_t publish_switch_diagnostics(uint32_t current_time) {
 
         /* Convert into a Zenoh payload */
         z_status = z_bytes_from_static_buf(&payload, switch_stats_buffer, stream.bytes_written);
-        if (z_status < Z_OK) tx_status = zenoh_disconnected(false);
+        if (z_status < Z_OK) tx_status = zenoh_disconnected();
         TX_CHECK(tx_status);
 
         /* Check if publishing stats is still allowed */
@@ -120,11 +120,11 @@ sja1105_status_t publish_switch_diagnostics(uint32_t current_time) {
             /* Publish the message */
             z_publisher_put_options_default(&options);
             z_status = z_encoding_from_str(&stats_encoding, ENCODING_SWITCH_STATS);
-            if (z_status < Z_OK) tx_status = zenoh_disconnected(false);
+            if (z_status < Z_OK) tx_status = zenoh_disconnected();
             TX_CHECK(tx_status);
             options.encoding = z_move(stats_encoding);
             z_status         = z_publisher_put(z_loan(stats_pub), z_move(payload), &options);
-            if (z_status < Z_OK) tx_status = zenoh_disconnected(false);
+            if (z_status < Z_OK) tx_status = zenoh_disconnected();
             TX_CHECK(tx_status);
         }
 

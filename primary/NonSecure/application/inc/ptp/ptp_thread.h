@@ -142,7 +142,7 @@ extern TX_TIMER ptp_switch_sync_timer;
 extern NX_PTP_CLIENT         ptp_client[NUM_PHYS];
 extern SHORT                 ptp_utc_offset;
 extern ptp_event_counters_t  ptp_event_counters;
-extern volatile port_index_t port_connected_to_master;
+extern volatile port_index_t ptp_port_connected_to_master;
 
 
 /* Thread functions */
@@ -159,7 +159,7 @@ void ptp_switch_sync_timer_callback(ULONG id);
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
 uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
 uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]);
-uint8_t ptp_clock_tx_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
+uint8_t ptp_tx_timestamp_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
 
 /* Callbacks for PTP client */
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);

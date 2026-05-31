@@ -48,8 +48,8 @@ extern zenoh_event_counters_t zenoh_events;
 extern z_owned_publisher_t stats_pub;
 
 
-tx_status_t zenoh_connected(bool update_state_machine);
-tx_status_t zenoh_disconnected(bool update_state_machine);
+tx_status_t zenoh_connected(void);
+tx_status_t zenoh_disconnected(void);
 
 void comms_thread_entry(uint32_t initial_input);
 

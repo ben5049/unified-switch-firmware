@@ -14,7 +14,7 @@
 
 #include "app.h"
 #include "nx_app.h"
-#include "switch_thread.h"
+#include "switch_utils.h"
 #include "phy_thread.h"
 
 
@@ -23,7 +23,7 @@ int32_t nx_eth_phy_init(void) {
     int32_t ret = ETH_PHY_STATUS_OK;
 
     /* Check the switch initialised flag */
-    if (!switch_handles[0].initialised) ret = ETH_PHY_STATUS_ERROR;
+    if (!switch_handles[SWITCH0].initialised) ret = ETH_PHY_STATUS_ERROR;
 
     return ret;
 }
@@ -31,12 +31,14 @@ int32_t nx_eth_phy_init(void) {
 
 int32_t nx_eth_phy_get_link_state(void) {
 
-    int32_t linkstate           = ETH_PHY_STATUS_LINK_ERROR;
-    bool    phy_link_up         = false;
-    bool    external_connection = true;
+    int32_t          linkstate           = ETH_PHY_STATUS_LINK_ERROR;
+    bool             phy_link_up         = false;
+    bool             external_connection = true;
+    sja1105_status_t switch_status       = SJA1105_OK;
+    uint16_t         speed;
 
     /* If SJA1105 isn't initialised or none of the PHYs have links then return link down
-     * Note: v4 hphy3 and v5 hphy6 aren't used since they use PLCA and always counts as having their links up */
+     * Note: v4 hphy3 and v5 hphy6 aren't used since they use PLCA and always count as having their link up */
     phy_link_up = hphy0.linkup || hphy1.linkup || hphy2.linkup
 #if HW_VERSION == 5
                   || hphy3.linkup || hphy4.linkup || hphy5.linkup
@@ -54,23 +56,27 @@ int32_t nx_eth_phy_get_link_state(void) {
         return linkstate;
     }
 
-    switch (switch_handles[0].config->ports[SW0_PORT_HOST].speed) {
-        case SJA1105_SPEED_10M:
+    switch_status = switch_get_speed(PORT_HOST, &speed);
+    SWITCH_CHECK(switch_status);
+    switch (speed) {
+
+        case 10:
             linkstate = ETH_PHY_STATUS_10MBITS_FULLDUPLEX;
             break;
 
-        case SJA1105_SPEED_100M:
+        case 100:
             linkstate = ETH_PHY_STATUS_100MBITS_FULLDUPLEX;
             break;
 
 #ifdef ETH_PHY_1000MBITS_SUPPORTED
-        case SJA1105_SPEED_1G:
+        case 1000:
             linkstate = ETH_PHY_STATUS_1000MBITS_FULLDUPLEX;
             break;
 #endif
 
         default:
             linkstate = ETH_PHY_STATUS_LINK_ERROR;
+            DEBUG_STOP();
             break;
     }
 

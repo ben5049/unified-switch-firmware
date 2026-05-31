@@ -14,16 +14,19 @@ extern "C" {
 
 
 #include "stdint.h"
-#include "tx_api.h"
 
 #include "config.h"
+#include "tx_app.h"
 
 
-#define STATE_MACHINE_NX_LINK_UP             ((ULONG) 1 << 0)
-#define STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED ((ULONG) 1 << 1)
-#define STATE_MACHINE_ZENOH_CONNECTED        ((ULONG) 1 << 2)
-#define STATE_MACHINE_ZENOH_DISCONNECTED     ((ULONG) 1 << 3)
-#define STATE_MACHINE_UPDATE                 ((ULONG) 1 << 31) /* Must be set for the state machine thread to react */
+typedef enum {
+    STATE_MACHINE_NX_LINK_UP               = 1 << 0,
+    STATE_MACHINE_NX_LINK_DOWN             = 1 << 1,
+    STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED   = 1 << 2,
+    STATE_MACHINE_NX_IP_ADDRESS_UNASSIGNED = 1 << 3,
+    STATE_MACHINE_ZENOH_CONNECTED          = 1 << 4,
+    STATE_MACHINE_ZENOH_DISCONNECTED       = 1 << 5,
+} state_machine_event_t;
 
 
 extern TX_THREAD            state_machine_thread_handle;
@@ -32,6 +35,7 @@ extern TX_EVENT_FLAGS_GROUP state_machine_events_handle;
 
 
 void state_machine_thread_entry(uint32_t initial_input);
+
 
 #ifdef __cplusplus
 }

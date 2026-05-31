@@ -15,9 +15,6 @@
 #include "ptp_utils.h"
 
 
-#define PTP_SYNC_PAYLOAD_LENGTH (44)
-
-
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
     (uint8_t) (PTP_ETHERNET_ADDR_LSB),       /* Index 0: 0x0E */
     (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 1: 0x00 */
@@ -25,23 +22,6 @@ const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
     (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 3: 0xC2 */
     (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 4: 0x80 */
     (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8)   /* Index 5: 0x01 */
-};
-
-
-static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
-    0x00 | (NX_PTP_TRANSPORT_SPECIFIC_802 << 4),                        /* 0: MsgType = 0 (Sync), transport specific = 1 (gPTP) */
-    0x02,                                                               /* 1: Version = 2 */
-    0x00, PTP_SYNC_PAYLOAD_LENGTH,                                      /* 2-3: Message Length = 44 bytes */
-    0x00, 0x00,                                                         /* 4-5: Domain Number = 0, Reserved */
-    0x02, 0x00,                                                         /* 6-7: Flags (0x02 = Two-Step flag set) */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,                     /* 8-15: Correction Field */
-    0x00, 0x00, 0x00, 0x00,                                             /* 16-19: Reserved */
-    MAC_ADDR_OCTET1, MAC_ADDR_OCTET2, MAC_ADDR_OCTET3, 0xff, 0xfe,
-    MAC_ADDR_OCTET4, MAC_ADDR_OCTET5, MAC_ADDR_OCTET6, 0x00, NUM_PORTS, /* 20-29: Port Identity */
-    0x00, 0x01,                                                         /* 30-31: Sequence ID */
-    0x00,                                                               /* 32: Control Field (0x00 for Sync) */
-    0x00,                                                               /* 33: Log Message Interval */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00          /* Sync-specific payload: Origin Timestamp (10 bytes) */
 };
 
 
@@ -75,42 +55,6 @@ void write_port_identity_eui(uint8_t *port_identity) {
 void write_port_identity_number(uint8_t *port_identity, uint16_t number) {
     port_identity[8] = (uint8_t) ((number + 1) >> 8);
     port_identity[9] = (uint8_t) (number + 1); /* Indexed from 1 */
-}
-
-
-nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr) {
-
-    nx_status_t status = NX_SUCCESS;
-    NX_PACKET  *packet_ptr;
-
-    /* Allocate a packet */
-    status = nx_packet_allocate(&nx_small_packet_pool, packet_ptr_ptr, NX_PHYSICAL_HEADER, NX_NO_WAIT);
-    if (status != NX_SUCCESS) goto end;
-
-    packet_ptr = *packet_ptr_ptr;
-
-    /* Append dummy payload to make the MAC see it as a PTP packet and timestamp it */
-    status = nx_packet_data_append(packet_ptr, dummy_sync_payload, sizeof(dummy_sync_payload), &nx_small_packet_pool, NX_NO_WAIT);
-    if (status != NX_SUCCESS) goto cleanup;
-
-    /* Add Ethernet header */
-    status = nx_link_ethernet_header_add(&nx_ip_instance, PRIMARY_INTERFACE, packet_ptr,
-                                         PTP_ETHERNET_ADDR_MSB, PTP_ETHERNET_ADDR_LSB,
-                                         NX_LINK_ETHERNET_PTP);
-    if (status != NX_SUCCESS) goto cleanup;
-
-    /* Enable egress timestamping for this packet */
-    packet_ptr->nx_packet_interface_capability_flag |= NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP;
-
-    goto end;
-
-cleanup:
-
-    if (nx_packet_release(packet_ptr) != NX_SUCCESS) error_handler();
-
-end:
-
-    return status;
 }
 
 

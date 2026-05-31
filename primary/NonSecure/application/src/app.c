@@ -27,7 +27,6 @@
 #include "phy_thread.h"
 #include "utils.h"
 #include "static_checks.h"
-#include "logging.h"
 
 
 /* Private function prototypes */

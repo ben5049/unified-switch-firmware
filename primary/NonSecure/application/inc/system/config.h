@@ -122,27 +122,27 @@ extern uint32_t __TRACE_SIZE__;
 #define PORT7_SPEED_MBPS (100)  /* Host (10 or 100 Mbps) */
 #endif
 
-#define PHY_LINK_REQUIRED_FOR_NX_LINK (true)  /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
+#define PHY_LINK_REQUIRED_FOR_NX_LINK (true) /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
 
+
+#define ENABLE_DHCP_RESTORE           (1)
 #define DHCP_RECORD_SAVE_INTERVAL     (10000) /* How often to save the current DHCP record for restoration later in case of reboot in ms */
-
-#define ENABLE_DHCP_RESTORE           (true)
 
 /* ---------------------------------------------------------------------------- */
 /* Link Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NX_LINK_THREAD_STACK_SIZE                 (2 * 1024)
-#define NX_LINK_THREAD_PRIORITY                   (9)
+#define NX_LINK_THREAD_STACK_SIZE            (2 * 1024)
+#define NX_LINK_THREAD_PRIORITY              (9)
 
-#define NX_APP_CABLE_CONNECTION_CHECK_UP_PERIOD   (300)  /* Interval between link checks in ms when the link is down */
-#define NX_APP_CABLE_CONNECTION_CHECK_DOWN_PERIOD (1000) /* Interval between link checks in ms when the link is up */
+#define NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL (200)  /* Interval between link checks in ms when the link is down */
+#define NX_APP_LINK_CHECK_WHEN_UP_INTERVAL   (1000) /* Interval between link checks in ms when the link is up */
 
 /* ---------------------------------------------------------------------------- */
 /* PTP Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NX_INTERNAL_PTP_THREAD_STACK_SIZE     (1024 * 2)
+#define NX_INTERNAL_PTP_THREAD_STACK_SIZE     (1536)
 #define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY (6)
 
 #define PTP_EVENT_THREAD_STACK_SIZE           (1024 * 2)

@@ -64,29 +64,29 @@ static const z_publisher_options_t heartbeat_pub_options = {
 };
 
 
-tx_status_t zenoh_connected(bool update_state_machine) {
+tx_status_t zenoh_connected() {
 
     tx_status_t status = TX_SUCCESS;
 
-    status = tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_ZENOH_DISCONNECTED, TX_AND);
+    status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR);
     if (status != TX_SUCCESS) return status;
-    status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_ZENOH_CONNECTED | ((update_state_machine) ? STATE_MACHINE_UPDATE : 0), TX_OR);
 
     zenoh_events.connections++;
 
     return status;
 }
 
-tx_status_t zenoh_disconnected(bool update_state_machine) {
+
+tx_status_t zenoh_disconnected() {
 
     tx_status_t status = TX_SUCCESS;
 
-    status = tx_event_flags_set(&state_machine_events_handle, ~STATE_MACHINE_ZENOH_CONNECTED, TX_AND);
+    status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR);
     if (status != TX_SUCCESS) return status;
-    status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED | ((update_state_machine) ? STATE_MACHINE_UPDATE : 0), TX_OR);
 
     return status;
 }
+
 
 /* Called when a message is received from the topic ZENOH_SUB_HEARTBEAT_KEYEXPR */
 void heartbeat_sub_callback(z_loaned_sample_t *sample, void *ctx) {
@@ -109,10 +109,30 @@ void comms_thread_entry(uint32_t initial_input) {
     bool        failure_streak_valid  = false;
     uint32_t    current_time          = tx_time_get_ms();
 
+    z_owned_config_t  config;
+    z_open_options_t  opts;
+    z_owned_session_t session;
+
+    z_owned_keyexpr_t stats_pub_key;
+    z_view_keyexpr_t  stats_pub_view_key;
+
+    z_owned_keyexpr_t heartbeat_pub_key;
+    z_view_keyexpr_t  heartbeat_pub_view_key;
+
+    z_owned_keyexpr_t heartbeat_sub_key;
+    z_view_keyexpr_t  heartbeat_sub_view_key;
+
+    z_owned_closure_sample_t heartbeat_closure;
+
+    z_owned_encoding_t heartbeat_encoding;
+
     Heartbeat    heartbeat = Heartbeat_init_zero;
     pb_ostream_t heartbeat_stream;
 
-    z_owned_encoding_t heartbeat_encoding;
+    z_owned_bytes_t           payload;
+    z_publisher_put_options_t options;
+
+    uint32_t flags;
 
     memset(&zenoh_events, 0, sizeof(zenoh_event_counters_t));
     memset(zenoh_udp_multicast_groups_valid, 0, sizeof(zenoh_udp_multicast_groups_valid));
@@ -130,7 +150,6 @@ void comms_thread_entry(uint32_t initial_input) {
         TX_CHECK(tx_status);
 
         /* Read and apply the config */
-        z_owned_config_t config;
         z_status = z_config_default(&config);
         Z_CHECK(z_status);
         z_status = zp_config_insert(z_loan_mut(config), Z_CONFIG_MODE_KEY, ZENOH_MODE);
@@ -146,12 +165,10 @@ void comms_thread_entry(uint32_t initial_input) {
         }
 
         /* Create the options */
-        z_open_options_t opts;
         z_open_options_default(&opts);
 
         /* Start a session */
         LOG_INFO("Zenoh Pico: Attempting to open session");
-        z_owned_session_t session;
         do {
 
             /* Attempt to open session */
@@ -193,8 +210,6 @@ void comms_thread_entry(uint32_t initial_input) {
         LOG_INFO("Session opened");
 
         /* Declare stats publisher */
-        z_owned_keyexpr_t stats_pub_key;
-        z_view_keyexpr_t  stats_pub_view_key;
         z_view_keyexpr_from_str(&stats_pub_view_key, ZENOH_PUB_STATS_KEYEXPR);
         z_status = z_declare_keyexpr(z_loan(session), &stats_pub_key, z_loan(stats_pub_view_key));
         Z_CHECK(z_status);
@@ -202,8 +217,6 @@ void comms_thread_entry(uint32_t initial_input) {
         Z_CHECK(z_status);
 
         /* Declare heartbeat publisher */
-        z_owned_keyexpr_t heartbeat_pub_key;
-        z_view_keyexpr_t  heartbeat_pub_view_key;
         z_view_keyexpr_from_str(&heartbeat_pub_view_key, ZENOH_PUB_HEARTBEAT_KEYEXPR);
         z_status = z_declare_keyexpr(z_loan(session), &heartbeat_pub_key, z_loan(heartbeat_pub_view_key));
         Z_CHECK(z_status);
@@ -211,18 +224,15 @@ void comms_thread_entry(uint32_t initial_input) {
         Z_CHECK(z_status);
 
         /* Declare heartbeat background subscriber */
-        z_owned_keyexpr_t heartbeat_sub_key;
-        z_view_keyexpr_t  heartbeat_sub_view_key;
         z_view_keyexpr_from_str(&heartbeat_sub_view_key, ZENOH_SUB_HEARTBEAT_KEYEXPR);
         z_status = z_declare_keyexpr(z_loan(session), &heartbeat_sub_key, z_loan(heartbeat_sub_view_key));
         Z_CHECK(z_status);
-        z_owned_closure_sample_t heartbeat_closure;
         z_closure(&heartbeat_closure, heartbeat_sub_callback, NULL, NULL);
         z_status = z_declare_background_subscriber(z_loan(session), z_loan(heartbeat_sub_key), z_move(heartbeat_closure), NULL);
         Z_CHECK(z_status);
 
         /* Notify the state machine that we are connected and ready to communicate */
-        tx_status = zenoh_connected(true);
+        tx_status = zenoh_connected();
         TX_CHECK(tx_status);
 
         LOG_INFO("Entering main loop");
@@ -253,12 +263,10 @@ void comms_thread_entry(uint32_t initial_input) {
             heartbeat.error_code     = 0;                /* TODO: Send error code */
             heartbeat.has_error_code = false;            /* TODO: Send error code */
             if (!pb_encode(&heartbeat_stream, Heartbeat_fields, &heartbeat)) error_handler();
-            z_owned_bytes_t payload;
             z_status = z_bytes_from_static_buf(&payload, heartbeat_producer_buffer, heartbeat_stream.bytes_written);
             if (z_status < Z_OK) goto restart;
 
             /* Publish heartbeat message */
-            z_publisher_put_options_t options;
             z_publisher_put_options_default(&options);
             z_status = z_encoding_from_str(&heartbeat_encoding, ENCODING_HEARTBEAT);
             Z_CHECK(z_status);
@@ -270,7 +278,6 @@ void comms_thread_entry(uint32_t initial_input) {
              * is set then immediately wake up and try to reconnect.
              */
             _Static_assert(HEARTBEAT_INTERVAL > 0, "Heartbeat interval should be > 0");
-            uint32_t flags;
             tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR, &flags, HEARTBEAT_INTERVAL);
             if (tx_status == TX_SUCCESS) {
                 LOG_INFO("Received disconnect event");
@@ -297,7 +304,7 @@ void comms_thread_entry(uint32_t initial_input) {
         zenoh_events.restarts++;
 
         /* Notify the state machine */
-        tx_status = zenoh_disconnected(true);
+        tx_status = zenoh_disconnected();
         TX_CHECK(tx_status);
 
     /* An error occured while connecting */

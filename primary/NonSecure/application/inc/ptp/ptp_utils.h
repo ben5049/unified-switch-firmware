@@ -28,8 +28,6 @@ void ptp_packet_extract_timestamp(NX_PACKET *packet_ptr, NX_PTP_TIME *time);
 void write_port_identity_eui(uint8_t *port_identity);
 void write_port_identity_number(uint8_t *port_identity, uint16_t number);
 
-nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr);
-
 void ptp_compute_offset(NX_PTP_TIME *t1, NX_PTP_TIME *t2, NX_PTP_TIME *t3, NX_PTP_TIME *t4, NX_PTP_TIME *offset);
 
 void ptp_mac_adjust_time_coarse(NX_PTP_TIME *offset_time);

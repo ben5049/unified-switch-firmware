@@ -18,6 +18,12 @@ extern "C" {
 
 #include "stm32h5xx_hal_eth.h" /* Being explicit */
 
+#include "error.h"
+
+
+#define HAL_CHECK(status)                   \
+    if ((status) != HAL_OK) error_handler()
+
 
 typedef HAL_StatusTypeDef hal_status_t;
 

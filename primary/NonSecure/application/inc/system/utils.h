@@ -41,6 +41,11 @@ extern "C" {
 #define CONSTRAIN(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 #define ABS(a)                    ((a) > 0 ? (a) : -(a))
 
+#define U32_BYTE_0(reg)           ((uint8_t) (((uint32_t) (reg) >> (0 * 8)) & 0xff))
+#define U32_BYTE_1(reg)           ((uint8_t) (((uint32_t) (reg) >> (1 * 8)) & 0xff))
+#define U32_BYTE_2(reg)           ((uint8_t) (((uint32_t) (reg) >> (2 * 8)) & 0xff))
+#define U32_BYTE_3(reg)           ((uint8_t) (((uint32_t) (reg) >> (3 * 8)) & 0xff))
+
 #define MAC_ADDR_MSW(o1, o2)      (((uint32_t) (o1) << 8) | \
                               ((uint32_t) (o2)))
 

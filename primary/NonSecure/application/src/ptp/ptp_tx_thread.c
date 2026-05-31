@@ -129,87 +129,88 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
     while (1) {
 
         tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event_info, TX_WAIT_FOREVER);
+        TX_CHECK(tx_status);
+
 #if DEBUG
-        tx_queue_info_get(&ptp_tx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+
+        tx_status = tx_queue_info_get(&ptp_tx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+        TX_CHECK(tx_status);
         if ((enqueued + 1) > queue_high_water_mark) {
             queue_high_water_mark = (enqueued + 1);
             LOG_INFO("PTP TX Queue high water mark = %lu/%d", queue_high_water_mark, PTP_TX_QUEUE_SIZE);
         }
+
 #endif
-        if (tx_status == NX_SUCCESS) {
 
-            switch (event_info.event) {
+        switch (event_info.event) {
 
-                case PTP_TX_EVENT_SEND_PACKET: {
+            case PTP_TX_EVENT_SEND_PACKET: {
 
-                    /* Save packet info */
-                    ptp_tx_packet = event_info.packet_ptr;
-                    ptp_tx_port   = event_info.port;
-                    tx_send_count = 0;
+                /* Save packet info */
+                ptp_tx_packet = event_info.packet_ptr;
+                ptp_tx_port   = event_info.port;
+                tx_send_count = 0;
 
-                    /* Create a management route for the packet */
-                    switch_status = switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port);
+                /* Create a management route for the packet */
+                switch_status = switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port);
+                SWITCH_CHECK(switch_status);
+                ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
+
+                /* Send the packet */
+                nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr);
+                NX_CHECK(nx_status);
+                ptp_event_counters.tx_packets_sent[event_info.port]++;
+
+                /* Get confirmation the packet has been sent through the switch */
+                attempts = 0;
+                do {
+
+                    /* Attempt to free management route. If successful this will
+                     * get the egress timestamp and pass it to the PTP client too. */
+                    switch_status = switch_free_mgmt_route(depth);
                     SWITCH_CHECK(switch_status);
-                    ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
 
-                    /* Send the packet */
-                    nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr);
-                    NX_CHECK(nx_status);
-                    ptp_event_counters.tx_packets_sent[event_info.port]++;
+                    /* Attempt to get confirmation the packet has made it through the switch */
+                    tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, 1);
 
-                    /* Get confirmation the packet has been sent through the switch */
-                    attempts = 0;
-                    do {
+                    /* Management route freed */
+                    if (tx_status == TX_SUCCESS) {
+                        ptp_tx_send_count = 0;
+                        tx_send_count     = 0;
+                        break;
+                    }
 
-                        /* Attempt to free management route. If successful this will
-                         * get the egress timestamp and pass it to the PTP client too. */
-                        switch_status = switch_free_mgmt_route(depth);
-                        SWITCH_CHECK(switch_status);
+                    /* Error occured */
+                    else if (tx_status != TX_NO_EVENTS) {
+                        error_handler();
+                    }
 
-                        /* Attempt to get confirmation the packet has made it through the switch */
-                        tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, 1);
+                    /* Keep waiting */
+                    attempts++;
+                    if (attempts == MS_TO_TICKS(PTP_TX_TIMEOUT)) error_handler();
 
-                        /* Management route freed */
-                        if (tx_status == TX_SUCCESS) {
-                            ptp_tx_send_count = 0;
-                            tx_send_count     = 0;
-                            break;
-                        }
+                } while (1);
 
-                        /* Error occured */
-                        else if (tx_status != TX_NO_EVENTS) {
-                            error_handler();
-                        }
+                /* Wait for the ethernet driver to be done with the packet */
+                tx_status = tx_event_flags_get(
+                    &ptp_tx_events_handle,
+                    PTP_TX_EVENT_PACKET_FREE,
+                    TX_OR_CLEAR,
+                    &event_flags,
+                    MS_TO_TICKS(PTP_TX_TIMEOUT));
+                if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
 
-                        /* Keep waiting */
-                        attempts++;
-                        if (attempts == MS_TO_TICKS(PTP_TX_TIMEOUT)) error_handler();
+                /* Release the packet */
+                nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr, NULL);
+                ptp_tx_packet = NULL;
 
-                    } while (1);
-
-                    /* Wait for the ethernet driver to be done with the packet */
-                    tx_status = tx_event_flags_get(
-                        &ptp_tx_events_handle,
-                        PTP_TX_EVENT_PACKET_FREE,
-                        TX_OR_CLEAR,
-                        &event_flags,
-                        MS_TO_TICKS(PTP_TX_TIMEOUT));
-                    if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
-
-                    /* Release the packet */
-                    nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr, NULL);
-                    ptp_tx_packet = NULL;
-
-                    break;
-                }
-
-                default: {
-                    error_handler();
-                    break;
-                }
+                break;
             }
-        } else {
-            error_handler();
+
+            default: {
+                error_handler();
+                break;
+            }
         }
     }
 }
@@ -264,7 +265,12 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         port_number = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[port_idx] << 8) |
                                   packet_ptr->nx_packet_prepend_ptr[port_idx + 1]); /* Extract the 1-indexed port number */
         port_number--;
-        assert((port_number >= 0) && (port_number < NUM_PHYS));                     // TODO: NUM_PORTS
+        assert((port_number >= 0) && (port_number < NUM_PHYS));
+
+        /* Remove timestamps from filtered PTP packets. Timestamps are taken by
+         * the switch usually, or if MAC timestamping is needed then the packet
+         * can be sent directly to the PTP transmit queue */
+        packet_ptr->nx_packet_interface_capability_flag &= ~NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP;
 
         /* Fill the event struct */
         event_info.event      = PTP_TX_EVENT_SEND_PACKET;
