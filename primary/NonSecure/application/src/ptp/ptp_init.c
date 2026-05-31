@@ -184,8 +184,10 @@ tx_status_t ptp_start() {
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
     status = tx_event_flags_get(&ptp_mac_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
+#if NUM_SWITCHES > 1
     status = tx_event_flags_get(&ptp_switch_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
+#endif
 
     /* Start the TX thread before the PTP clients to avoid queues building up */
     status = tx_thread_resume(&ptp_tx_thread_handle);
@@ -202,8 +204,10 @@ tx_status_t ptp_start() {
     /* Start the sync threads last since they rely on both TX and RX threads */
     status = tx_thread_resume(&ptp_mac_sync_thread_handle);
     if (status != TX_SUCCESS) return status;
+#if NUM_SWITCHES > 1
     status = tx_thread_resume(&ptp_switch_sync_thread_handle);
     if (status != TX_SUCCESS) return status;
+#endif
 
     return status;
 }

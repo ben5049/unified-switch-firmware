@@ -121,8 +121,10 @@ extern TX_THREAD ptp_rx_thread_handle;
 extern uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 extern TX_THREAD ptp_mac_sync_thread_handle;
 extern uint8_t   ptp_mac_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
+#if NUM_SWITCHES > 1
 extern TX_THREAD ptp_switch_sync_thread_handle;
 extern uint8_t   ptp_switch_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
+#endif
 
 extern TX_QUEUE ptp_event_queue_handle;
 extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS];
@@ -137,10 +139,14 @@ extern uint32_t ptp_mac_sync_queue_stack[PTP_MAC_SYNC_QUEUE_SIZE * PTP_PACKET_MS
 
 extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 extern TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_handle;
+#if NUM_SWITCHES > 1
 extern TX_EVENT_FLAGS_GROUP ptp_switch_sync_events_handle;
+#endif
 
 extern TX_TIMER ptp_mac_sync_timer;
+#if NUM_SWITCHES > 1
 extern TX_TIMER ptp_switch_sync_timer;
+#endif
 
 extern NX_PTP_CLIENT         ptp_client[NUM_PHYS];
 extern SHORT                 ptp_utc_offset;
@@ -154,11 +160,15 @@ void ptp_tx_thread_entry(uint32_t initial_input);
 void ptp_rx_thread_entry(uint32_t initial_input);
 void ptp_clock_thread_entry(uint32_t initial_input);
 void ptp_mac_sync_thread_entry(uint32_t initial_input);
+#if NUM_SWITCHES > 1
 void ptp_switch_sync_thread_entry(uint32_t initial_input);
+#endif
 
 /* Timer callbacks */
 void ptp_mac_sync_timer_callback(ULONG id);
+#if NUM_SWITCHES > 1
 void ptp_switch_sync_timer_callback(ULONG id);
+#endif
 
 /* Filtering functions to place in Ethernet driver to intercept packets */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);

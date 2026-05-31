@@ -12,6 +12,9 @@
 #include "switch_utils.h"
 
 
+#if NUM_SWITCHES > 1
+
+
 TX_THREAD ptp_switch_sync_thread_handle;
 uint8_t   ptp_switch_sync_thread_stack[PTP_SWITCH_SYNC_THREAD_STACK_SIZE];
 
@@ -30,7 +33,6 @@ void ptp_switch_sync_timer_callback(ULONG id) {
 void ptp_switch_sync_thread_entry(uint32_t initial_input) {
 
     tx_status_t      tx_status     = TX_SUCCESS;
-    nx_status_t      nx_status     = NX_SUCCESS;
     sja1105_status_t switch_status = SJA1105_OK;
 
     uint32_t events;
@@ -104,3 +106,5 @@ void ptp_switch_sync_thread_entry(uint32_t initial_input) {
         }
     }
 }
+
+#endif /* NUM_SWITCHES > 1 */

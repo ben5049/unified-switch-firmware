@@ -163,6 +163,8 @@ tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
     ptp_packet_event_info_t event_info;
     NX_PACKET              *packet;
 
+    assert(queue_ptr->tx_queue_message_size == PTP_PACKET_MSG_SIZE_WORDS);
+
     /* Loop until all packets released or error occured */
     do {
 

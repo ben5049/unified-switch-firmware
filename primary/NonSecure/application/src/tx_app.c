@@ -66,8 +66,10 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_event_flags_create(&ptp_mac_sync_events_handle,    "ptp_mac_sync_events_handle");
     TX_CHECK(status);
+#if NUM_SWITCHES > 1
     status = tx_event_flags_create(&ptp_switch_sync_events_handle, "ptp_switch_sync_events_handle");
     TX_CHECK(status);
+#endif
 #endif
 
     /* Create queues */
@@ -110,8 +112,10 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_thread_create(&ptp_mac_sync_thread_handle,    "ptp_mac_sync_thread",    (void (*)(ULONG)) ptp_mac_sync_thread_entry,    thread_number++, ptp_mac_sync_thread_stack,    PTP_MAC_SYNC_THREAD_STACK_SIZE,    PTP_MAC_SYNC_THREAD_PRIORITY,    PTP_MAC_SYNC_THREAD_PRIORITY,     TX_NO_TIME_SLICE, TX_DONT_START);
     TX_CHECK(status);
+#if NUM_SWITCHES > 1
     status = tx_thread_create(&ptp_switch_sync_thread_handle, "ptp_switch_sync_thread", (void (*)(ULONG)) ptp_switch_sync_thread_entry, thread_number++, ptp_switch_sync_thread_stack, PTP_SWITCH_SYNC_THREAD_STACK_SIZE, PTP_SWITCH_SYNC_THREAD_PRIORITY, PTP_SWITCH_SYNC_THREAD_PRIORITY,  TX_NO_TIME_SLICE, TX_DONT_START);
     TX_CHECK(status);
+#endif
 #endif
     status = tx_thread_create(&background_thread_handle,      "background_thread",      (void (*)(ULONG)) background_thread_entry,      thread_number++, background_thread_stack,      BACKGROUND_THREAD_STACK_SIZE,      BACKGROUND_THREAD_PRIORITY,      BACKGROUND_THREAD_PRIORITY,       TX_NO_TIME_SLICE, TX_AUTO_START);
     TX_CHECK(status);
@@ -142,8 +146,10 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_thread_secure_stack_allocate(&ptp_mac_sync_thread_handle,    MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
+#if NUM_SWITCHES > 1
     status = tx_thread_secure_stack_allocate(&ptp_switch_sync_thread_handle, MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
+#endif
 #endif
     status = tx_thread_secure_stack_allocate(&background_thread_handle,      MIN(BACKGROUND_THREAD_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM)); /* More stack required for secure background tasks */
     TX_CHECK(status);
@@ -153,13 +159,21 @@ void tx_setup(void *memory_ptr) {
     nx_link_thread_handle.logger         = &hlog_network;
     switch_thread_handle.logger          = &hlog_sw;
     phy_thread_handle.logger             = &hlog_phy;
+#if ENABLE_STP_THREAD
     stp_thread_handle.logger             = &hlog_network;
+#endif
+#if ENABLE_COMMS_THREAD
     comms_thread_handle.logger           = &hlog_comms;
+#endif
+#if ENABLE_PTP_THREAD
     ptp_event_thread_handle.logger       = &hlog_ptp;
     ptp_tx_thread_handle.logger          = &hlog_ptp;
     ptp_rx_thread_handle.logger          = &hlog_ptp;
     ptp_mac_sync_thread_handle.logger    = &hlog_ptp;
+#if NUM_SWITCHES > 1
     ptp_switch_sync_thread_handle.logger = &hlog_ptp;
+#endif
+#endif
     background_thread_handle.logger      = &hlog_generic;
 
     /* Create timers */
@@ -176,8 +190,10 @@ void tx_setup(void *memory_ptr) {
 #if ENABLE_PTP_THREAD
     status = tx_timer_create(&ptp_mac_sync_timer,       "ptp_mac_sync_timer",       ptp_mac_sync_timer_callback,       0, PTP_MAC_SYNC_INTERVAL,                PTP_MAC_SYNC_INTERVAL,                TX_NO_ACTIVATE);
     TX_CHECK(status);
+#if NUM_SWITCHES > 1
     status = tx_timer_create(&ptp_switch_sync_timer,    "ptp_switch_sync_timer",    ptp_switch_sync_timer_callback,    0, PTP_SWITCH_SYNC_INTERVAL,             PTP_SWITCH_SYNC_INTERVAL,             TX_NO_ACTIVATE);
     TX_CHECK(status);
+#endif
 #endif
 }
 
