@@ -145,7 +145,7 @@
    define is negated, thereby forcing the stack fill which is necessary for the stack checking
    logic.  */
 
-/*#define TX_ENABLE_STACK_CHECKING*/
+#define TX_ENABLE_STACK_CHECKING
 
 /* Determine if random number is used for stack filling. By default, ThreadX uses a fixed pattern
    for stack filling. When the following is defined, ThreadX uses a random number for stack filling.

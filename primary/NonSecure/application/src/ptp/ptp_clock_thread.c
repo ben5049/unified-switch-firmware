@@ -17,6 +17,16 @@
 #include "switch_utils.h"
 
 
+typedef enum {
+    MAC_SYNC_TIMESTAMP_NONE         = (0),
+    MAC_SYNC_TIMESTAMP_T1_MAC_TX    = (1 << 0),
+    MAC_SYNC_TIMESTAMP_T2_SWITCH_RX = (1 << 1),
+    MAC_SYNC_TIMESTAMP_T3_SWITCH_TX = (1 << 2),
+    MAC_SYNC_TIMESTAMP_T4_MAC_RX    = (1 << 3),
+    MAC_SYNC_TIMESTAMP_ALL          = (MAC_SYNC_TIMESTAMP_T1_MAC_TX | MAC_SYNC_TIMESTAMP_T2_SWITCH_RX | MAC_SYNC_TIMESTAMP_T3_SWITCH_TX | MAC_SYNC_TIMESTAMP_T4_MAC_RX),
+} mac_sync_timestamp_t;
+
+
 TX_THREAD ptp_clock_thread_handle;
 uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
 
@@ -47,6 +57,8 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
     tx_status_t tx_status = TX_SUCCESS;
     nx_status_t status    = NX_SUCCESS;
+
+    UNUSED(tx_status); // TODO: use or remove
 
     switch (operation) {
 
@@ -131,9 +143,9 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     NX_PTP_TIME switch_tx_correction;
     NX_PTP_TIME offset;
 
-    uint8_t  timestamps_received;
-    uint16_t dummy_packet_length;
-    uint16_t host_speed_mbps;
+    mac_sync_timestamp_t timestamps_received;
+    uint16_t             dummy_packet_length;
+    uint16_t             host_speed_mbps;
 
     uint32_t new_ptp_clock_rate;
     uint32_t ptp_clock_rates[NUM_SWITCHES] = {
@@ -196,34 +208,43 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 continue;
             }
 
+
             /* Gather up all the timestamps */
-            timestamps_received = 0;
-            while (timestamps_received < PTP_CLOCK_NUM_TIMESTAMPS) {
+            timestamps_received = MAC_SYNC_TIMESTAMP_NONE;
+            while (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
 
                 tx_status = tx_queue_receive(&ptp_clock_queue_handle, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
-                if (tx_status != TX_SUCCESS) error_handler(); // TODO: my does disconnecting a device cause this to fail???
+                if (tx_status == TX_QUEUE_EMPTY) {
+                    break;
+                } else if (tx_status != TX_SUCCESS) {
+                    error_handler();
+                }
 
                 assert(event_info.port == PORT_HOST);
 
                 switch (event_info.event) {
                     case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
-                        mac_tx_timestamp = event_info.time;
-                        timestamps_received++;
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T1_MAC_TX)); /* Timestamp shouldn't be received twice */
+                        mac_tx_timestamp     = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T1_MAC_TX;
                         break;
                     }
                     case PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP: {
-                        switch_rx_timestamp = event_info.time;
-                        timestamps_received++;
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T2_SWITCH_RX)); /* Timestamp shouldn't be received twice */
+                        switch_rx_timestamp  = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T2_SWITCH_RX;
                         break;
                     }
                     case PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP: {
-                        switch_tx_timestamp = event_info.time;
-                        timestamps_received++;
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T3_SWITCH_TX)); /* Timestamp shouldn't be received twice */
+                        switch_tx_timestamp  = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T3_SWITCH_TX;
                         break;
                     }
                     case PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP: {
-                        mac_rx_timestamp = event_info.time;
-                        timestamps_received++;
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T4_MAC_RX)); /* Timestamp shouldn't be received twice */
+                        mac_rx_timestamp     = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T4_MAC_RX;
                         break;
                     }
                     default:
@@ -234,6 +255,13 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
 
             /* Note: The TX and RX threads handle releasing packets */
             dummy_packet_ptr = NULL;
+
+            /* Exit if missing timestamps */
+            if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
+                LOG_WARNING("MAC Sync failed: missing timestamps (%01x)", timestamps_received);
+                ptp_event_counters.mac_sync_failed++;
+                break;
+            }
 
             /* The switch's egress timestamp in this scenario is for the start of
              * the META frame so we must subtract the time it took to send the PTP
@@ -285,7 +313,7 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
             for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
 
                 /* After reaching equilibrium skip PTP_SWITCH_SYNC_SKIP syncs since they aren't necessary */
-                if (skip_switch_sync[i]) {
+                if (skip_switch_sync[i] > 0) {
                     skip_switch_sync[i]--;
                     continue;
                 }
@@ -297,7 +325,7 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 assert(offset.second_low == 0);
 
                 /* Adjust the PTP clock rate to sync slave with master within +-3
-                 * ticks (+-24ns)
+                 * ticks (+-24ns).
                  *
                  * Note: The switches share a common oscillator so they tick at
                  *       the same rate, the only thing that can cause offsets is

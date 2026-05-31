@@ -92,8 +92,6 @@ static inline port_index_t switch_id_port_to_port(switch_index_t switch_id, uint
                     return PORT2;
                 case SW0_PORT_PHY3_LAN8671:
                     return PORT3;
-                default:
-                    error_handler();
 #elif HW_VERSION == 5
                 case SW0_PORT_PHY4_88Q2112:
                     return PORT4;

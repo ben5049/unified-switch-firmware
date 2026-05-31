@@ -107,6 +107,7 @@ typedef struct {
     // atomic_uint_fast32_t clock_get;
     // atomic_uint_fast32_t clock_adjusted;
     // atomic_uint_fast32_t timestamps_sent;
+    atomic_uint_fast32_t mac_sync_failed;
 } ptp_event_counters_t;
 
 

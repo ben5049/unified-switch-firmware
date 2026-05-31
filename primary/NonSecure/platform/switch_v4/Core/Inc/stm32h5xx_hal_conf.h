@@ -270,8 +270,8 @@
 #define SDIO_MAX_IO_NUMBER            7U
 
 /* ################## ETH peripheral configuration ######################### */
-#define ETH_TX_DESC_CNT 4U
-#define ETH_RX_DESC_CNT 4U
+#define ETH_TX_DESC_CNT 8U
+#define ETH_RX_DESC_CNT 8U
 
 /* Includes ----------------------------------------------------------------------------------------------------------*/
 
