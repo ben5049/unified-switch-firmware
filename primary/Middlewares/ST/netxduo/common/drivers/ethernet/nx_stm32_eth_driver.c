@@ -1847,6 +1847,7 @@ static UINT  _nx_driver_hardware_initialize(NX_IP_DRIVER *driver_req_ptr)
   FilterConfig.HachOrPerfectFilter = DISABLE;
   FilterConfig.ReceiveAllMode = DISABLE;
   FilterConfig.ControlPacketsFilter = 0x00;
+  HAL_ETH_SetMACFilterConfig(&eth_handle, &FilterConfig);
 
   /* Set Tx packet config common parameters */
   memset(&TxPacketCfg, 0, sizeof(ETH_TxPacketConfigTypeDef));

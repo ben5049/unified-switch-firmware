@@ -185,7 +185,7 @@ extern uint32_t __TRACE_SIZE__;
 
 #define PTP_RX_TIMEOUT    (100) /* How long to wait for a meta frame */
 
-#define PTP_CLOCK_TIMEOUT (100)
+#define PTP_CLOCK_TIMEOUT (200)
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */

@@ -41,8 +41,6 @@ void switch_thread_entry(uint32_t initial_input) {
     TX_THREAD *mutex_owner;
 #endif
 
-    LOG_INFO("Starting switch thread");
-
     /* Clear stats structs */
     memset(stats_ext, 0, sizeof(stats_ext));
 

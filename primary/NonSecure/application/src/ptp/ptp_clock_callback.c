@@ -24,6 +24,10 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
     tx_status_t      tx_status     = TX_SUCCESS;
     nx_status_t      nx_status     = NX_SUCCESS;
     sja1105_status_t switch_status = SJA1105_OK;
+    port_index_t     port          = (port_index_t) callback_data;
+
+    assert(port < NUM_PHYS);
+    assert(client_ptr == &ptp_client[port]);
 
     UNUSED(tx_status); // TODO: use or remove
 
@@ -41,20 +45,24 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
          */
         case NX_PTP_CLIENT_CLOCK_SET:
 
-            if ((port_index_t) callback_data == ptp_port_connected_to_master) {
+            if (port == ptp_port_connected_to_master) {
+
+                ptp_event_counters.clock_set++;
 
                 /* Set the switch times */
                 switch_status = switch_set_time_all(time_ptr);
                 SWITCH_CHECK(switch_status);
 
                 /* Set the STM32's MAC time */
-                ptp_mac_set_time(time_ptr);
+                // ptp_mac_set_time(time_ptr); TODO: something
             }
 
             break;
 
         /* Extract timestamp from packet */
         case NX_PTP_CLIENT_CLOCK_PACKET_TS_EXTRACT:
+
+            ptp_event_counters.timestamps_extracted++;
 
             /* Return timestamp stored at the beginning of the packet.  */
             ptp_packet_extract_timestamp(packet_ptr, time_ptr);
@@ -63,13 +71,26 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
         /* Get clock */
         case NX_PTP_CLIENT_CLOCK_GET:
 
+            ptp_event_counters.clock_get++;
+
             /* Use the local PTP clock which the application synchronises to SWITCH0 */
             ptp_mac_get_time(time_ptr);
             break;
 
         /* Adjust clock */
         case NX_PTP_CLIENT_CLOCK_ADJUST:
-            // TODO: check if this client is connected to the grandmaster and discipline SWITCH0 if it is
+
+            if (port == ptp_port_connected_to_master) {
+
+                ptp_event_counters.clock_adjusted++;
+
+                // TODO: check if this client is connected to the grandmaster and discipline SWITCH0 if it is
+
+                // TODO: Use fine
+
+                UNUSED(port); // TODO: dremove
+            }
+
             break;
 
         /* Prepare timestamp for current packet. Not used because the timestamp

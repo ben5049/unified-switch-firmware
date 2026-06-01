@@ -222,6 +222,8 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
  * and shouldn't be sent. */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 
+    // TODO: disable if ptp not started
+
     tx_status_t tx_status     = TX_SUCCESS;
     nx_status_t nx_status     = NX_SUCCESS;
     bool        filter_packet = false;

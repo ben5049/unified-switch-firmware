@@ -64,6 +64,8 @@ void ptp_switch_sync_thread_entry(uint32_t initial_input) {
             TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
+        assert(events == PTP_CLOCK_EVENT_SWITCH_SYNC);
+
         /* This is agnostic to the number of switches in the system */
         for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
 

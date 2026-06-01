@@ -38,19 +38,19 @@ TX_TIMER ptp_mac_sync_timer;
 static volatile NX_PACKET *dummy_sync_packet_ptr = NULL; /* Packet pointer of dummy packet */
 
 static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
-    0x00 | (NX_PTP_TRANSPORT_SPECIFIC_802 << 4),                        /* 0: MsgType = 0 (Sync), transport specific = 1 (gPTP) */
-    0x02,                                                               /* 1: Version = 2 */
-    0x00, PTP_SYNC_PAYLOAD_LENGTH,                                      /* 2-3: Message Length = 44 bytes */
-    0x00, 0x00,                                                         /* 4-5: Domain Number = 0, Reserved */
-    0x02, 0x00,                                                         /* 6-7: Flags (0x02 = Two-Step flag set) */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,                     /* 8-15: Correction Field */
-    0x00, 0x00, 0x00, 0x00,                                             /* 16-19: Reserved */
+    PTP_MESSAGE_TYPE_SYNC | (NX_PTP_TRANSPORT_SPECIFIC_802 << 4),           /* 0: MsgType = 0 (Sync), transport specific = 1 (gPTP) */
+    0x02,                                                                   /* 1: Version = 2 */
+    0x00, PTP_SYNC_PAYLOAD_LENGTH,                                          /* 2-3: Message Length = 44 bytes */
+    0x00, 0x00,                                                             /* 4-5: Domain Number = 0, Reserved */
+    0x02, 0x00,                                                             /* 6-7: Flags (0x02 = Two-Step flag set) */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,                         /* 8-15: Correction Field */
+    0x00, 0x00, 0x00, 0x00,                                                 /* 16-19: Reserved */
     MAC_ADDR_OCTET1, MAC_ADDR_OCTET2, MAC_ADDR_OCTET3, 0xff, 0xfe,
-    MAC_ADDR_OCTET4, MAC_ADDR_OCTET5, MAC_ADDR_OCTET6, 0x00, NUM_PORTS, /* 20-29: Port Identity */
-    0x00, 0x01,                                                         /* 30-31: Sequence ID */
-    0x00,                                                               /* 32: Control Field (0x00 for Sync) */
-    0x00,                                                               /* 33: Log Message Interval */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00          /* Sync-specific payload: Origin Timestamp (10 bytes) */
+    MAC_ADDR_OCTET4, MAC_ADDR_OCTET5, MAC_ADDR_OCTET6, 0x00, PORT_HOST + 1, /* 20-29: Port Identity (port indexed from 1) */
+    0x00, 0x01,                                                             /* 30-31: Sequence ID */
+    0x00,                                                                   /* 32: Control Field (0x00 for Sync) */
+    0x00,                                                                   /* 33: Log Message Interval */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00              /* Sync-specific payload: Origin Timestamp (10 bytes) */
 };
 
 
@@ -137,6 +137,8 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
             TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
+        assert(events == PTP_CLOCK_EVENT_MAC_SYNC);
+
         /* Create a dummy sync packet that will look convincing enough to make
          * the STM32's MAC timestamp it */
         nx_status = ptp_create_dummy_sync(&packet_ptr);
@@ -145,6 +147,10 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         /* Save packet pointer for callback filtering and length for timestamp corrections */
         dummy_sync_packet_ptr    = packet_ptr;
         dummy_sync_packet_length = packet_ptr->nx_packet_length;
+
+        /* Flush the timestamp queue so we don't receive any from previous failed syncs */
+        tx_status = tx_queue_flush(&ptp_mac_sync_queue_handle);
+        TX_CHECK(tx_status);
 
         /* Send the packet so that it bounces back into the host port */
         event_info.event      = PTP_TX_EVENT_SEND_PACKET;
@@ -256,6 +262,28 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         /* Set time */
         else {
             ptp_mac_set_time(&switch_rx_timestamp);
+        }
+
+
+        // TODO: remove
+        static uint8_t cnt = 0;
+        if (cnt == 31) {
+            cnt = 0;
+
+            if (ptp_port_connected_to_master != NUM_PORTS) {
+                NX_PTP_DATE_TIME date;
+                NX_PTP_TIME      time;
+                // nx_status = nx_ptp_client_time_get(ptp_client, &time);
+                // NX_CHECK(nx_status);
+                ptp_mac_get_time(&time);
+                nx_status = nx_ptp_client_utility_convert_time_to_date(&time, -37, &date);
+                NX_CHECK(nx_status);
+                LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n",
+                         date.day, date.month, date.year,
+                         date.hour, date.minute, date.second, date.nanosecond);
+            }
+        } else {
+            cnt++;
         }
     }
 }

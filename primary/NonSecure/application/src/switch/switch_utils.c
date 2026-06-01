@@ -246,7 +246,7 @@ sja1105_status_t switch_get_egress_timestamp(port_index_t port, uint8_t tsreg, N
 }
 
 
-sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, port_index_t *port, NX_PTP_TIME *timestamp) {
+sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, bool get_timestamp, port_index_t *port, NX_PTP_TIME *timestamp) {
 
     sja1105_status_t status = SJA1105_OK;
 
@@ -262,12 +262,20 @@ sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, port_index_
         goto end;
     }
 
-    /* Parse META frame and get raw timestamp */
-    status = SJA1105_GetIngressTimestamp(switch_handles, packet->nx_packet_prepend_ptr + header_size, &switch_id, &src_port, &timestamp_raw);
-    if (status != SJA1105_OK) goto end;
+    /* Parse the META frame and get the timestamp */
+    if (get_timestamp && (timestamp != NULL)) {
+        status = SJA1105_GetIngressTimestamp(switch_handles, packet->nx_packet_prepend_ptr + header_size, &switch_id, &src_port, &timestamp_raw);
+        if (status != SJA1105_OK) goto end;
 
-    /* Turn the 8ns timestamp to seconds and nanoseconds */
-    if (timestamp != NULL) switch_format_timestamp(timestamp_raw, timestamp);
+        /* Turn the 8ns timestamp to seconds and nanoseconds */
+        switch_format_timestamp(timestamp_raw, timestamp);
+    }
+
+    /* Just parse the META frame */
+    else {
+        status = SJA1105_ParseMETAFrame(packet->nx_packet_prepend_ptr + header_size, &switch_id, &src_port, NULL);
+        if (status != SJA1105_OK) goto end;
+    }
 
     /* Get the port */
     if (port != NULL) *port = switch_id_port_to_port(switch_id, src_port);

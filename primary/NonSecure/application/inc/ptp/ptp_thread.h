@@ -21,8 +21,24 @@ extern "C" {
 #include "phy_thread.h"
 
 
+#define PTP_MESSAGE_TYPE_MASK     (0x0f)
+
 #define PTP_CLIENT_MSG_SIZE_WORDS ((sizeof(ptp_client_event_info_t) + 3) / 4) /* Round up */
 #define PTP_PACKET_MSG_SIZE_WORDS ((sizeof(ptp_packet_event_info_t) + 3) / 4) /* Round up */
+
+
+typedef enum {
+    PTP_MESSAGE_TYPE_SYNC                  = 0x0, /* Event message (for receiver) */
+    PTP_MESSAGE_TYPE_DELAY_REQ             = 0x1, /* Event message (for transmitter) */
+    PTP_MESSAGE_TYPE_PDELAY_REQ            = 0x2, /* Event message (for receiver) */
+    PTP_MESSAGE_TYPE_PDELAY_RESP           = 0x3, /* Event message (for receiver) */
+    PTP_MESSAGE_TYPE_FOLLOW_UP             = 0x8,
+    PTP_MESSAGE_TYPE_DELAY_RESP            = 0x9,
+    PTP_MESSAGE_TYPE_PDELAY_RESP_FOLLOW_UP = 0xa,
+    PTP_MESSAGE_TYPE_ANNOUNCE              = 0xb,
+    PTP_MESSAGE_TYPE_SIGNALLING            = 0xc,
+    PTP_MESSAGE_TYPE_MANAGEMENT            = 0xd,
+} ptp_message_type_t;
 
 
 typedef enum {
@@ -41,6 +57,7 @@ typedef enum {
 
     /* PTP RX Queue event */
     PTP_RX_EVENT_RECEIVE_PACKET,
+    PTP_RX_EVENT_RELEASE_META, /* Invalid PTP packet, but still generated a META frame that needs to be disposed of */
 
     /* PTP Clock queue event */
     PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP,
@@ -87,10 +104,11 @@ typedef struct {
     atomic_uint_fast32_t tx_timestamps_missed[NUM_PORTS];
 
     /* RX */
-    atomic_uint_fast32_t rx_meta;      /* Number of META frames filtered */
-    atomic_uint_fast32_t rx_packets;   /* Number of PTP packets filtered */
-    atomic_uint_fast32_t rx_no_meta;   /* Expected a META frame but didn't get one */
-    atomic_uint_fast32_t rx_wrong_dst; /* gPTP Ethertype but wrong destination address */
+    atomic_uint_fast32_t rx_meta;       /* Number of META frames filtered */
+    atomic_uint_fast32_t rx_packets;    /* Number of PTP packets filtered */
+    atomic_uint_fast32_t rx_no_meta;    /* Expected a META frame but didn't get one */
+    atomic_uint_fast32_t rx_wrong_dst;  /* gPTP Ethertype but wrong destination address */
+    atomic_uint_fast32_t rx_own_packet; /* gPTP Packet send and received by us */
     atomic_uint_fast32_t rx_invalid_vlan;
     atomic_uint_fast32_t rx_meta_dropped;
     atomic_uint_fast32_t rx_packets_dropped;
@@ -101,12 +119,11 @@ typedef struct {
     atomic_uint_fast32_t new_master;
     atomic_uint_fast32_t master_timeout;
 
-    // TODO: Use?
-    // atomic_uint_fast32_t clock_set;
-    // atomic_uint_fast32_t timestamps_extracted;
-    // atomic_uint_fast32_t clock_get;
-    // atomic_uint_fast32_t clock_adjusted;
-    // atomic_uint_fast32_t timestamps_sent;
+    /* Clock events */
+    atomic_uint_fast32_t clock_set;
+    atomic_uint_fast32_t timestamps_extracted;
+    atomic_uint_fast32_t clock_get;
+    atomic_uint_fast32_t clock_adjusted;
     atomic_uint_fast32_t mac_sync_failed;
 } ptp_event_counters_t;
 

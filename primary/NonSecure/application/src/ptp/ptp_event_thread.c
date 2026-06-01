@@ -32,6 +32,7 @@ ptp_event_counters_t ptp_event_counters;
 
 volatile port_index_t ptp_port_connected_to_master = NUM_PORTS;
 
+
 // TODO: stop instances when links go down + restart when up
 //       also need to elect new master on port down rather than
 //       waiting for timeout
@@ -59,9 +60,13 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
 
     tx_status_t             status = TX_SUCCESS;
     ptp_client_event_info_t event_info;
+    port_index_t            port = (port_index_t) callback_data;
+
+    assert(port < NUM_PHYS);
+    assert(ptp_client_ptr == &ptp_client[port]);
 
     event_info.event = event;
-    event_info.port  = (phy_index_t) callback_data;
+    event_info.port  = port;
 
     /* The event_data must be copied since the caller may overwrite the memory
      * when this function has returned. */
@@ -242,6 +247,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             /* When the client times out it will update itself to be the master with its worse clock */
                             else if ((clock_comparison < 0) && (event_info.port == ptp_port_connected_to_master)) {
                                 new_master = true;
+                                ptp_event_counters.master_timeout++;
                             }
                         }
 
