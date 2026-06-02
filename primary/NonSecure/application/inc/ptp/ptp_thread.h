@@ -43,10 +43,11 @@ typedef enum {
 
 typedef enum {
 
-    /* PTP Client callback */
+    /* PTP Client callback & event flags */
     PTP_CLIENT_EVENT_MASTER  = NX_PTP_CLIENT_EVENT_MASTER,
     PTP_CLIENT_EVENT_SYNC    = NX_PTP_CLIENT_EVENT_SYNC,
     PTP_CLIENT_EVENT_TIMEOUT = NX_PTP_CLIENT_EVENT_TIMEOUT,
+    PTP_EVENT_PRINT_TIME     = 1UL << 7,
 
     /* PTP TX Queue event */
     PTP_TX_EVENT_SEND_PACKET,
@@ -154,12 +155,16 @@ extern uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_
 extern TX_QUEUE ptp_mac_sync_queue_handle;
 extern uint32_t ptp_mac_sync_queue_stack[PTP_MAC_SYNC_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
+extern TX_EVENT_FLAGS_GROUP ptp_events_handle;
 extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
 extern TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_handle;
 #if NUM_SWITCHES > 1
 extern TX_EVENT_FLAGS_GROUP ptp_switch_sync_events_handle;
 #endif
 
+#if PTP_PRINT_TIME_INTERVAL
+extern TX_TIMER ptp_events_print_time_timer;
+#endif
 extern TX_TIMER ptp_mac_sync_timer;
 #if NUM_SWITCHES > 1
 extern TX_TIMER ptp_switch_sync_timer;
@@ -182,6 +187,9 @@ void ptp_switch_sync_thread_entry(uint32_t initial_input);
 #endif
 
 /* Timer callbacks */
+#if PTP_PRINT_TIME_INTERVAL
+void ptp_events_print_time_timer_callback(ULONG id);
+#endif
 void ptp_mac_sync_timer_callback(ULONG id);
 #if NUM_SWITCHES > 1
 void ptp_switch_sync_timer_callback(ULONG id);

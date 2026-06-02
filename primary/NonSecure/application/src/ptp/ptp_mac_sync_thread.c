@@ -263,28 +263,6 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         else {
             ptp_mac_set_time(&switch_rx_timestamp);
         }
-
-
-        // TODO: remove
-        static uint8_t cnt = 0;
-        if (cnt == 31) {
-            cnt = 0;
-
-            if (ptp_port_connected_to_master != NUM_PORTS) {
-                NX_PTP_DATE_TIME date;
-                NX_PTP_TIME      time;
-                // nx_status = nx_ptp_client_time_get(ptp_client, &time);
-                // NX_CHECK(nx_status);
-                ptp_mac_get_time(&time);
-                nx_status = nx_ptp_client_utility_convert_time_to_date(&time, -37, &date);
-                NX_CHECK(nx_status);
-                LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n",
-                         date.day, date.month, date.year,
-                         date.hour, date.minute, date.second, date.nanosecond);
-            }
-        } else {
-            cnt++;
-        }
     }
 }
 

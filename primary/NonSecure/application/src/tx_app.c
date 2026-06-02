@@ -62,6 +62,8 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
 #endif
 #if ENABLE_PTP_THREAD
+    status = tx_event_flags_create(&ptp_events_handle,             "ptp_events_handle");
+    TX_CHECK(status);
     status = tx_event_flags_create(&ptp_tx_events_handle,          "ptp_tx_events_handle");
     TX_CHECK(status);
     status = tx_event_flags_create(&ptp_mac_sync_events_handle,    "ptp_mac_sync_events_handle");
@@ -177,21 +179,25 @@ void tx_setup(void *memory_ptr) {
     background_thread_handle.logger      = &hlog_generic;
 
     /* Create timers */
-    status = tx_timer_create(&switch_maintenance_timer, "switch_maintenance_timer", switch_maintenance_timer_callback, 0, SWITCH_MAINTENANCE_INTERVAL,          SWITCH_MAINTENANCE_INTERVAL,          TX_NO_ACTIVATE);
+    status = tx_timer_create(&switch_maintenance_timer,    "switch_maintenance_timer",    switch_maintenance_timer_callback,    0, SWITCH_MAINTENANCE_INTERVAL,          SWITCH_MAINTENANCE_INTERVAL,          TX_NO_ACTIVATE);
     TX_CHECK(status);
-    status = tx_timer_create(&switch_publish_timer,     "switch_publish_timer",     switch_publish_timer_callback,     0, SWITCH_PUBLISH_STATS_INTERVAL,        SWITCH_PUBLISH_STATS_INTERVAL,        TX_NO_ACTIVATE);
+    status = tx_timer_create(&switch_publish_timer,        "switch_publish_timer",        switch_publish_timer_callback,        0, SWITCH_PUBLISH_STATS_INTERVAL,        SWITCH_PUBLISH_STATS_INTERVAL,        TX_NO_ACTIVATE);
     TX_CHECK(status);
-    status = tx_timer_create(&link_check_timer,         "link_check_timer",         link_check_timer_callback,         0, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, TX_NO_ACTIVATE);
+    status = tx_timer_create(&link_check_timer,            "link_check_timer",            link_check_timer_callback,            0, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, TX_NO_ACTIVATE);
     TX_CHECK(status);
 #if ENABLE_DHCP_RESTORE
-    status = tx_timer_create(&dhcp_save_timer,          "dhcp_save_timer",          dhcp_save_timer_callback,          0, DHCP_RECORD_SAVE_INTERVAL,            DHCP_RECORD_SAVE_INTERVAL,            TX_NO_ACTIVATE);
+    status = tx_timer_create(&dhcp_save_timer,             "dhcp_save_timer",             dhcp_save_timer_callback,             0, DHCP_RECORD_SAVE_INTERVAL,            DHCP_RECORD_SAVE_INTERVAL,            TX_NO_ACTIVATE);
     TX_CHECK(status);
 #endif
 #if ENABLE_PTP_THREAD
-    status = tx_timer_create(&ptp_mac_sync_timer,       "ptp_mac_sync_timer",       ptp_mac_sync_timer_callback,       0, PTP_MAC_SYNC_INTERVAL,                PTP_MAC_SYNC_INTERVAL,                TX_NO_ACTIVATE);
+#if PTP_PRINT_TIME_INTERVAL
+    status = tx_timer_create(&ptp_events_print_time_timer, "ptp_events_print_time_timer", ptp_events_print_time_timer_callback, 0, PTP_PRINT_TIME_INTERVAL,              PTP_PRINT_TIME_INTERVAL,              TX_NO_ACTIVATE);
+    TX_CHECK(status);
+#endif
+    status = tx_timer_create(&ptp_mac_sync_timer,          "ptp_mac_sync_timer",          ptp_mac_sync_timer_callback,          0, PTP_MAC_SYNC_INTERVAL,                PTP_MAC_SYNC_INTERVAL,                TX_NO_ACTIVATE);
     TX_CHECK(status);
 #if NUM_SWITCHES > 1
-    status = tx_timer_create(&ptp_switch_sync_timer,    "ptp_switch_sync_timer",    ptp_switch_sync_timer_callback,    0, PTP_SWITCH_SYNC_INTERVAL,             PTP_SWITCH_SYNC_INTERVAL,             TX_NO_ACTIVATE);
+    status = tx_timer_create(&ptp_switch_sync_timer,       "ptp_switch_sync_timer",       ptp_switch_sync_timer_callback,       0, PTP_SWITCH_SYNC_INTERVAL,             PTP_SWITCH_SYNC_INTERVAL,             TX_NO_ACTIVATE);
     TX_CHECK(status);
 #endif
 #endif
