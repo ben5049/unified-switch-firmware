@@ -38,6 +38,19 @@ static inline bool ptp_is_event_packet(NX_PACKET *packet_ptr, uint32_t header_si
 }
 
 
+static inline tx_status_t ptp_flush_rx_queues() {
+
+    tx_status_t tx_status = TX_SUCCESS;
+
+    tx_status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
+    if (tx_status != TX_SUCCESS) return tx_status;
+    tx_status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+    if (tx_status != TX_SUCCESS) return tx_status;
+
+    return tx_status;
+}
+
+
 void ptp_rx_thread_entry(uint32_t initial_input) {
 
     // TODO: disable if ptp not started
@@ -87,27 +100,27 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
 
         /* META frame lost, drop the PTP packet since it cannot be timestamped.
          * Also flush the queues to prevent alignment issues. */
-        if ((tx_status != TX_SUCCESS) && (event != PTP_RX_EVENT_RELEASE_META)) {
-            nx_status = nx_packet_release(ptp_packet);
-            NX_CHECK(nx_status);
+        if (tx_status != TX_SUCCESS) {
+
+            if (event != PTP_RX_EVENT_RELEASE_META) {
+                nx_status = nx_packet_release(ptp_packet);
+                NX_CHECK(nx_status);
+            }
 
             /* Flush both queues */
-            tx_status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
-            TX_CHECK(tx_status);
-            tx_status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
-            TX_CHECK(tx_status);
+            ptp_flush_rx_queues();
 
             ptp_event_counters.rx_no_meta++;
             LOG_ERROR("PTP RX No META frame found");
             continue;
-        } else {
-            meta_frame = event_info.packet_ptr;
         }
+
+        meta_frame = event_info.packet_ptr;
 
         /* Just release the META frame and continue */
         if (event == PTP_RX_EVENT_RELEASE_META) {
             if (tx_status == TX_SUCCESS) {
-                nx_status = nx_packet_release(event_info.packet_ptr);
+                nx_status = nx_packet_release(meta_frame);
                 NX_CHECK(nx_status);
             } else {
                 LOG_WARNING("PTP RX: PTP_RX_EVENT_RELEASE_META with no META frame");
@@ -235,6 +248,11 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             LOG_ERROR("PTP RX Dropped meta frame"); // TODO: this might hard fault?
             nx_status = nx_packet_release(packet_ptr);
             NX_CHECK(nx_status);
+
+            /* Flush to prevent desync */
+            tx_status = ptp_flush_rx_queues();
+            TX_CHECK(tx_status);
+
         } else {
             ptp_event_counters.rx_meta++;
         }
@@ -271,19 +289,12 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                 event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
                 event_info.packet_ptr = packet_ptr;
                 tx_status             = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
-                if (tx_status != TX_SUCCESS) {
 
-                    /* Queue is full, release the packet instead */
-                    ptp_event_counters.rx_packets_dropped++;
-                    nx_status = nx_packet_release(packet_ptr);
-                    NX_CHECK(nx_status);
+                /* If queue is full, desync is guaranteed when the META frame arrives
+                 * and we can't notify the application. Program must crash! */
+                TX_CHECK(tx_status); // TODO: implement META "debt" to drop next n META frames
 
-                    LOG_ERROR("PTP RX Dropped PTP packet"); // TODO: this might hard fault?
-                    DEBUG_STOP();
-
-                } else {
-                    ptp_event_counters.rx_packets++;
-                }
+                ptp_event_counters.rx_packets++;
             }
 
             /* Invalid VLAN */
@@ -301,15 +312,18 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
         filter_packet = true;
 
+        /* Release the packet regardless */
+        nx_status = nx_packet_release(packet_ptr);
+        NX_CHECK(nx_status);
+
         /* Put an event in the rx packet queue */
         event_info.event      = PTP_RX_EVENT_RELEASE_META;
         event_info.packet_ptr = NULL;
         tx_status             = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
-        if (tx_status != TX_SUCCESS) ptp_event_counters.rx_packets_dropped++; /* Queue is full */
 
-        /* Release the packet regardless */
-        nx_status = nx_packet_release(packet_ptr);
-        NX_CHECK(nx_status);
+        /* If queue is full, desync is guaranteed when the META frame arrives
+         * and we can't notify the application. Program must crash! */
+        TX_CHECK(tx_status); // TODO: implement META "debt" to drop next n META frames
     }
 
     return filter_packet;
