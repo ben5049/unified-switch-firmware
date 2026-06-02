@@ -35,8 +35,8 @@
 #define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
 
 
-volatile uint32_t srcmeta_msw = 0;
-volatile uint32_t srcmeta_lsw = 0;
+volatile uint32_t ptp_srcmeta_msw = 0;
+volatile uint32_t ptp_srcmeta_lsw = 0;
 
 
 /* Set MAC ingress correction register */
@@ -155,11 +155,11 @@ tx_status_t ptp_start() {
         /* Cache the MAC address used as a source by META frames */
         if (SJA1105_GetSRCMETA(&switch_handles[i], &msw, &lsw) != SJA1105_OK) return TX_ERROR;
         if (i == 0) {
-            srcmeta_msw = msw;
-            srcmeta_lsw = lsw;
+            ptp_srcmeta_msw = msw;
+            ptp_srcmeta_lsw = lsw;
         } else {
-            assert(msw == srcmeta_msw);
-            assert(lsw == srcmeta_lsw);
+            assert(msw == ptp_srcmeta_msw);
+            assert(lsw == ptp_srcmeta_lsw);
         }
     }
 

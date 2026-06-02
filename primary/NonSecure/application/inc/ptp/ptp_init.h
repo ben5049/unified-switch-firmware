@@ -17,8 +17,8 @@ extern "C" {
 #include "nx_app.h"
 
 
-extern volatile uint32_t srcmeta_msw;
-extern volatile uint32_t srcmeta_lsw;
+extern volatile uint32_t ptp_srcmeta_msw;
+extern volatile uint32_t ptp_srcmeta_lsw;
 
 
 tx_status_t ptp_start(void);

@@ -58,7 +58,6 @@ typedef enum {
 
     /* PTP RX Queue event */
     PTP_RX_EVENT_RECEIVE_PACKET,
-    PTP_RX_EVENT_RELEASE_META, /* Invalid PTP packet, but still generated a META frame that needs to be disposed of */
 
     /* PTP Clock queue event */
     PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP,
