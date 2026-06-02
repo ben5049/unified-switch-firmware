@@ -16,12 +16,12 @@
 
 
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB),       /* Index 0: 0x0E */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 8),  /* Index 1: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 16), /* Index 2: 0x00 */
-    (uint8_t) (PTP_ETHERNET_ADDR_LSB >> 24), /* Index 3: 0xC2 */
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB),       /* Index 4: 0x80 */
-    (uint8_t) (PTP_ETHERNET_ADDR_MSB >> 8)   /* Index 5: 0x01 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSW),       /* Index 0: 0x0E */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSW >> 8),  /* Index 1: 0x00 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSW >> 16), /* Index 2: 0x00 */
+    (uint8_t) (PTP_ETHERNET_ADDR_LSW >> 24), /* Index 3: 0xC2 */
+    (uint8_t) (PTP_ETHERNET_ADDR_MSW),       /* Index 4: 0x80 */
+    (uint8_t) (PTP_ETHERNET_ADDR_MSW >> 8)   /* Index 5: 0x01 */
 };
 
 

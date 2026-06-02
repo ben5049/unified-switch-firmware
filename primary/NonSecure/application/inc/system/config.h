@@ -175,8 +175,8 @@ extern uint32_t __TRACE_SIZE__;
 
 #define PTP_CLK_FREQ                          (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
 
-#define PTP_ETHERNET_ADDR_MSB                 (0x0180)
-#define PTP_ETHERNET_ADDR_LSB                 (0xc200000e)
+#define PTP_ETHERNET_ADDR_MSW                 (0x0180)
+#define PTP_ETHERNET_ADDR_LSW                 (0xc200000e)
 #define PTP_HEADER_PORT_OFFSET                (28)
 
 /* Management route variables */

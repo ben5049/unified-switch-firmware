@@ -21,23 +21,23 @@ extern "C" {
 #include "phy_thread.h"
 
 
-#define PTP_MESSAGE_TYPE_MASK     (0x0f)
-
 #define PTP_CLIENT_MSG_SIZE_WORDS ((sizeof(ptp_client_event_info_t) + 3) / 4) /* Round up */
 #define PTP_PACKET_MSG_SIZE_WORDS ((sizeof(ptp_packet_event_info_t) + 3) / 4) /* Round up */
 
 
 typedef enum {
-    PTP_MESSAGE_TYPE_SYNC                  = 0x0, /* Event message (for receiver) */
-    PTP_MESSAGE_TYPE_DELAY_REQ             = 0x1, /* Event message (for transmitter) */
-    PTP_MESSAGE_TYPE_PDELAY_REQ            = 0x2, /* Event message (for receiver) */
-    PTP_MESSAGE_TYPE_PDELAY_RESP           = 0x3, /* Event message (for receiver) */
+    PTP_MESSAGE_TYPE_SYNC                  = 0x0, /* RX Event message */
+    PTP_MESSAGE_TYPE_DELAY_REQ             = 0x1,
+    PTP_MESSAGE_TYPE_PDELAY_REQ            = 0x2, /* RX Event message */
+    PTP_MESSAGE_TYPE_PDELAY_RESP           = 0x3, /* RX Event message */
     PTP_MESSAGE_TYPE_FOLLOW_UP             = 0x8,
     PTP_MESSAGE_TYPE_DELAY_RESP            = 0x9,
     PTP_MESSAGE_TYPE_PDELAY_RESP_FOLLOW_UP = 0xa,
     PTP_MESSAGE_TYPE_ANNOUNCE              = 0xb,
     PTP_MESSAGE_TYPE_SIGNALLING            = 0xc,
     PTP_MESSAGE_TYPE_MANAGEMENT            = 0xd,
+
+    PTP_MESSAGE_TYPE_MASK = 0x0f,
 } ptp_message_type_t;
 
 
@@ -100,12 +100,16 @@ typedef struct {
     /* TX */
     atomic_uint_fast32_t tx_packets_sent[NUM_PORTS];
     atomic_uint_fast32_t tx_packets_dropped[NUM_PORTS];
+    atomic_uint_fast32_t tx_packets_invalid_port;
     atomic_uint_fast32_t tx_timestamps_received[NUM_PORTS];
     atomic_uint_fast32_t tx_timestamps_missed[NUM_PORTS];
+    atomic_uint_fast32_t tx_slow; /* Took multiple polls for the management route to free */
 
     /* RX */
     atomic_uint_fast32_t rx_meta;       /* Number of META frames filtered */
     atomic_uint_fast32_t rx_packets;    /* Number of PTP packets filtered */
+    atomic_uint_fast32_t rx_events;     /* Number of event PTP packets received (SYNC, PDELAY_REQ, PDELAY_RESP) */
+    atomic_uint_fast32_t rx_general;    /* Number of general PTP packets received */
     atomic_uint_fast32_t rx_no_meta;    /* Expected a META frame but didn't get one */
     atomic_uint_fast32_t rx_wrong_dst;  /* gPTP Ethertype but wrong destination address */
     atomic_uint_fast32_t rx_own_packet; /* gPTP Packet send and received by us */

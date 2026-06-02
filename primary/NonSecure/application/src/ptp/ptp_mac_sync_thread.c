@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "ptp_thread.h"
 #include "ptp_utils.h"
+#include "ptp_init.h"
 #include "switch_utils.h"
 
 
@@ -77,7 +78,7 @@ static nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr) {
 
     /* Add Ethernet header */
     status = nx_link_ethernet_header_add(&nx_ip_instance, PRIMARY_INTERFACE, packet_ptr,
-                                         PTP_ETHERNET_ADDR_MSB, PTP_ETHERNET_ADDR_LSB,
+                                         PTP_ETHERNET_ADDR_MSW, PTP_ETHERNET_ADDR_LSW,
                                          NX_LINK_ETHERNET_PTP);
     if (status != NX_SUCCESS) goto cleanup;
 
@@ -138,6 +139,9 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         TX_CHECK(tx_status);
 
         assert(events == PTP_CLOCK_EVENT_MAC_SYNC);
+
+        /* If PTP hasn't been started don't send a packet */
+        if (!atomic_load_explicit(&ptp_initialised, memory_order_acquire)) continue;
 
         /* Create a dummy sync packet that will look convincing enough to make
          * the STM32's MAC timestamp it */
@@ -218,7 +222,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
         /* Exit if missing timestamps */
         if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
-            LOG_WARNING("MAC Sync failed: missing timestamps (received 0x%01x)", timestamps_received);
+            LOG_WARNING("PTP: MAC Sync failed, missing timestamps (received 0x%01x)", timestamps_received);
             ptp_event_counters.mac_sync_failed++;
             continue;
         }

@@ -7,6 +7,7 @@
 
 #include "stdint.h"
 #include "assert.h"
+
 #include "hal.h"
 #include "eth.h"
 
@@ -35,8 +36,11 @@
 #define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
 
 
-volatile uint32_t ptp_srcmeta_msw = 0;
-volatile uint32_t ptp_srcmeta_lsw = 0;
+volatile uint32_t ptp_srcmeta_msw, ptp_srcmeta_lsw;
+volatile uint32_t ptp_mac_flt_msw, ptp_mac_flt_lsw;
+volatile uint32_t ptp_mac_fltres_msw, ptp_mac_fltres_lsw;
+
+volatile atomic_bool ptp_initialised = false;
 
 
 /* Set MAC ingress correction register */
@@ -136,25 +140,35 @@ static hal_status_t ptp_configure() {
 
 tx_status_t ptp_start() {
 
-    tx_status_t  status     = TX_SUCCESS;
-    hal_status_t hal_status = HAL_OK;
-    uint32_t     flags;
-    bool         trapped;
-    bool         send_meta;
-    bool         incl_srcpt;
-    uint32_t     msw, lsw;
+    tx_status_t           status     = TX_SUCCESS;
+    hal_status_t          hal_status = HAL_OK;
+    uint32_t              event_flags;
+    sja1105_mac_filters_t filter;
+    bool                  trapped;
+    uint32_t              msw, lsw;
 
     for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
 
         /* Check all switches trap PTP frames */
-        if (SJA1105_MACAddrTrapTest(&switch_handles[i], ptp_dst_addr, &trapped, &send_meta, &incl_srcpt) != SJA1105_OK) return TX_ERROR;
+        if (SJA1105_MACAddrTrapTest(&switch_handles[i], PTP_ETHERNET_ADDR_MSW, PTP_ETHERNET_ADDR_LSW, &trapped, &filter) != SJA1105_OK) return TX_ERROR;
         assert(trapped);
-        assert(send_meta);
-        assert(incl_srcpt);
+        assert(filter.send_meta);
+        assert(filter.incl_srcpt);
+        if (i == SWITCH0) {
+            ptp_mac_flt_msw    = filter.mac_flt_msw;
+            ptp_mac_flt_lsw    = filter.mac_flt_lsw;
+            ptp_mac_fltres_msw = filter.mac_fltres_msw;
+            ptp_mac_fltres_lsw = filter.mac_fltres_lsw;
+        } else {
+            assert(filter.mac_flt_msw == ptp_mac_flt_msw);
+            assert(filter.mac_flt_lsw == ptp_mac_flt_lsw);
+            assert(filter.mac_fltres_msw == ptp_mac_fltres_msw);
+            assert(filter.mac_fltres_lsw == ptp_mac_fltres_lsw);
+        }
 
         /* Cache the MAC address used as a source by META frames */
         if (SJA1105_GetSRCMETA(&switch_handles[i], &msw, &lsw) != SJA1105_OK) return TX_ERROR;
-        if (i == 0) {
+        if (i == SWITCH0) {
             ptp_srcmeta_msw = msw;
             ptp_srcmeta_lsw = lsw;
         } else {
@@ -180,12 +194,12 @@ tx_status_t ptp_start() {
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
-    status = tx_event_flags_get(&ptp_tx_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_tx_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
-    status = tx_event_flags_get(&ptp_mac_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_mac_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 #if NUM_SWITCHES > 1
-    status = tx_event_flags_get(&ptp_switch_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_switch_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 #endif
 
@@ -208,6 +222,9 @@ tx_status_t ptp_start() {
     status = tx_thread_resume(&ptp_switch_sync_thread_handle);
     if (status != TX_SUCCESS) return status;
 #endif
+
+    /* Set the flag to enable callback processing */
+    atomic_store_explicit(&ptp_initialised, true, memory_order_release);
 
     return status;
 }

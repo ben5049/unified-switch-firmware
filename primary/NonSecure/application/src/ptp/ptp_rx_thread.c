@@ -58,8 +58,6 @@ static inline tx_status_t ptp_flush_rx_queues() {
 
 void ptp_rx_thread_entry(uint32_t initial_input) {
 
-    // TODO: disable if ptp not started
-
     tx_status_t      tx_status     = TX_SUCCESS;
     nx_status_t      nx_status     = NX_SUCCESS;
     sja1105_status_t switch_status = SJA1105_OK;
@@ -89,7 +87,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         TX_CHECK(tx_status);
         if ((enqueued + 1) > queue_high_water_mark) {
             queue_high_water_mark = (enqueued + 1);
-            LOG_INFO("PTP RX Queue high water mark = %lu/%d", queue_high_water_mark, PTP_RX_QUEUE_SIZE);
+            LOG_INFO("PTP: RX Queue high water mark = %lu/%d", queue_high_water_mark, PTP_RX_QUEUE_SIZE);
         }
 
 #endif
@@ -113,7 +111,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             ptp_flush_rx_queues();
 
             ptp_event_counters.rx_no_meta++;
-            LOG_ERROR("PTP RX No META frame found");
+            LOG_ERROR("PTP: RX No META frame found");
             continue;
         }
 
@@ -123,6 +121,11 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
         NX_CHECK(nx_status);
         event_packet = ptp_is_event_packet(ptp_packet, header_size);
+        if (event_packet) {
+            ptp_event_counters.rx_events++;
+        } else {
+            ptp_event_counters.rx_general++;
+        }
 
         /* Parse META frame for timestamp and port then free it */
         switch_status = switch_parse_and_free_meta_frame(
@@ -170,8 +173,8 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                 &nx_ip_instance,
                 PRIMARY_INTERFACE,
                 ptp_packet,
-                PTP_ETHERNET_ADDR_MSB,
-                PTP_ETHERNET_ADDR_LSB,
+                PTP_ETHERNET_ADDR_MSW,
+                PTP_ETHERNET_ADDR_LSW,
                 NX_LINK_ETHERNET_PTP,
                 header_size,
                 &ptp_client[port], NULL);
@@ -206,6 +209,9 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
     UCHAR  vlan_tag_valid;
     UINT   header_size;
 
+    /* If PTP hasn't been started don't filter */
+    if (!atomic_load_explicit(&ptp_initialised, memory_order_acquire)) return filter_packet;
+
     /* Get info from the header */
     nx_status = nx_link_ethernet_header_parse(
         packet_ptr,
@@ -221,8 +227,9 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
     /* Get information about the frame */
     meta_frame       = (src_msw == ptp_srcmeta_msw) && (src_lsw == ptp_srcmeta_lsw);
-    management_frame = ((dst_lsw & 0xff0000ff) == PTP_ETHERNET_ADDR_LSB) && (dst_msw == PTP_ETHERNET_ADDR_MSB); // TODO: get MAC_FLTRES & MAC_FLT and check match
-    ptp_frame        = ether_type == NX_LINK_ETHERNET_PTP;
+    management_frame = ((dst_msw & ptp_mac_flt_msw) == ptp_mac_fltres_msw) &&
+                       ((dst_lsw & ptp_mac_flt_lsw) == ptp_mac_fltres_lsw);
+    ptp_frame = ether_type == NX_LINK_ETHERNET_PTP;
 
     /* Discard invalid frames */
     if ((meta_frame && (meta_debt > 0)) ||  /* META frame must be consumed to prevent desync between queues */

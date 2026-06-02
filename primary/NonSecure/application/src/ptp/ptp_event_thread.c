@@ -398,7 +398,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                     : -ptp_utc_offset, /* Prevent the offset from making the time negative */
                 &date);
             NX_CHECK(nx_status);
-            LOG_INFO("PTP Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n",
+            LOG_INFO("PTP: Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n (UTC)",
                      date.day, date.month, date.year,
                      date.hour, date.minute, date.second, date.nanosecond);
         }

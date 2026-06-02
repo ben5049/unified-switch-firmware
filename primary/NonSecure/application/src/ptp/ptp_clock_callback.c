@@ -87,8 +87,6 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                 // TODO: check if this client is connected to the grandmaster and discipline SWITCH0 if it is
 
                 // TODO: Use fine
-
-                UNUSED(port); // TODO: dremove
             }
 
             break;

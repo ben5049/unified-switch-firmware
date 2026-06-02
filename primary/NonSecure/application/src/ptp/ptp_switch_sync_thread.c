@@ -82,8 +82,8 @@ void ptp_switch_sync_thread_entry(uint32_t initial_input) {
             assert(offset.second_high == 0);
             assert(offset.second_low == 0);
 
-            /* Adjust the PTP clock rate to sync slave with master within +-6
-             * ticks (+-48ns).
+            /* Adjust the PTP clock rate to sync slave with master within +-3
+             * ticks (+-24ns).
              *
              * Note: The switches share a common oscillator so they tick at
              *       the same rate, the only thing that can cause offsets is
@@ -103,7 +103,7 @@ void ptp_switch_sync_thread_entry(uint32_t initial_input) {
                 ptp_clock_rates[i] = new_ptp_clock_rate;
                 switch_status      = SJA1105_SetPTPClockRate(&switch_handles[i], ptp_clock_rates[i]);
                 SWITCH_CHECK(switch_status);
-                LOG_INFO("Switch %d current offset = %li ns", i, offset.nanosecond);
+                LOG_INFO("PTP: Switch %d current offset = %li ns", i, offset.nanosecond);
             }
         }
     }
