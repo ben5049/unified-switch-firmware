@@ -43,11 +43,14 @@ typedef enum {
 
 typedef enum {
 
-    /* PTP Client callback & event flags */
+    /* PTP Client callback */
     PTP_CLIENT_EVENT_MASTER  = NX_PTP_CLIENT_EVENT_MASTER,
     PTP_CLIENT_EVENT_SYNC    = NX_PTP_CLIENT_EVENT_SYNC,
     PTP_CLIENT_EVENT_TIMEOUT = NX_PTP_CLIENT_EVENT_TIMEOUT,
-    PTP_EVENT_PRINT_TIME     = 1UL << 7,
+
+    /* PTP Event flags */
+    PTP_EVENT_CLIENT     = 1UL << 6, /* Master, SYNC or timeout */
+    PTP_EVENT_PRINT_TIME = 1UL << 7,
 
     /* PTP TX Queue event */
     PTP_TX_EVENT_SEND_PACKET,

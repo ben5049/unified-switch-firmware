@@ -102,7 +102,7 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
     /* Send the event to the queue */
     status = tx_queue_send(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
     TX_CHECK(status);
-    status = tx_event_flags_set(&ptp_events_handle, event, TX_OR);
+    status = tx_event_flags_set(&ptp_events_handle, PTP_EVENT_CLIENT, TX_OR);
     TX_CHECK(status);
 
     return NX_SUCCESS;
@@ -232,7 +232,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
         TX_CHECK(tx_status);
 
         /* Receive events from the event queue */
-        if (event_flags & (PTP_CLIENT_EVENT_MASTER | PTP_CLIENT_EVENT_SYNC | PTP_CLIENT_EVENT_TIMEOUT)) {
+        if (event_flags & PTP_EVENT_CLIENT) {
             do {
 
                 /* Receive event */
@@ -398,7 +398,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                     : -ptp_utc_offset, /* Prevent the offset from making the time negative */
                 &date);
             NX_CHECK(nx_status);
-            LOG_INFO("PTP: Time is %2u/%02u/%u %02u:%02u:%02u.%09lu\r\n (UTC)",
+            LOG_INFO("PTP: Time is %2u/%02u/%u %02u:%02u:%02u.%09lu (UTC)",
                      date.day, date.month, date.year,
                      date.hour, date.minute, date.second, date.nanosecond);
         }

@@ -165,7 +165,7 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_SWITCH_SYNC_THREAD_STACK_SIZE     (1024 * 2)
 #define PTP_SWITCH_SYNC_THREAD_PRIORITY       (7)
 #define PTP_SWITCH_SYNC_INTERVAL              (100)
-#define PTP_SWITCH_SYNC_SKIP                  (4)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
+#define PTP_SWITCH_SYNC_SKIP                  (9)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 
 #define PTP_PRINT_TIME_INTERVAL               (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 
