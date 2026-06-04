@@ -5,10 +5,13 @@
  *      Author: bens1
  */
 
-#include "main.h"
+#include "app.h"
 #include "bootloader_config.h"
 #include "hal.h"
 #include "usart.h"
+
+#include "bootloader.h"
+#include "log_tools.h"
 
 
 void HAL_HASH_ErrorCallback(HASH_HandleTypeDef *hhash) {
@@ -83,5 +86,17 @@ void HAL_HASH_ErrorCallback(HASH_HandleTypeDef *hhash) {
         default:
             break;
     }
-    error_handler();
+    error_handler(BL_HAL_ERROR);
+}
+
+
+void hard_fault_handler() {
+
+    HAL_GPIO_WritePin(STAT_GPIO_Port, STAT_Pin, GPIO_PIN_SET);
+
+#if DEBUG
+    HAL_GPIO_WritePin(PHY_CLK_EN_GPIO_Port, PHY_CLK_EN_Pin, GPIO_PIN_RESET); /* Stop the board from cooking itself */
+#endif
+
+    while (1);
 }

@@ -30,9 +30,10 @@ uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 static volatile uint32_t meta_debt = 0;
 
 
-static inline bool ptp_is_event_packet(NX_PACKET *packet_ptr, uint32_t header_size) {
+static inline bool ptp_is_event_packet(uint8_t *payload) {
 
-    ptp_message_type_t message_type = *(packet_ptr->nx_packet_prepend_ptr + header_size) & PTP_MESSAGE_TYPE_MASK;
+    /* First byte contains the message type and transport specific */
+    ptp_message_type_t message_type = payload[0] & PTP_MESSAGE_TYPE_MASK;
 
     return ((message_type == PTP_MESSAGE_TYPE_SYNC) ||
             (message_type == PTP_MESSAGE_TYPE_PDELAY_REQ) ||
@@ -120,12 +121,13 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
          *       timestamps. */
         nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
         NX_CHECK(nx_status);
-        event_packet = ptp_is_event_packet(ptp_packet, header_size);
+        event_packet = ptp_is_event_packet(ptp_packet->nx_packet_prepend_ptr + header_size);
         if (event_packet) {
             ptp_event_counters.rx_events++;
         } else {
             ptp_event_counters.rx_general++;
         }
+        ptp_event_counters.rx_port[port]++;
 
         /* Parse META frame for timestamp and port then free it */
         switch_status = switch_parse_and_free_meta_frame(

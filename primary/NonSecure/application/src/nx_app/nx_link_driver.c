@@ -38,10 +38,10 @@ int32_t nx_eth_phy_get_link_state(void) {
     uint16_t         speed;
 
     /* If SJA1105 isn't initialised or none of the PHYs have links then return link down
-     * Note: v4 hphy3 and v5 hphy6 aren't used since they use PLCA and always count as having their link up */
-    phy_link_up = hphy0.linkup || hphy1.linkup || hphy2.linkup
+     * TODO: v4 hphy3 and v5 hphy6 use PLCA and always count as having their link up. need to find better linkup metric. e.g. frames received */
+    phy_link_up = hphy0.linkup || hphy1.linkup || hphy2.linkup || hphy3.linkup
 #if HW_VERSION == 5
-                  || hphy3.linkup || hphy4.linkup || hphy5.linkup
+                  || hphy4.linkup || hphy5.linkup || hphy6.linkup
 #endif
         ;
 

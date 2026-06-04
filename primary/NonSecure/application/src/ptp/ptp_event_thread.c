@@ -129,9 +129,23 @@ static nx_status_t ptp_reset_all_clients() {
 
     /* Stop the clients (may not be started) */
     for (port_index_t i = PORT0; i < NUM_PHYS; i++) {
-        status = nx_ptp_client_stop(&ptp_client[i]);
-        if ((status != NX_SUCCESS) &&
-            (status != NX_PTP_CLIENT_NOT_STARTED)) return status;
+
+        /* Delete the PTP client */
+        status = nx_ptp_client_delete(&ptp_client[i]);
+        NX_CHECK(status);
+
+        /* Create the PTP client */
+        status = nx_ptp_client_create(
+            &ptp_client[i],
+            &nx_ip_instance,
+            PRIMARY_INTERFACE,
+            &nx_small_packet_pool,
+            NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY,
+            (UCHAR *) nx_internal_ptp_stack[i],
+            sizeof(nx_internal_ptp_stack[i]),
+            &ptp_clock_callback,
+            (void *) i);
+        NX_CHECK(status);
     }
 
     /* Enable the default master configuration */
@@ -147,6 +161,13 @@ static nx_status_t ptp_reset_all_clients() {
             NX_PTP_CLIENT_MASTER_CLOCK_STEPS_REMOVED,
             NX_PTP_MASTER_TIME_SRC_INTERNAL_OSCILLATOR);
         if (status != NX_SUCCESS) return status;
+    }
+
+    /* Reset other state */
+    ptp_port_connected_to_master = PORT_HOST;
+    if (tx_queue_flush(&ptp_event_queue_handle) != TX_SUCCESS) {
+        status = NX_TX_ERROR;
+        return status;
     }
 
     /* Set port EUI */
@@ -166,7 +187,14 @@ static nx_status_t ptp_reset_all_clients() {
             NX_PTP_TRANSPORT_SPECIFIC_802,
             &ptp_event_callback,
             (void *) i);
-        if (status != NX_SUCCESS) return status;
+        NX_CHECK(status);
+
+        /* Remove the callback it adds, we intercept and route packets manually */
+        status = nx_link_packet_receive_callback_remove(
+            ptp_client[i].nx_ptp_client_ip_ptr,
+            ptp_client[i].nx_ptp_client_interface_index,
+            &(ptp_client[i].nx_ptp_client_link_queue));
+        NX_CHECK(status);
     }
 
     return status;
@@ -197,21 +225,6 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     static uint8_t       grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
 
     static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
-
-    /* Create the PTP client */
-    for (phy_index_t i = PORT0; i < NUM_PHYS; i++) {
-        nx_status = nx_ptp_client_create(
-            &ptp_client[i],
-            &nx_ip_instance,
-            0,
-            &nx_small_packet_pool,
-            NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY,
-            (UCHAR *) nx_internal_ptp_stack[i],
-            sizeof(nx_internal_ptp_stack[i]),
-            &ptp_clock_callback,
-            (void *) i);
-        NX_CHECK(nx_status);
-    }
 
     /* Enable master mode initially on all ports with the lowest priority so
      * it is only used as a last restort. */
@@ -267,6 +280,14 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                     new_master = true;
                                     ptp_event_counters.master_timeout++;
                                 }
+
+                                /* New master on port connected to master with same grand master. This shouldn't be
+                                 * possible so do a full reset */
+                                else if ((clock_comparison == 0) && (event_info.port == ptp_port_connected_to_master)) {
+                                    LOG_WARNING("PTP: New identical master on port connected to master (%d)", event_info.port);
+                                    nx_status = ptp_reset_all_clients();
+                                    NX_CHECK(nx_status);
+                                }
                             }
 
                             /* Nothing to do */
@@ -290,10 +311,26 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             for (port_index_t i = PORT0; i < NUM_PHYS; i++) {
 
                                 /* Skip the newly connected to master port */
-                                if (i == event_info.port) continue;
+                                if (i == event_info.port) {
+                                    ptp_client[i].ptp_master.nx_ptp_client_master_grandmaster_identity = ptp_client[i].nx_ptp_client_port_identity;
+                                    continue;
+                                }
 
-                                /* Stop the client */
-                                nx_status = nx_ptp_client_stop(&ptp_client[i]);
+                                /* Delete the PTP client */
+                                nx_status = nx_ptp_client_delete(&ptp_client[i]);
+                                NX_CHECK(nx_status);
+
+                                /* Create the PTP client */
+                                nx_status = nx_ptp_client_create(
+                                    &ptp_client[i],
+                                    &nx_ip_instance,
+                                    PRIMARY_INTERFACE,
+                                    &nx_small_packet_pool,
+                                    NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY,
+                                    (UCHAR *) nx_internal_ptp_stack[i],
+                                    sizeof(nx_internal_ptp_stack[i]),
+                                    &ptp_clock_callback,
+                                    (void *) i);
                                 NX_CHECK(nx_status);
 
                                 /* Apply the new master config */
@@ -322,6 +359,13 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                     NX_PTP_TRANSPORT_SPECIFIC_802,
                                     &ptp_event_callback,
                                     (void *) i);
+                                NX_CHECK(nx_status);
+
+                                /* Remove the callback it adds, we intercept and route packets manually */
+                                nx_status = nx_link_packet_receive_callback_remove(
+                                    ptp_client[i].nx_ptp_client_ip_ptr,
+                                    ptp_client[i].nx_ptp_client_interface_index,
+                                    &(ptp_client[i].nx_ptp_client_link_queue));
                                 NX_CHECK(nx_status);
                             }
 

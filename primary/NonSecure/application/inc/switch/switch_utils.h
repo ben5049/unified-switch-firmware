@@ -148,6 +148,7 @@ sja1105_status_t switch_get_speed(port_index_t port, uint16_t *speed);
 
 sja1105_status_t switch_create_mgmt_route(port_index_t port, const uint8_t *dst_addr, bool takets, uint8_t tsreg, uint8_t *depth, sja1105_mgmt_route_free_callback_t free_callback, void *callback_context);
 sja1105_status_t switch_free_mgmt_route(uint8_t depth);
+sja1105_status_t switch_purge_mgmt_routes(void);
 
 sja1105_status_t switch_get_time(switch_index_t i, NX_PTP_TIME *time);
 sja1105_status_t switch_set_time_all(NX_PTP_TIME *time);

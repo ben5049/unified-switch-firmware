@@ -133,6 +133,11 @@ sja1105_status_t switch_free_mgmt_route(uint8_t depth) {
 }
 
 
+sja1105_status_t switch_purge_mgmt_routes() {
+    return SJA1105_ManagementRouteFreeCasc(switch_handles, true, NUM_SWITCHES);
+}
+
+
 static void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestamp) {
 
     int64_t total_ns;

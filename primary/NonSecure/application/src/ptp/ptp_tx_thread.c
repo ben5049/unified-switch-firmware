@@ -36,14 +36,14 @@ static volatile uint8_t      tx_send_count;       /* How many switches the manag
 
 static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_mgmt_free_t reason, void *context) {
 
-    sja1105_status_t switch_status = SJA1105_OK;
-    tx_status_t      tx_status     = TX_SUCCESS;
-    port_index_t     port          = (port_index_t) context;
+    sja1105_status_t        switch_status = SJA1105_OK;
+    tx_status_t             tx_status     = TX_SUCCESS;
+    port_index_t            port          = (port_index_t) context;
+    ptp_packet_event_info_t event_info;
 
-    /* An error has occured */
+    /* Forced out or timed out, could be due to STM32 driver failure */
     if (reason != SJA1105_MGMT_FREE_USED) {
         LOG_ERROR("PTP: TX Management route freed with code %d", reason);
-        error_handler();
     }
 
     /* The route freed is the one expected */
@@ -52,27 +52,30 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
         /* This is the last switch in the chain, get the timestamp */
         if (dev->config->switch_id == (ptp_tx_send_count - 1)) {
 
-            NX_PTP_TIME timestamp;
+            NX_PTP_TIME timestamp  = {.second_high = 0, .second_low = 0, .nanosecond = 0};
             NX_PACKET  *packet_ptr = ptp_tx_packet;
 
-            /* Get the timestamp */
-            switch_status = switch_get_egress_timestamp(port, PTP_TX_TSREG, &timestamp);
-            if (switch_status != SJA1105_OK) return switch_status;
+            /* Only get timestamps for frames that were actually sent */
+            if (reason == SJA1105_MGMT_FREE_USED) {
 
-            /* No timestamp. Could be because frame never reached MAC egress port.
-             * This could be because the PHY has no link */
-            if ((timestamp.nanosecond == 0) &&
-                (timestamp.second_low == 0) &&
-                (timestamp.second_high == 0)) {
-                ptp_event_counters.tx_timestamps_missed[port]++;
-                LOG_WARNING("PTP: TX Missed a timestamp on port %d", port);
-            } else {
-                ptp_event_counters.tx_timestamps_received[port]++;
+                /* Get the timestamp */
+                switch_status = switch_get_egress_timestamp(port, PTP_TX_TSREG, &timestamp);
+                if (switch_status != SJA1105_OK) return switch_status;
+
+                /* No timestamp. Could be because frame never reached MAC egress port.
+                 * This could be because the PHY has no link */
+                if ((timestamp.nanosecond == 0) &&
+                    (timestamp.second_low == 0) &&
+                    (timestamp.second_high == 0)) {
+                    ptp_event_counters.tx_timestamps_missed[port]++;
+                    LOG_WARNING("PTP: TX Missed a timestamp on port %d", port);
+                } else {
+                    ptp_event_counters.tx_timestamps_received[port]++;
+                }
             }
 
-            /* Send the transmit timestamp to the clock sync thread */
+            /* Send the transmit timestamp to the mac sync thread */
             if (port == PORT_HOST) {
-                ptp_packet_event_info_t event_info;
                 event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
                 event_info.time  = timestamp;
                 event_info.port  = PORT_HOST;
@@ -118,13 +121,17 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
     ptp_packet_event_info_t event_info;
     uint32_t                event_flags;
 
-    uint8_t  depth  = 0;
-    uint32_t waited = 0;
+    uint8_t  depth        = 0;
+    uint32_t ticks_waited = 0;
 
 #if DEBUG
     uint32_t enqueued;
     uint32_t queue_high_water_mark = 0;
 #endif
+
+    /* Thread was previously terminated without freeing packet */
+    event_info.packet_ptr = ptp_tx_packet;
+    if (ptp_tx_packet != NULL) nx_packet_transmit_release(event_info.packet_ptr);
 
     while (1) {
 
@@ -158,11 +165,28 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 /* Send the packet */
                 nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr);
-                NX_CHECK(nx_status);
-                ptp_event_counters.tx_packets_sent[event_info.port]++;
+
+                /* Most likely Ethernet is disabled due to no ports having an external connection.
+                 * Note: The driver will have freed the packet */
+                if (nx_status == NX_STATUS_DRIVER_ERROR) {
+                    ptp_event_counters.tx_driver_error++;
+                    switch_status = switch_purge_mgmt_routes();
+                    SWITCH_CHECK(switch_status);
+                    goto done;
+                }
+
+                /* Actual error */
+                else if (nx_status != NX_SUCCESS) {
+                    error_handler();
+                }
+
+                /* Transmit successful */
+                else {
+                    ptp_event_counters.tx_packets_sent[event_info.port]++;
+                }
 
                 /* Get confirmation the packet has been sent through the switch */
-                waited = 0;
+                ticks_waited = 0;
                 do {
 
                     /* Attempt to free management route. If successful this will
@@ -174,9 +198,9 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                      * through the switch.
                      *
                      * Note: Despite polling over SPI frequently the packet is
-                     *       almost always sent immediately so waited never
+                     *       almost always sent immediately so ticks_waited never
                      *       goes above 0. */
-                    tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, (waited < 10) ? 1 : 10);
+                    tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, (ticks_waited < 10) ? 1 : 10);
 
                     /* Management route freed */
                     if (tx_status == TX_SUCCESS) {
@@ -191,20 +215,30 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                     }
 
                     /* Keep waiting */
-                    if (waited < 10) {
-                        waited++;
+                    if (ticks_waited < 10) {
+                        ticks_waited++;
                     } else {
-                        waited += 10;
+                        ticks_waited += 10;
                     }
-                    if (waited >= MS_TO_TICKS(PTP_TX_TIMEOUT)) error_handler();
+
+                    /* Timeout: packet may have failed to egress switch due to
+                     * destination port being down */
+                    if (ticks_waited >= MS_TO_TICKS(PTP_TX_TIMEOUT)) {
+                        ptp_event_counters.tx_mgmt_route_timeout++;
+                        switch_status = switch_purge_mgmt_routes();
+                        SWITCH_CHECK(switch_status);
+                        goto release;
+                    }
 
                 } while (1);
 
                 /* Check if the transmit took longer than expected */
-                if (waited > 0) {
+                if (ticks_waited > 0) {
                     ptp_event_counters.tx_slow++;
-                    LOG_WARNING("PTP TX after %lu ms", TICKS_TO_MS(waited));
+                    LOG_WARNING("PTP TX after %lu ms", TICKS_TO_MS(ticks_waited));
                 }
+
+            release:
 
                 /* Wait for the ethernet driver to be done with the packet */
                 tx_status = tx_event_flags_get(
@@ -217,8 +251,10 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 /* Release the packet */
                 nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr, NULL);
-                ptp_tx_packet = NULL;
 
+            done:
+
+                ptp_tx_packet = NULL;
                 break;
             }
 

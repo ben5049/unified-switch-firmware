@@ -20,5 +20,7 @@ void mpu_config(void);
 
 int main(void);
 
+void hard_fault_handler(void);
+
 
 #endif /* INC_APP_H_ */

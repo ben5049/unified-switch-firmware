@@ -186,6 +186,13 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
             assert(event_info.port == PORT_HOST);
 
+            /* Invalid timestamp, error has occured */
+            if ((event_info.time.nanosecond == 0) &&
+                (event_info.time.second_low == 0) &&
+                (event_info.time.second_high == 0)) {
+                break;
+            }
+
             switch (event_info.event) {
                 case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
                     assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T1_MAC_TX)); /* Timestamp shouldn't be received twice */
@@ -224,6 +231,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
             LOG_WARNING("PTP: MAC Sync failed, missing timestamps (received 0x%01x)", timestamps_received);
             ptp_event_counters.mac_sync_failed++;
+            tx_thread_sleep_ms(100); /* Wait before trying again so packets can settle */
             continue;
         }
 

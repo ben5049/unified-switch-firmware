@@ -126,6 +126,7 @@ add_subdirectory(bootloader)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     application/src/app.c
+    application/src/common.c
     application/src/backup.c
     application/src/secure_nsc.c
     application/src/bootloader_hooks/crypto.c

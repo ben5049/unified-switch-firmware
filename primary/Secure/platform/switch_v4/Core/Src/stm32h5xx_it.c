@@ -22,6 +22,7 @@
 #include "stm32h5xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app.h"
 #include "error.h"
 /* USER CODE END Includes */
 
@@ -79,7 +80,7 @@ extern UART_HandleTypeDef huart4;
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  hard_fault_handler();
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {

@@ -106,13 +106,16 @@ typedef struct {
     atomic_uint_fast32_t tx_packets_invalid_port;
     atomic_uint_fast32_t tx_timestamps_received[NUM_PORTS];
     atomic_uint_fast32_t tx_timestamps_missed[NUM_PORTS];
-    atomic_uint_fast32_t tx_slow; /* Took multiple polls for the management route to free */
+    atomic_uint_fast32_t tx_driver_error;       /* Failed to send packet */
+    atomic_uint_fast32_t tx_slow;               /* Took multiple polls for the management route to free */
+    atomic_uint_fast32_t tx_mgmt_route_timeout; /* Management route was never freed */
 
     /* RX */
     atomic_uint_fast32_t rx_meta;       /* Number of META frames filtered */
     atomic_uint_fast32_t rx_packets;    /* Number of PTP packets filtered */
     atomic_uint_fast32_t rx_events;     /* Number of event PTP packets received (SYNC, PDELAY_REQ, PDELAY_RESP) */
     atomic_uint_fast32_t rx_general;    /* Number of general PTP packets received */
+    atomic_uint_fast32_t rx_port[NUM_PORTS];
     atomic_uint_fast32_t rx_no_meta;    /* Expected a META frame but didn't get one */
     atomic_uint_fast32_t rx_wrong_dst;  /* gPTP Ethertype but wrong destination address */
     atomic_uint_fast32_t rx_own_packet; /* gPTP Packet send and received by us */
