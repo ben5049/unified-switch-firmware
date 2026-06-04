@@ -26,12 +26,13 @@ extern uint32_t __TRACE_START__;
 extern uint32_t __TRACE_SIZE__;
 
 /* ---------------------------------------------------------------------------- */
-/* Thread Enables */
+/* Feature Flags */
 /* ---------------------------------------------------------------------------- */
 
-#define ENABLE_STP_THREAD   (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
-#define ENABLE_PTP_THREAD   (1)
-#define ENABLE_COMMS_THREAD (0) /* TODO: re-enable */
+#define FEAT_STP          (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
+#define FEAT_PTP          (1)
+#define FEAT_COMMS        (0) /* TODO: re-enable */
+#define FEAT_DHCP_RESTORE (1)
 
 /* ---------------------------------------------------------------------------- */
 /* Common Config */
@@ -122,10 +123,8 @@ extern uint32_t __TRACE_SIZE__;
 #define PORT7_SPEED_MBPS (100)  /* Host (10 or 100 Mbps) */
 #endif
 
-#define PHY_LINK_REQUIRED_FOR_NX_LINK (true) /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
+#define PHY_LINK_REQUIRED_FOR_NX_LINK (true)  /* Setting this to false means NetXduo will only require the switch to be initialed to count as having a link up. Default = true*/
 
-
-#define ENABLE_DHCP_RESTORE           (1)
 #define DHCP_RECORD_SAVE_INTERVAL     (10000) /* How often to save the current DHCP record for restoration later in case of reboot in ms */
 
 /* ---------------------------------------------------------------------------- */

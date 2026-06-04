@@ -7,8 +7,7 @@
 
 #include "app.h"
 #include "utils.h"
-#include "ptp_thread.h"
-#include "ptp_utils.h"
+#include "ptp.h"
 #include "switch_utils.h"
 
 

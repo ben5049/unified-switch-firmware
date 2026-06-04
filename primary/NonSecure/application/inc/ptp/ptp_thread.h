@@ -179,10 +179,9 @@ extern TX_TIMER ptp_mac_sync_timer;
 extern TX_TIMER ptp_switch_sync_timer;
 #endif
 
-extern NX_PTP_CLIENT         ptp_client[NUM_PHYS];
-extern SHORT                 ptp_utc_offset;
-extern ptp_event_counters_t  ptp_event_counters;
-extern volatile port_index_t ptp_port_connected_to_master;
+extern SHORT                        ptp_utc_offset;
+extern ptp_event_counters_t         ptp_event_counters;
+extern volatile atomic_uint_fast8_t ptp_port_connected_to_master;
 
 
 /* Thread functions */

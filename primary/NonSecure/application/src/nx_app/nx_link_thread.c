@@ -22,7 +22,7 @@
 
 /* Private function prototypes */
 static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr);
-#if ENABLE_DHCP_RESTORE
+#if FEAT_DHCP_RESTORE
 static nx_status_t dhcp_record_set_stored_valid(bool valid);
 static nx_status_t dhcp_record_get_stored_valid(bool *valid);
 static nx_status_t dhcp_record_restore(NX_DHCP *client);
@@ -59,7 +59,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
     nx_status = nx_dhcp_start(&dhcp_client);
     NX_CHECK(nx_status);
 
-#if ENABLE_DHCP_RESTORE
+#if FEAT_DHCP_RESTORE
 
     /* Attempt to load and restore the DHCP record on warm boot */
     if (!s_cold_boot()) {
@@ -125,7 +125,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
                         nx_status = nx_dhcp_start(&dhcp_client);
                         NX_CHECK(nx_status);
 
-#if ENABLE_DHCP_RESTORE
+#if FEAT_DHCP_RESTORE
 
                         /* Attempt to restore the record */
                         nx_status = dhcp_record_restore(&dhcp_client);
@@ -172,7 +172,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
             }
         }
 
-#if ENABLE_DHCP_RESTORE
+#if FEAT_DHCP_RESTORE
 
         /* Periodically save the DHCP record to non-volatile memory in case of a reboot or link down */
         if (events & LINK_EVENT_DHCP_SAVE) {
@@ -212,7 +212,7 @@ static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
 }
 
 
-#if ENABLE_DHCP_RESTORE
+#if FEAT_DHCP_RESTORE
 
 
 static nx_status_t dhcp_record_set_stored_valid(bool valid) {

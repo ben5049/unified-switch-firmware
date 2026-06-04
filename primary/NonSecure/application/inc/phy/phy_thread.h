@@ -58,6 +58,21 @@ typedef enum {
 } port_index_t;
 
 typedef enum {
+    PORT_BITS_NONE = 0UL,
+    PORT0_BIT      = 1UL << PORT0,
+    PORT1_BIT      = 1UL << PORT1,
+    PORT2_BIT      = 1UL << PORT2,
+    PORT3_BIT      = 1UL << PORT3,
+#if HW_VERSION == 5
+    PORT4_BIT = 1UL << PORT4,
+    PORT5_BIT = 1UL << PORT5,
+    PORT6_BIT = 1UL << PORT6,
+#endif
+    HOST_BIT      = 1UL << PORT_HOST,
+    PORT_BITS_ALL = 0xffffffffUL,
+} port_bitset_t;
+
+typedef enum {
     PHY_STATE_UNINITIALISED,
     PHY_STATE_INITIALISED,
     PHY_STATE_WAIT_FOR_LINK,

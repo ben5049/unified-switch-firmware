@@ -13,9 +13,7 @@
 #include "tx_app.h"
 #include "nx_app.h"
 #include "utils.h"
-#include "ptp_thread.h"
-#include "ptp_init.h"
-#include "ptp_utils.h"
+#include "ptp.h"
 #include "switch_utils.h"
 
 
@@ -283,7 +281,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
     UINT   header_size;
 
     /* If PTP hasn't been started don't filter */
-    if (!atomic_load_explicit(&ptp_initialised, memory_order_acquire)) return filter_packet;
+    if (!ptp_initialised) return filter_packet;
 
     /* Get info from the header */
     nx_status = nx_link_ethernet_header_parse(

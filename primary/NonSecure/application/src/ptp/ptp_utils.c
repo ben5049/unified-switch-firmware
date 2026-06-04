@@ -11,8 +11,7 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "ptp_thread.h"
-#include "ptp_utils.h"
+#include "ptp.h"
 
 
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
@@ -205,4 +204,18 @@ tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
     } while (1);
 
     return status;
+}
+
+
+void ptp_notify_port_down(port_index_t port) {
+
+    tx_status_t             status = TX_SUCCESS;
+    ptp_client_event_info_t event_info;
+
+    assert(port < NUM_PHYS);
+
+    event_info.event = PTP_CLIENT_EVENT_TIMEOUT;
+    event_info.port  = port;
+    status           = ptp_client_event_queue_send(&event_info);
+    TX_CHECK(status);
 }

@@ -36,6 +36,8 @@ void ptp_mac_get_time(NX_PTP_TIME *time_ptr);
 
 tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr);
 
+void ptp_notify_port_down(port_index_t port);
+
 
 #ifdef __cplusplus
 }

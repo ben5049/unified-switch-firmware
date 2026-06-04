@@ -174,7 +174,7 @@ static phy_status_t phy_callback_event(phy_event_t event, void *context) {
             break;
 
 /* Notify the STP thread */
-#if ENABLE_STP_THREAD
+#if FEAT_STP
 
             /* Don't send notification if the kernel hasn't started */
             if (tx_thread_identify() == TX_NULL) return PHY_OK;

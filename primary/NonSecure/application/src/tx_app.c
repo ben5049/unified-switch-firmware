@@ -15,7 +15,7 @@
 #include "phy_callbacks.h"
 #include "stp_thread.h"
 #include "comms_thread.h"
-#include "ptp_thread.h"
+#include "ptp.h"
 #include "state_machine.h"
 #include "background_thread.h"
 #include "utils.h"
@@ -41,9 +41,11 @@ void tx_setup(void *memory_ptr) {
 #endif
 
     /* Create mutexes */
-    status = tx_mutex_create(&switch_mutex_handle,  "switch_mutex",  TX_INHERIT);
+    status = tx_mutex_create(&switch_mutex_handle,                 "switch_mutex",                 TX_INHERIT);
     TX_CHECK(status);
-    status = tx_mutex_create(&phy_mutex_handle,     "phy_mutex",     TX_INHERIT);
+    status = tx_mutex_create(&phy_mutex_handle,                    "phy_mutex",                    TX_INHERIT);
+    TX_CHECK(status);
+    status = tx_mutex_create(&ptp_client_event_queue_mutex_handle, "ptp_client_event_queue_mutex", TX_INHERIT);
     TX_CHECK(status);
 
     /* Create semaphores */
@@ -57,11 +59,11 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_event_flags_create(&link_events_handle,            "link_events_handle");
     TX_CHECK(status);
-#if ENABLE_STP_THREAD
+#if FEAT_STP
     status = tx_event_flags_create(&stp_events_handle,             "stp_events_handle");
     TX_CHECK(status);
 #endif
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
     status = tx_event_flags_create(&ptp_events_handle,             "ptp_events_handle");
     TX_CHECK(status);
     status = tx_event_flags_create(&ptp_tx_events_handle,          "ptp_tx_events_handle");
@@ -75,7 +77,7 @@ void tx_setup(void *memory_ptr) {
 #endif
 
     /* Create queues */
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
     status = tx_queue_create(&ptp_event_queue_handle,     "ptp_event_queue",     PTP_CLIENT_MSG_SIZE_WORDS, ptp_event_queue_stack,     sizeof(ptp_event_queue_stack));
     TX_CHECK(status);
     status = tx_queue_create(&ptp_tx_queue_handle,        "ptp_tx_queue",        PTP_PACKET_MSG_SIZE_WORDS, ptp_tx_queue_stack,        sizeof(ptp_tx_queue_stack));
@@ -97,15 +99,15 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_thread_create(&phy_thread_handle,             "phy_thread",             (void (*)(ULONG)) phy_thread_entry,             thread_number++, phy_thread_stack,             PHY_THREAD_STACK_SIZE,             PHY_THREAD_PRIORITY,             PHY_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
     TX_CHECK(status);
-#if ENABLE_STP_THREAD
+#if FEAT_STP
     status = tx_thread_create(&stp_thread_handle,             "stp_thread",             (void (*)(ULONG)) stp_thread_entry,             thread_number++, stp_thread_stack,             STP_THREAD_STACK_SIZE,             STP_THREAD_PRIORITY,             STP_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
     TX_CHECK(status);
 #endif
-#if ENABLE_COMMS_THREAD
+#if FEAT_COMMS
     status = tx_thread_create(&comms_thread_handle,           "comms_thread",           (void (*)(ULONG)) comms_thread_entry,           thread_number++, comms_thread_stack,           COMMS_THREAD_STACK_SIZE,           COMMS_THREAD_PRIORITY,           COMMS_THREAD_PREMPTION_PRIORITY,  1,                TX_DONT_START);
     TX_CHECK(status);
 #endif
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
     status = tx_thread_create(&ptp_event_thread_handle,       "ptp_event_thread",       (void (*)(ULONG)) ptp_event_thread_entry,       thread_number++, ptp_event_thread_stack,       PTP_EVENT_THREAD_STACK_SIZE,       PTP_EVENT_THREAD_PRIORITY,       PTP_EVENT_THREAD_PRIORITY,        TX_NO_TIME_SLICE, TX_DONT_START);
     TX_CHECK(status);
     status = tx_thread_create(&ptp_tx_thread_handle,          "ptp_tx_thread",          (void (*)(ULONG)) ptp_tx_thread_entry,          thread_number++, ptp_tx_thread_stack,          PTP_TX_THREAD_STACK_SIZE,          PTP_TX_THREAD_PRIORITY,          PTP_TX_THREAD_PRIORITY,           TX_NO_TIME_SLICE, TX_DONT_START);
@@ -131,15 +133,15 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_thread_secure_stack_allocate(&phy_thread_handle,             MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
-#if ENABLE_STP_THREAD
+#if FEAT_STP
     status = tx_thread_secure_stack_allocate(&stp_thread_handle,             MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
 #endif
-#if ENABLE_COMMS_THREAD
+#if FEAT_COMMS
     status = tx_thread_secure_stack_allocate(&comms_thread_handle,           MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
 #endif
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
     status = tx_thread_secure_stack_allocate(&ptp_event_thread_handle,       MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
     status = tx_thread_secure_stack_allocate(&ptp_tx_thread_handle,          MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
@@ -161,13 +163,13 @@ void tx_setup(void *memory_ptr) {
     nx_link_thread_handle.logger         = &hlog_network;
     switch_thread_handle.logger          = &hlog_sw;
     phy_thread_handle.logger             = &hlog_phy;
-#if ENABLE_STP_THREAD
+#if FEAT_STP
     stp_thread_handle.logger             = &hlog_network;
 #endif
-#if ENABLE_COMMS_THREAD
+#if FEAT_COMMS
     comms_thread_handle.logger           = &hlog_comms;
 #endif
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
     ptp_event_thread_handle.logger       = &hlog_ptp;
     ptp_tx_thread_handle.logger          = &hlog_ptp;
     ptp_rx_thread_handle.logger          = &hlog_ptp;
@@ -185,11 +187,11 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_timer_create(&link_check_timer,            "link_check_timer",            link_check_timer_callback,            0, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, NX_APP_LINK_CHECK_WHEN_DOWN_INTERVAL, TX_NO_ACTIVATE);
     TX_CHECK(status);
-#if ENABLE_DHCP_RESTORE
+#if FEAT_DHCP_RESTORE
     status = tx_timer_create(&dhcp_save_timer,             "dhcp_save_timer",             dhcp_save_timer_callback,             0, DHCP_RECORD_SAVE_INTERVAL,            DHCP_RECORD_SAVE_INTERVAL,            TX_NO_ACTIVATE);
     TX_CHECK(status);
 #endif
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
 #if PTP_PRINT_TIME_INTERVAL
     status = tx_timer_create(&ptp_events_print_time_timer, "ptp_events_print_time_timer", ptp_events_print_time_timer_callback, 0, PTP_PRINT_TIME_INTERVAL,              PTP_PRINT_TIME_INTERVAL,              TX_NO_ACTIVATE);
     TX_CHECK(status);

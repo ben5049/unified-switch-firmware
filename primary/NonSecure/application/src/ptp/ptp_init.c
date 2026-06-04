@@ -15,9 +15,7 @@
 #include "tx_app.h"
 #include "nx_app.h"
 #include "utils.h"
-#include "ptp_init.h"
-#include "ptp_thread.h"
-#include "ptp_utils.h"
+#include "ptp.h"
 #include "switch_thread.h"
 #include "switch_utils.h"
 
@@ -224,7 +222,7 @@ tx_status_t ptp_start() {
 #endif
 
     /* Set the flag to enable callback processing */
-    atomic_store_explicit(&ptp_initialised, true, memory_order_release);
+    ptp_initialised = true;
 
     return status;
 }

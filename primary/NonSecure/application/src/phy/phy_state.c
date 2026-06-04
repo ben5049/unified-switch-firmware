@@ -14,6 +14,7 @@
 #include "switch_utils.h"
 #include "config.h"
 #include "utils.h"
+#include "ptp.h"
 
 
 #define MAX_TRANSITIONS      (10) /* Used to break livelocks with a 0 latency loop in the state machine (shouldn't be possible) */
@@ -168,6 +169,13 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                     status = PHY_ERROR;
                     goto end;
                 }
+
+#if FEAT_PTP
+
+                /* Send notification to PTP subsystem that the port is down */
+                ptp_notify_port_down(phy);
+
+#endif
 
                 next_state = PHY_STATE_RECONNECT;
                 break;

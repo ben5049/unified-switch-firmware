@@ -7,9 +7,7 @@
 
 #include "app.h"
 #include "utils.h"
-#include "ptp_thread.h"
-#include "ptp_utils.h"
-#include "ptp_init.h"
+#include "ptp.h"
 #include "switch_utils.h"
 
 
@@ -141,7 +139,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         assert(events == PTP_CLOCK_EVENT_MAC_SYNC);
 
         /* If PTP hasn't been started don't send a packet */
-        if (!atomic_load_explicit(&ptp_initialised, memory_order_acquire)) continue;
+        if (!ptp_initialised) continue;
 
         /* Create a dummy sync packet that will look convincing enough to make
          * the STM32's MAC timestamp it */

@@ -17,7 +17,7 @@
 #include "phy_thread.h"
 #include "stp_thread.h"
 #include "comms_thread.h"
-#include "ptp_init.h"
+#include "ptp.h"
 #include "tx_port.h"
 #include "utils.h"
 
@@ -57,14 +57,14 @@ void state_machine_thread_entry(uint32_t initial_input) {
     TX_CHECK(tx_status);
     LOG_INFO("Link is up");
 
-#if ENABLE_STP_THREAD
+#if FEAT_STP
     tx_status = tx_thread_resume(&stp_thread_handle);
     TX_CHECK(tx_status);
     LOG_INFO("STP thread started");
 #endif
 
     /* Start the PTP thread. No IP address is required since gPTP uses raw ethernet frames */
-#if ENABLE_PTP_THREAD
+#if FEAT_PTP
     tx_status = ptp_start();
     TX_CHECK(tx_status);
     LOG_INFO("PTP started");
@@ -87,7 +87,7 @@ void state_machine_thread_entry(uint32_t initial_input) {
              U32_BYTE_0(ip_address));
 
     /* Start the threads that require IP networking */
-#if ENABLE_COMMS_THREAD
+#if FEAT_COMMS
     tx_status = tx_thread_resume(&comms_thread_handle);
     TX_CHECK(tx_status);
     LOG_INFO("Comms thread started");
