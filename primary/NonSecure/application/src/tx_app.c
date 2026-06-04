@@ -51,30 +51,32 @@ void tx_setup(void *memory_ptr) {
     /* Create semaphores */
 
     /* Create event flags */
-    status = tx_event_flags_create(&state_machine_events_handle,   "state_machine_events_handle");
+    status = tx_event_flags_create(&state_machine_events_handle,     "state_machine_events_handle");
     TX_CHECK(status);
-    status = tx_event_flags_create(&switch_events_handle,          "switch_events_handle");
+    status = tx_event_flags_create(&switch_events_handle,            "switch_events_handle");
     TX_CHECK(status);
-    status = tx_event_flags_create(&phy_events_handle,             "phy_events_handle");
+    status = tx_event_flags_create(&phy_events_handle,               "phy_events_handle");
     TX_CHECK(status);
-    status = tx_event_flags_create(&link_events_handle,            "link_events_handle");
+    status = tx_event_flags_create(&link_events_handle,              "link_events_handle");
     TX_CHECK(status);
 #if FEAT_STP
-    status = tx_event_flags_create(&stp_events_handle,             "stp_events_handle");
+    status = tx_event_flags_create(&stp_events_handle,               "stp_events_handle");
     TX_CHECK(status);
 #endif
 #if FEAT_PTP
-    status = tx_event_flags_create(&ptp_events_handle,             "ptp_events_handle");
+    status = tx_event_flags_create(&ptp_events_handle,               "ptp_events_handle");
     TX_CHECK(status);
-    status = tx_event_flags_create(&ptp_tx_events_handle,          "ptp_tx_events_handle");
+    status = tx_event_flags_create(&ptp_tx_events_handle,            "ptp_tx_events_handle");
     TX_CHECK(status);
-    status = tx_event_flags_create(&ptp_mac_sync_events_handle,    "ptp_mac_sync_events_handle");
+    status = tx_event_flags_create(&ptp_mac_sync_events_handle,      "ptp_mac_sync_events_handle");
     TX_CHECK(status);
 #if NUM_SWITCHES > 1
-    status = tx_event_flags_create(&ptp_switch_sync_events_handle, "ptp_switch_sync_events_handle");
+    status = tx_event_flags_create(&ptp_switch_sync_events_handle,   "ptp_switch_sync_events_handle");
     TX_CHECK(status);
 #endif
 #endif
+    status = tx_event_flags_create(&background_thread_events_handle, "background_thread_events_handle");
+    TX_CHECK(status);
 
     /* Create queues */
 #if FEAT_PTP
@@ -203,6 +205,8 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
 #endif
 #endif
+    status = tx_timer_create(&background_thread_timer,     "background_thread_timer",     background_thread_timer_callback,     0, BACKGROUND_THREAD_INTERVAL,           BACKGROUND_THREAD_INTERVAL,           TX_NO_ACTIVATE);
+    TX_CHECK(status);
 }
 
 // clang-format on

@@ -21,8 +21,14 @@ extern "C" {
 extern TX_THREAD background_thread_handle;
 extern uint8_t   background_thread_stack[BACKGROUND_THREAD_STACK_SIZE];
 
+extern TX_EVENT_FLAGS_GROUP background_thread_events_handle;
+
+extern TX_TIMER background_thread_timer;
+
 
 void background_thread_entry(uint32_t initial_input);
+
+void background_thread_timer_callback(ULONG id);
 
 
 #ifdef __cplusplus
