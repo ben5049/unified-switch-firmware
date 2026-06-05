@@ -182,9 +182,7 @@ tx_status_t ptp_start() {
     /* Flush the queues. Queues containing packets must have all their packets released */
     status = ptp_flush_packet_queue(&ptp_tx_queue_handle);
     if (status != TX_SUCCESS) return status;
-    status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
-    if (status != TX_SUCCESS) return status;
-    status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+    status = ptp_flush_packet_queue(&ptp_rx_queue_handle);
     if (status != TX_SUCCESS) return status;
     status = tx_queue_flush(&ptp_event_queue_handle);
     if (status != TX_SUCCESS) return status;
@@ -192,6 +190,8 @@ tx_status_t ptp_start() {
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
+    status = tx_event_flags_get(&ptp_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
+    if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
     status = tx_event_flags_get(&ptp_tx_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
     status = tx_event_flags_get(&ptp_mac_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);

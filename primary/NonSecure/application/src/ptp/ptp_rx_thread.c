@@ -21,10 +21,8 @@
 TX_THREAD ptp_rx_thread_handle;
 uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 
-TX_QUEUE ptp_rx_packet_queue_handle;
-uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
-TX_QUEUE ptp_rx_meta_queue_handle;
-uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
+TX_QUEUE ptp_rx_queue_handle;
+uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 static volatile uint32_t meta_debt = 0;
 
@@ -40,13 +38,11 @@ static inline bool ptp_is_event_packet(uint8_t *payload) {
 }
 
 
-static inline tx_status_t ptp_flush_rx_queues() {
+static inline tx_status_t ptp_flush_rx_queue() {
 
     tx_status_t tx_status = TX_SUCCESS;
 
-    tx_status = ptp_flush_packet_queue(&ptp_rx_packet_queue_handle);
-    if (tx_status != TX_SUCCESS) return tx_status;
-    tx_status = ptp_flush_packet_queue(&ptp_rx_meta_queue_handle);
+    tx_status = ptp_flush_packet_queue(&ptp_rx_queue_handle);
     if (tx_status != TX_SUCCESS) return tx_status;
 
     /* Clear any pending debt since the queues have been completely reset */
@@ -78,12 +74,12 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
-        tx_status = tx_queue_receive(&ptp_rx_packet_queue_handle, &event_info, TX_WAIT_FOREVER);
+        tx_status = tx_queue_receive(&ptp_rx_queue_handle, &event_info, TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
 #if DEBUG
 
-        tx_status = tx_queue_info_get(&ptp_rx_packet_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+        tx_status = tx_queue_info_get(&ptp_rx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
         TX_CHECK(tx_status);
         if ((enqueued + 1) > queue_high_water_mark) {
             queue_high_water_mark = (enqueued + 1);
@@ -95,20 +91,36 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         event      = event_info.event;
         ptp_packet = event_info.packet_ptr;
 
-        assert(event == PTP_RX_EVENT_RECEIVE_PACKET);
+        /* META Frames should only come with PTP packets */
+        if (event == PTP_RX_EVENT_RECEIVE_META_FRAME) {
 
-        /* Get the follow up META frame */
-        tx_status = tx_queue_receive(&ptp_rx_meta_queue_handle, &event_info, MS_TO_TICKS(PTP_RX_TIMEOUT));
-
-        /* META frame lost, drop the PTP packet since it cannot be timestamped.
-         * Also flush the queues to prevent alignment issues. */
-        if (tx_status != TX_SUCCESS) {
-
+            /* Release the packet */
             nx_status = nx_packet_release(ptp_packet);
             NX_CHECK(nx_status);
 
-            /* Flush both queues */
-            ptp_flush_rx_queues();
+            ptp_event_counters.rx_lone_meta++;
+            LOG_WARNING("Received isolated META frame");
+            continue;
+        }
+
+        assert(event == PTP_RX_EVENT_RECEIVE_PTP_PACKET);
+
+        /* Get the follow up META frame */
+        tx_status = tx_queue_receive(&ptp_rx_queue_handle, &event_info, MS_TO_TICKS(PTP_RX_TIMEOUT));
+
+        /* META frame lost, drop the PTP packet since it cannot be timestamped.
+         * Also flush the queues to prevent alignment issues. */
+        if ((tx_status != TX_SUCCESS) || (event_info.event != PTP_RX_EVENT_RECEIVE_META_FRAME)) {
+
+            /* Release all RX packets */
+            if (tx_status == TX_SUCCESS) {
+                nx_status = nx_packet_release(event_info.packet_ptr);
+                NX_CHECK(nx_status);
+            }
+            nx_status = nx_packet_release(ptp_packet);
+            NX_CHECK(nx_status);
+            tx_status = ptp_flush_rx_queue();
+            TX_CHECK(tx_status);
 
             ptp_event_counters.rx_no_meta++;
             LOG_ERROR("PTP: RX No META frame found");
@@ -272,9 +284,9 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                 VAL_EARLY_RETURN(PTP, RX_FILTER_DROP_META, VAL_1_IN_1000, false);
 
                 /* Queue the packet to be sent */
-                event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
+                event_info.event      = PTP_RX_EVENT_RECEIVE_META_FRAME;
                 event_info.packet_ptr = packet_ptr;
-                tx_status             = tx_queue_send(&ptp_rx_meta_queue_handle, &event_info, TX_NO_WAIT);
+                tx_status             = tx_queue_send(&ptp_rx_queue_handle, &event_info, TX_NO_WAIT);
                 if (tx_status != TX_SUCCESS) {
                     DEBUG_STOP();
 
@@ -284,7 +296,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                     NX_CHECK(nx_status);
 
                     /* Flush to prevent desync */
-                    tx_status = ptp_flush_rx_queues();
+                    tx_status = ptp_flush_rx_queue();
                     TX_CHECK(tx_status);
 
                 } else {
@@ -305,9 +317,9 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                 ptp_packet_insert_timestamp(packet_ptr, &timestamp);
 
                 /* Queue the packet to be processed */
-                event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
+                event_info.event      = PTP_RX_EVENT_RECEIVE_PTP_PACKET;
                 event_info.packet_ptr = packet_ptr;
-                tx_status             = tx_queue_send(&ptp_rx_packet_queue_handle, &event_info, TX_NO_WAIT);
+                tx_status             = tx_queue_send(&ptp_rx_queue_handle, &event_info, TX_NO_WAIT);
                 if (tx_status != TX_SUCCESS) {
                     DEBUG_STOP();
 
@@ -334,7 +346,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
             /* META Frame: flush to prevent desync */
             if (meta_frame) {
-                tx_status = ptp_flush_rx_queues();
+                tx_status = ptp_flush_rx_queue();
                 TX_CHECK(tx_status);
             }
 

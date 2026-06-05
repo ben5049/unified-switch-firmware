@@ -160,6 +160,7 @@ tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
 
     tx_status_t             status = TX_SUCCESS;
     ptp_packet_event_info_t event_info;
+    ptp_event_t             event;
     NX_PACKET              *packet;
 
     assert(queue_ptr->tx_queue_message_size == PTP_PACKET_MSG_SIZE_WORDS);
@@ -172,22 +173,15 @@ tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr) {
 
         /* Ensure the data pointer actually contains a packet before releasing */
         if (status == TX_SUCCESS) {
-            switch (event_info.event) {
 
-                case PTP_TX_EVENT_SEND_PACKET:
-                case PTP_RX_EVENT_RECEIVE_PACKET:
-                    packet = event_info.packet_ptr;
-                    if (nx_packet_release(packet) != NX_SUCCESS) {
-                        status = TX_ERROR;
-                        return status;
-                    };
-                    break;
+            event  = event_info.event;
+            packet = event_info.packet_ptr;
 
-                /* This function was called on a non-packet queue */
-                default:
-                    error_handler();
-                    break;
-            }
+            assert((event == PTP_TX_EVENT_SEND_PACKET) ||
+                   (event == PTP_RX_EVENT_RECEIVE_PTP_PACKET) ||
+                   (event == PTP_RX_EVENT_RECEIVE_META_FRAME));
+
+            NX_CHECK(nx_packet_release(packet));
         }
 
         /* Empty queue */

@@ -60,7 +60,8 @@ typedef enum {
     PTP_TX_EVENT_PACKET_FREE = 1UL << 9, /* Ethernet driver is done with packet and it can be freed */
 
     /* PTP RX Queue event */
-    PTP_RX_EVENT_RECEIVE_PACKET,
+    PTP_RX_EVENT_RECEIVE_PTP_PACKET,
+    PTP_RX_EVENT_RECEIVE_META_FRAME,
 
     /* PTP Clock queue event */
     PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP,
@@ -117,6 +118,7 @@ typedef struct {
     atomic_uint_fast32_t rx_general;    /* Number of general PTP packets received */
     atomic_uint_fast32_t rx_port[NUM_PORTS];
     atomic_uint_fast32_t rx_no_meta;    /* Expected a META frame but didn't get one */
+    atomic_uint_fast32_t rx_lone_meta;  /* Received a META frame but wasn't expecting one */
     atomic_uint_fast32_t rx_wrong_dst;  /* gPTP Ethertype but wrong destination address */
     atomic_uint_fast32_t rx_own_packet; /* gPTP Packet send and received by us */
     atomic_uint_fast32_t rx_invalid_vlan;
@@ -157,10 +159,8 @@ extern TX_QUEUE ptp_event_queue_handle;
 extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_tx_queue_handle;
 extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
-extern TX_QUEUE ptp_rx_packet_queue_handle;
-extern uint32_t ptp_rx_packet_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
-extern TX_QUEUE ptp_rx_meta_queue_handle;
-extern uint32_t ptp_rx_meta_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
+extern TX_QUEUE ptp_rx_queue_handle;
+extern uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 extern TX_QUEUE ptp_mac_sync_queue_handle;
 extern uint32_t ptp_mac_sync_queue_stack[PTP_MAC_SYNC_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
