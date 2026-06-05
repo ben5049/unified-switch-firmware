@@ -10,10 +10,11 @@
 
 #include "dts.h"
 
+#include "tx_app.h"
+#include "nx_app.h"
 #include "background_thread.h"
 #include "utils.h"
 #include "secure_nsc.h"
-#include "config.h"
 
 
 #define BACKGROUND_THREAD_READY (1)
@@ -35,10 +36,15 @@ void background_thread_timer_callback(ULONG id) {
 
 void background_thread_entry(uint32_t initial_input) {
 
-    tx_status_t  tx_status  = TX_SUCCESS;
     hal_status_t hal_status = HAL_OK;
+    tx_status_t  tx_status  = TX_SUCCESS;
+    hal_status_t nx_status  = NX_SUCCESS;
     uint32_t     events;
-    int32_t      temperature;
+
+    int32_t temperature;
+
+    uint32_t total_packets;
+    uint32_t free_packets;
 
     /* Start the digital temperature sensor */
     hal_status = HAL_DTS_Start(&hdts);
@@ -65,6 +71,14 @@ void background_thread_entry(uint32_t initial_input) {
         if (temperature > 65) {
             LOG_WARNING("Warning high MCU temperature: %li C", temperature);
         }
+
+        /* Check packet pool free counts */
+        nx_status = nx_packet_pool_info_get(&nx_small_packet_pool, &total_packets, &free_packets, NULL, NULL, NULL);
+        NX_CHECK(nx_status);
+        if (free_packets <= ((total_packets * 3) / 10)) LOG_WARNING("Warning small packet pool low free count: %lu/%lu", free_packets, total_packets);
+        nx_status = nx_packet_pool_info_get(&nx_big_packet_pool, &total_packets, &free_packets, NULL, NULL, NULL);
+        NX_CHECK(nx_status);
+        if (free_packets <= ((total_packets * 3) / 10)) LOG_WARNING("Warning big packet pool low free count: %lu/%lu", free_packets, total_packets);
 
         /* Do background tasks in the secure world
          * - TODO: Read all flash and RAM for ECC errors
