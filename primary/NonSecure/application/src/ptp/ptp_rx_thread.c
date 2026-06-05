@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "ptp.h"
 #include "switch_utils.h"
+#include "validation.h"
 
 
 TX_THREAD ptp_rx_thread_handle;
@@ -268,6 +269,8 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             /* META Frame */
             if (meta_frame) {
 
+                VAL_EARLY_RETURN(PTP, RX_FILTER_DROP_META, VAL_1_IN_1000, false);
+
                 /* Queue the packet to be sent */
                 event_info.event      = PTP_RX_EVENT_RECEIVE_PACKET;
                 event_info.packet_ptr = packet_ptr;
@@ -291,6 +294,8 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
             /* PTP Packet */
             else {
+
+                VAL_EARLY_RETURN(PTP, RX_FILTER_DROP_PTP, VAL_1_IN_1000, false);
 
                 /* Store the receive timestamp at the start of the packet */
                 NX_PTP_TIME timestamp;

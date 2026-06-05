@@ -307,6 +307,20 @@ extern uint32_t __TRACE_SIZE__;
 #define USER_STORAGE_TEST_ADDR        (USER_STORAGE_DHCP_RECORD_ADDR + USER_STORAGE_DHCP_RECORD_SIZE)
 #define USER_STORAGE_TEST_SIZE        (sizeof(uint32_t))
 
+/* ---------------------------------------------------------------------------- */
+/* Validation */
+/* ---------------------------------------------------------------------------- */
+
+/* Can't use parethesis due to macro shenanigans */
+
+#if DEBUG
+#define VALIDATION_ENABLE 1
+#else
+#define VALIDATION_ENABLE 0
+#endif
+
+#define VALIDATION_PTP 1
+
 
 #ifdef __cplusplus
 }

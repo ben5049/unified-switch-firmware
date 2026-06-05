@@ -27,6 +27,7 @@
 #include "phy_thread.h"
 #include "utils.h"
 #include "static_checks.h"
+#include "validation.h"
 
 
 /* Private function prototypes */
@@ -77,6 +78,10 @@ int main(void) {
     if (!s_uart_logging_enabled()) LOG_WARNING("UART Logging not enabled in secure firmware");
 #endif
 
+    /* Initialise validation */
+    VAL_INIT();
+
+    /* Print boot info */
     LOG_INFO("Cold boot = %d", s_cold_boot());
 
     /* Initialise important peripherals */
