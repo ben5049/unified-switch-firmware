@@ -151,22 +151,10 @@ get_target_property(APP_SRCS ${CMAKE_PROJECT_NAME} SOURCES)
 list(FILTER APP_SRCS EXCLUDE REGEX "nx_stm32_phy_custom_driver\\.c$")
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES SOURCES "${APP_SRCS}")
 
-# Remove NetXDuo source files
-# get_target_property(NETX_SRCS NetXDuo SOURCES)
-# list(FILTER NETX_SRCS EXCLUDE REGEX "nx_stm32_eth_driver\\.c$")
-# set_target_properties(NetXDuo PROPERTIES SOURCES "${NETX_SRCS}")
-
 # Add NetXDuo source files
 target_sources(NetXDuo PRIVATE
     ../Middlewares/ST/netxduo/addons/ptp/nxd_ptp_client.c
 )
-
-# Add STM32CubeMX source files
-# target_sources(stm32cubemx PRIVATE
-
-#     # This used to be in NetXDuo but has a dependency on the rest of the application
-#     application/src/nx_app/nx_stm32_eth_driver.c
-# )
 
 # Add STM32CubeMX includes
 target_include_directories(stm32cubemx INTERFACE
@@ -246,7 +234,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     application/inc/system
     application/inc/comms
     application/inc/hal
-    application/inc/nx_app
+    application/inc/net
     application/inc/phy
     application/inc/protobuf
     application/inc/protobuf/generated
