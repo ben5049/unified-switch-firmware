@@ -356,7 +356,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 
 
 /* Filter out the packets being freed by the ethernet driver in the transmit complete callback */
-uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr) {
+uint8_t ptp_tx_filter_packet_free(const NX_PACKET *packet_ptr) {
     if (packet_ptr == ptp_tx_packet) {
         if (tx_event_flags_set(&ptp_tx_events_handle, PTP_TX_EVENT_PACKET_FREE, TX_OR) != TX_SUCCESS) error_handler();
         return true;

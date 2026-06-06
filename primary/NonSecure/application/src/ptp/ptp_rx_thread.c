@@ -27,7 +27,7 @@ uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 static volatile uint32_t meta_debt = 0;
 
 
-static inline bool ptp_is_event_packet(uint8_t *payload) {
+static inline bool ptp_is_event_packet(const uint8_t *payload) {
 
     /* First byte contains the message type and transport specific */
     ptp_message_type_t message_type = payload[0] & PTP_MESSAGE_TYPE_MASK;

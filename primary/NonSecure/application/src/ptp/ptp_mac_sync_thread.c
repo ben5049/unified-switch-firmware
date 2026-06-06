@@ -277,7 +277,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 }
 
 
-uint8_t ptp_tx_timestamp_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp) {
+uint8_t ptp_tx_timestamp_filter_packet(const NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp) {
 
     tx_status_t             status = TX_SUCCESS;
     bool                    filter = false;

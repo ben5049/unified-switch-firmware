@@ -2353,7 +2353,7 @@ void HAL_ETH_TxFreeCallback(uint32_t * buff)
   NX_PACKET * release_packet = (NX_PACKET *) buff;
 
   /* PTP TX packets are freed by the application */
-  extern uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
+  extern uint8_t ptp_tx_filter_packet_free(const NX_PACKET *packet_ptr);
   if (ptp_tx_filter_packet_free(release_packet)) return;
 
   /* Remove the Ethernet header and release the packet.  */
@@ -2378,7 +2378,7 @@ void HAL_ETH_TxPtpCallback(uint32_t * buff, ETH_TimeStampTypeDef *timestamp)
     ts.second_low  = timestamp->TimeStampHigh;
     ts.nanosecond  = timestamp->TimeStampLow;
 
-    extern uint8_t ptp_tx_timestamp_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
+    extern uint8_t ptp_tx_timestamp_filter_packet(const NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
     if (ptp_tx_timestamp_filter_packet(release_packet, &ts)) return;
 
     /* call notification callback */

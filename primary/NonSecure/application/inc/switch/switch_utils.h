@@ -151,7 +151,7 @@ sja1105_status_t switch_free_mgmt_route(uint8_t depth);
 sja1105_status_t switch_purge_mgmt_routes(void);
 
 sja1105_status_t switch_get_time(switch_index_t i, NX_PTP_TIME *time);
-sja1105_status_t switch_set_time_all(NX_PTP_TIME *time);
+sja1105_status_t switch_set_time_all(const NX_PTP_TIME *time);
 sja1105_status_t switch_get_egress_timestamp(port_index_t port, uint8_t tsreg, NX_PTP_TIME *timestamp);
 sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, bool get_timestamp, port_index_t *port, NX_PTP_TIME *timestamp);
 #if NUM_SWITCHES > 1

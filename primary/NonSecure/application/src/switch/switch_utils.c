@@ -165,7 +165,7 @@ static void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestam
 
 
 /* This function assumes the switches are already synchronised */
-sja1105_status_t switch_set_time_all(NX_PTP_TIME *time) {
+sja1105_status_t switch_set_time_all(const NX_PTP_TIME *time) {
 
     sja1105_status_t status    = SJA1105_OK;
     tx_status_t      tx_status = TX_SUCCESS;

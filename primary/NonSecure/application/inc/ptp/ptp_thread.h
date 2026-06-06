@@ -208,9 +208,9 @@ void ptp_switch_sync_timer_callback(uint32_t id);
 
 /* Filtering functions to place in Ethernet driver to intercept packets */
 uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr);
-uint8_t ptp_tx_filter_packet_free(NX_PACKET *packet_ptr);
+uint8_t ptp_tx_filter_packet_free(const NX_PACKET *packet_ptr);
 uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]);
-uint8_t ptp_tx_timestamp_filter_packet(NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
+uint8_t ptp_tx_timestamp_filter_packet(const NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp);
 
 /* Callbacks for PTP client */
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation, NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr, VOID *callback_data);
