@@ -15,13 +15,14 @@ extern "C" {
 
 #include "sja1105.h"
 #include "switch_thread.h"
-#include "switch_callbacks.h"
-#include "phy_common.h"
+#include "phy.h"
 #include "error.h"
 
 
-#define SWITCH_CHECK(status)                    \
-    if ((status) != SJA1105_OK) error_handler()
+#define SWITCH_CHECK(status)                         \
+    do {                                             \
+        if ((status) != SJA1105_OK) error_handler(); \
+    } while (0)
 
 
 static inline sja1105_handle_t *port_to_switch_handle(port_index_t port) {

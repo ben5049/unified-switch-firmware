@@ -19,6 +19,11 @@ extern "C" {
 #include "nx_app.h"
 
 
+#define PTP_ETHERNET_ADDR_MSW  (0x0180)
+#define PTP_ETHERNET_ADDR_LSW  (0xc200000e)
+#define PTP_HEADER_PORT_OFFSET (28)
+
+
 extern const uint8_t ptp_dst_addr[MAC_ADDR_SIZE];
 
 

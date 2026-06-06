@@ -12,9 +12,10 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "utils.h"
 #include "ptp.h"
-#include "switch_utils.h"
+#include "switch.h"
+#include "utils.h"
+#include "validation.h"
 
 
 TX_THREAD ptp_tx_thread_handle;
@@ -320,7 +321,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 
         /* Invalid port, drop packet */
         if ((port_number < 0) || (port_number >= NUM_PHYS)) {
-            DEBUG_STOP();
+            VAL_TERMINATE();
             ptp_event_counters.tx_packets_invalid_port++;
             nx_status = nx_packet_transmit_release(packet_ptr);
             NX_CHECK(nx_status);
@@ -341,7 +342,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
             /* Queue the event */
             tx_status = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
             if (tx_status != TX_SUCCESS) {
-                DEBUG_STOP();
+                VAL_TERMINATE();
 
                 /* Queue is full, release the packet instead */
                 ptp_event_counters.tx_packets_dropped[port_number]++;

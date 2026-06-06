@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 
-#include "sja1105.h"
+#include "switch.h"
 
 
 sja1105_status_t init_switch_diagnostics(void);

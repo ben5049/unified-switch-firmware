@@ -8,11 +8,8 @@
 #include "stdalign.h"
 #include "stdatomic.h"
 
-#include "main.h"
-#include "switch_thread.h"
-#include "switch_callbacks.h"
-#include "switch_utils.h"
-#include "sja1105.h"
+#include "app.h"
+#include "switch.h"
 #include "utils.h"
 
 #if HW_VERSION == 4

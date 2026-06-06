@@ -8,17 +8,14 @@
 #include "hal.h"
 
 #include "app.h"
-#include "state_machine.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "nx_link_thread.h"
-#include "switch_thread.h"
-#include "switch_callbacks.h"
-#include "phy_thread.h"
+#include "state_machine.h"
+#include "switch.h"
+#include "phy.h"
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp.h"
-#include "tx_port.h"
 #include "utils.h"
 
 

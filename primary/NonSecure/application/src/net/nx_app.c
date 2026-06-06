@@ -7,7 +7,7 @@
 
 #include "stdint.h"
 #include "stdbool.h"
-#include "nx_api.h"
+
 #include "nxd_dhcp_client.h"
 #include "nxd_ptp_client.h"
 #include "nx_stm32_eth_driver.h"
@@ -15,8 +15,7 @@
 #include "app.h"
 #include "nx_app.h"
 #include "tx_app.h"
-#include "ptp_thread.h"
-#include "config.h"
+#include "ptp.h"
 #include "comms_thread.h"
 #include "state_machine.h"
 

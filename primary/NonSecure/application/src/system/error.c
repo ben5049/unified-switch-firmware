@@ -5,11 +5,8 @@
  *      Author: bens1
  */
 
-#include "main.h"
-
-#include "error.h"
+#include "app.h"
 #include "utils.h"
-#include "secure_nsc.h"
 
 
 void error_handler() {

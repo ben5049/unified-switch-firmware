@@ -7,12 +7,11 @@
 
 #include "stdint.h"
 
-
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "utils.h"
 #include "ptp.h"
+#include "utils.h"
 #include "validation.h"
 
 
@@ -323,7 +322,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                         case PTP_CLIENT_EVENT_SYNC: {
 
-                            VAL_EARLY_BREAK(PTP, FAULT_RX_FILTER_DROP_META, VAL_1_IN_10);
+                            VAL_FAULT_BREAK(PTP, RX_FILTER_DROP_META, VAL_1_IN_10);
 
                             new_master_waiting_for_sync = false;
 

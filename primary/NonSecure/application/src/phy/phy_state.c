@@ -8,13 +8,12 @@
 #include "stdbool.h"
 #include "stdint.h"
 
-#include "phy_thread.h"
-#include "phy_common.h"
-#include "switch_thread.h"
-#include "switch_utils.h"
-#include "config.h"
-#include "utils.h"
+#include "app.h"
+#include "phy.h"
+#include "switch.h"
 #include "ptp.h"
+#include "utils.h"
+#include "validation.h"
 
 
 #define MAX_TRANSITIONS      (10) /* Used to break livelocks with a 0 latency loop in the state machine (shouldn't be possible) */
@@ -361,7 +360,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 /* Should be unreachable, go back to waiting for link */
                 next_state = PHY_STATE_WAIT_FOR_LINK;
                 interval   = PHY_WAIT_INTERVAL(hphy);
-                DEBUG_STOP();
+                VAL_TERMINATE();
                 break;
             }
 
@@ -376,7 +375,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
             case PHY_STATE_ERROR_UNRECOVERABLE: {
                 next_state = current_state;
                 interval   = 60000; /* Large number: don't need to bother checking again since this state is a dead end */
-                DEBUG_STOP();
+                VAL_TERMINATE();
                 break;
             }
 
@@ -391,7 +390,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
         if ((next_state == current_state) && (interval == 0)) {
             status = PHY_SW_DEADLOCK;
             LOG_WARNING("PHY State machine detected zero delay loop");
-            DEBUG_STOP();
+            VAL_TERMINATE();
             goto end;
         }
 
@@ -403,7 +402,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
     if (transitions >= MAX_TRANSITIONS) {
         status = PHY_SW_DEADLOCK;
         LOG_WARNING("PHY State machine detected >%d transitions back-to-back", transitions);
-        DEBUG_STOP();
+        VAL_TERMINATE();
         goto end;
     }
 

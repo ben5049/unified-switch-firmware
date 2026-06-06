@@ -6,9 +6,9 @@
  */
 
 #include "app.h"
-#include "utils.h"
 #include "ptp.h"
-#include "switch_utils.h"
+#include "switch.h"
+#include "utils.h"
 
 
 #if NUM_SWITCHES > 1

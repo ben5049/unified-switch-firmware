@@ -16,8 +16,10 @@ extern "C" {
 #include "tx_api.h"
 
 
-#define TX_CHECK(status)                        \
-    if ((status) != TX_SUCCESS) error_handler()
+#define TX_CHECK(status)                             \
+    do {                                             \
+        if ((status) != TX_SUCCESS) error_handler(); \
+    } while (0)
 
 
 typedef enum {

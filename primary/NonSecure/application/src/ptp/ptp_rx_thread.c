@@ -12,9 +12,9 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "utils.h"
 #include "ptp.h"
-#include "switch_utils.h"
+#include "switch.h"
+#include "utils.h"
 #include "validation.h"
 
 
@@ -152,18 +152,18 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
          * STM32 MAC clock */
         if (port == PORT_HOST) {
 
+            event_info.port = PORT_HOST;
+
             /* Send switch timestamp */
             event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
             event_info.time  = timestamp;
-            event_info.port  = PORT_HOST;
             tx_status        = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
             TX_CHECK(tx_status);
 
             /* Send MAC timestamp */
             event_info.event = PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP;
             ptp_packet_extract_timestamp(ptp_packet, &event_info.time);
-            event_info.port = PORT_HOST;
-            tx_status       = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
+            tx_status = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
             TX_CHECK(tx_status);
 
             /* Release the packet */
@@ -281,14 +281,14 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             /* META Frame */
             if (meta_frame) {
 
-                VAL_EARLY_RETURN(PTP, FAULT_RX_FILTER_DROP_META, VAL_1_IN_1000, false);
+                VAL_FAULT_RETURN(PTP, RX_FILTER_DROP_META, VAL_1_IN_1000, false);
 
                 /* Queue the packet to be sent */
                 event_info.event      = PTP_RX_EVENT_RECEIVE_META_FRAME;
                 event_info.packet_ptr = packet_ptr;
                 tx_status             = tx_queue_send(&ptp_rx_queue_handle, &event_info, TX_NO_WAIT);
                 if (tx_status != TX_SUCCESS) {
-                    DEBUG_STOP();
+                    VAL_TERMINATE();
 
                     /* Queue is full, release the packet instead */
                     ptp_event_counters.rx_meta_dropped++;
@@ -307,7 +307,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             /* PTP Packet */
             else {
 
-                VAL_EARLY_RETURN(PTP, FAULT_RX_FILTER_DROP_PTP, VAL_1_IN_1000, false);
+                VAL_FAULT_RETURN(PTP, RX_FILTER_DROP_PTP, VAL_1_IN_1000, false);
 
                 /* Store the receive timestamp at the start of the packet */
                 NX_PTP_TIME timestamp;
@@ -321,7 +321,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                 event_info.packet_ptr = packet_ptr;
                 tx_status             = tx_queue_send(&ptp_rx_queue_handle, &event_info, TX_NO_WAIT);
                 if (tx_status != TX_SUCCESS) {
-                    DEBUG_STOP();
+                    VAL_TERMINATE();
 
                     /* Queue is full, release the packet instead */
                     ptp_event_counters.rx_packets_dropped++;
@@ -338,7 +338,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
 
         /* Invalid VLAN */
         else {
-            DEBUG_STOP();
+            VAL_TERMINATE();
 
             ptp_event_counters.rx_invalid_vlan++;
             nx_status = nx_packet_release(packet_ptr);

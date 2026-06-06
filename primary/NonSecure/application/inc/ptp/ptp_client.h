@@ -18,7 +18,7 @@ extern "C" {
 
 #include "tx_app.h"
 #include "nx_app.h"
-#include "phy_thread.h"
+#include "phy.h"
 
 
 extern NX_PTP_CLIENT ptp_client[NUM_PHYS];

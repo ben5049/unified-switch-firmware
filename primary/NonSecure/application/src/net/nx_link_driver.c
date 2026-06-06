@@ -8,14 +8,15 @@
  *
  */
 
-#include "tx_api.h"
 #include "nx_stm32_eth_config.h"
 #include "nx_stm32_phy_driver.h"
 
 #include "app.h"
+#include "tx_app.h"
 #include "nx_app.h"
-#include "switch_utils.h"
-#include "phy_thread.h"
+#include "switch.h"
+#include "phy.h"
+#include "validation.h"
 
 
 int32_t nx_eth_phy_init(void) {
@@ -76,7 +77,7 @@ int32_t nx_eth_phy_get_link_state(void) {
 
         default:
             linkstate = ETH_PHY_STATUS_LINK_ERROR;
-            DEBUG_STOP();
+            VAL_TERMINATE();
             break;
     }
 

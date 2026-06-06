@@ -10,12 +10,11 @@
 #include "switch.pb.h"
 
 #include "app.h"
-#include "switch_thread.h"
-#include "switch_diagnostics.h"
+#include "switch.h"
 #include "encodings.h"
 #include "state_machine.h"
 #include "comms_thread.h"
-#include "phy_thread.h"
+#include "phy.h"
 
 
 #define SWITCH_STATS_BUFFER_SIZE (256)

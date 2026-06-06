@@ -10,25 +10,30 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "utils.h"
 #include "ptp.h"
-#include "switch_thread.h"
-#include "switch_utils.h"
+#include "switch.h"
+#include "utils.h"
+
+
+TX_THREAD ptp_clock_thread_handle;
+uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
+
+TX_QUEUE ptp_clock_queue;
+uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                         NX_PTP_TIME *time_ptr, NX_PACKET *packet_ptr,
                         VOID *callback_data) {
 
-    tx_status_t      tx_status     = TX_SUCCESS;
-    nx_status_t      nx_status     = NX_SUCCESS;
-    sja1105_status_t switch_status = SJA1105_OK;
-    port_index_t     port          = (port_index_t) callback_data;
+    tx_status_t             tx_status     = TX_SUCCESS;
+    nx_status_t             nx_status     = NX_SUCCESS;
+    sja1105_status_t        switch_status = SJA1105_OK;
+    port_index_t            port          = (port_index_t) callback_data;
+    ptp_packet_event_info_t event_info;
 
     assert(port < NUM_PHYS);
     assert(client_ptr == &ptp_client[port]);
-
-    UNUSED(tx_status); // TODO: use or remove
 
     switch (operation) {
 
@@ -51,9 +56,6 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                 /* Set the switch times */
                 switch_status = switch_set_time_all(time_ptr);
                 SWITCH_CHECK(switch_status);
-
-                /* Set the STM32's MAC time */
-                // ptp_mac_set_time(time_ptr); TODO: something
             }
 
             break;
@@ -83,9 +85,11 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
                 ptp_event_counters.clock_adjusted++;
 
-                // TODO: check if this client is connected to the grandmaster and discipline SWITCH0 if it is
-
-                // TODO: Use fine
+                event_info.event = PTP_CLOCK_EVENT_ADJUST;
+                event_info.time  = *time_ptr;
+                event_info.port  = port;
+                tx_status        = tx_queue_send(&ptp_clock_queue, &event_info, TX_NO_WAIT);
+                if ((tx_status != TX_SUCCESS) && (tx_status != TX_QUEUE_FULL)) error_handler();
             }
 
             break;

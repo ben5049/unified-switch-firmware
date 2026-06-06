@@ -16,14 +16,6 @@ extern "C" {
 #include "tx_app.h"
 
 
-/* Stop execution if in debug mode so the state can be inspected */
-#if DEBUG
-#define DEBUG_STOP(x) error_handler(x)
-#else
-#define DEBUG_STOP(x) (void *) (x)
-#endif
-
-
 void error_handler(void);
 void thread_stack_error_handler(TX_THREAD *thread_ptr);
 

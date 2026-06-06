@@ -5,12 +5,9 @@
  *      Author: bens1
  */
 
-#include "sja1105.h"
-
+#include "switch.h"
+#include "phy.h"
 #include "utils.h"
-#include "switch_utils.h"
-#include "phy_common.h"
-#include "phy_thread.h"
 
 
 sja1105_status_t switch_byte_pool_init_all() {

@@ -13,14 +13,15 @@ extern "C" {
 #endif
 
 
-#define PHY_CHECK(status)                   \
-    if ((status) != PHY_OK) error_handler()
-
-
 #include "stdbool.h"
 
-#include "phy_common.h"
-#include "phy_thread.h"
+#include "phy.h"
+
+
+#define PHY_CHECK(status)                        \
+    do {                                         \
+        if ((status) != PHY_OK) error_handler(); \
+    } while (0)
 
 
 #if HW_VERSION == 5

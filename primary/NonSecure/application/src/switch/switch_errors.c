@@ -5,11 +5,9 @@
  *      Author: bens1
  */
 
-#include "sja1105.h"
-
 #include "app.h"
+#include "switch.h"
 #include "utils.h"
-#include "switch_thread.h"
 
 
 sja1105_status_t switch_reset(switch_index_t i) {

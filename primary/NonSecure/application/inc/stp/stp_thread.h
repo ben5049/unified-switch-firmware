@@ -14,9 +14,9 @@ extern "C" {
 
 
 #include "stdint.h"
-#include "tx_api.h"
 
-#include "config.h"
+#include "app.h"
+#include "tx_app.h"
 #include "nx_app.h"
 
 

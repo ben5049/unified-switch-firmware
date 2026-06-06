@@ -21,8 +21,10 @@ extern "C" {
 #include "error.h"
 
 
-#define HAL_CHECK(status)                   \
-    if ((status) != HAL_OK) error_handler()
+#define HAL_CHECK(status)                        \
+    do {                                         \
+        if ((status) != HAL_OK) error_handler(); \
+    } while (0)
 
 
 typedef HAL_StatusTypeDef hal_status_t;

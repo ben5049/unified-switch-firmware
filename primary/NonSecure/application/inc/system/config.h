@@ -19,20 +19,15 @@ extern "C" {
 #include "zenoh_generic_platform.h"
 
 
-/* Imported linker symbols */
-extern uint32_t __LOG_START__;
-extern uint32_t __LOG_SIZE__;
-extern uint32_t __TRACE_START__;
-extern uint32_t __TRACE_SIZE__;
-
 /* ---------------------------------------------------------------------------- */
 /* Feature Flags */
 /* ---------------------------------------------------------------------------- */
 
-#define FEAT_STP          (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
-#define FEAT_PTP          (1)
-#define FEAT_COMMS        (0) /* TODO: re-enable */
-#define FEAT_DHCP_RESTORE (1)
+#define FEAT_STP           (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
+#define FEAT_PTP           (1)
+#define FEAT_COMMS         (0) /* TODO: re-enable */
+#define FEAT_DHCP_RESTORE  (1)
+#define FEAT_PHY_SELF_TEST (1) // TODO: use
 
 /* ---------------------------------------------------------------------------- */
 /* Common Config */
@@ -45,10 +40,7 @@ extern uint32_t __TRACE_SIZE__;
 /* ---------------------------------------------------------------------------- */
 
 #define NUM_LOGGERS         (8)
-#define LOG_BASE            ((uint32_t) &__LOG_START__)
-#define LOG_BUFFER_SIZE     ((uint32_t) &__LOG_SIZE__)
 #define LOG_TIMEOUT         (100)  /* ms */
-
 #define UART_LOGGING_ENABLE (true) /* Note: must alse be enabled in secure firmware config */
 
 /* ---------------------------------------------------------------------------- */
@@ -57,23 +49,19 @@ extern uint32_t __TRACE_SIZE__;
 
 #define TRACE_ENABLE           (false)
 #define TRACE_REGISTRY_ENTRIES (30)
-#define TRACE_BUFFER_START     ((void *) &__TRACE_START__)
-#define TRACE_BUFFER_SIZE      ((uint32_t) &__TRACE_SIZE__)
 
 /* ---------------------------------------------------------------------------- */
 /* State Machine Config */
 /* ---------------------------------------------------------------------------- */
 
-#define STATE_MACHINE_THREAD_STACK_SIZE         (1024)
-#define STATE_MACHINE_THREAD_PRIORITY           (9)
-#define STATE_MACHINE_THREAD_PREMPTION_PRIORITY (9)
+#define STATE_MACHINE_THREAD_STACK_SIZE (1024)
+#define STATE_MACHINE_THREAD_PRIORITY   (9)
 
 /* ---------------------------------------------------------------------------- */
 /* Networking Common Config */
 /* ---------------------------------------------------------------------------- */
 
 // TODO: pass in from cmake
-#define MAC_ADDR_SIZE                    (6)
 #define MAC_ADDR_OCTET1                  (0x02)
 #define MAC_ADDR_OCTET2                  (0x00)
 #define MAC_ADDR_OCTET3                  (0x00)
@@ -82,13 +70,10 @@ extern uint32_t __TRACE_SIZE__;
 #define MAC_ADDR_OCTET6                  (0x48)
 
 #define SMALL_PACKET_SIZE                (128)
-#define BIG_PACKET_SIZE                  (1536) /* Ethernet payload size field (0x600) */
-
 #define NUM_SMALL_PACKETS                (80)
-#define NUM_BIG_PACKETS                  (24) /* Only big packets can be used for receiving */
 
-#define NX_APP_SMALL_PACKET_POOL_SIZE    ((SMALL_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_SMALL_PACKETS)
-#define NX_APP_BIG_PACKET_POOL_SIZE      ((BIG_PACKET_SIZE + sizeof(NX_PACKET)) * NUM_BIG_PACKETS)
+#define BIG_PACKET_SIZE                  (1536) /* Ethernet payload size field (0x600) */
+#define NUM_BIG_PACKETS                  (24)   /* Only big packets can be used for receiving */
 
 #define NX_APP_DEFAULT_TIMEOUT           (1000) /* Generic timeout for nx events (e.g. TCP send) in ms */
 
@@ -103,8 +88,6 @@ extern uint32_t __TRACE_SIZE__;
 #define NX_APP_THREAD_PRIORITY           (10)
 
 #define NUM_VLANS                        (8) /* Currently only used for STP (unused due to RSTP not MSTP) */
-
-#define PRIMARY_INTERFACE                (0) /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
 
 #if HW_VERSION == 4
 #define PORT0_SPEED_MBPS (1000) /* 88Q2112 #1 (100 or 1000 Mbps) */
@@ -142,27 +125,31 @@ extern uint32_t __TRACE_SIZE__;
 /* ---------------------------------------------------------------------------- */
 
 #define NX_INTERNAL_PTP_THREAD_STACK_SIZE     (1536)
-#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY (6)
+#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY (PTP_CLOCK_THREAD_PRIORITY + 1)
 
 #define PTP_EVENT_THREAD_STACK_SIZE           (1024 * 2)
 #define PTP_EVENT_THREAD_PRIORITY             (5)
 #define PTP_EVENT_QUEUE_SIZE                  (10)
 
 #define PTP_TX_THREAD_STACK_SIZE              (1024 * 2)
-#define PTP_TX_THREAD_PRIORITY                (4)
-#define PTP_TX_QUEUE_SIZE                     MIN(NUM_PHYS * 8, NUM_SMALL_PACKETS) /* Buffer up to 8 transmitted PTP packets per port */
+#define PTP_TX_THREAD_PRIORITY                (PTP_RX_THREAD_PRIORITY + 1)
+#define PTP_TX_QUEUE_SIZE                     MIN(NUM_PHYS * 8, NUM_SMALL_PACKETS / 2) /* Buffer up to 8 transmitted PTP packets per port. Don't use more than half the available packets */
 
 #define PTP_RX_THREAD_STACK_SIZE              (1024 * 2)
-#define PTP_RX_THREAD_PRIORITY                (4)
-#define PTP_RX_QUEUE_SIZE                     (NUM_BIG_PACKETS / 2) /* Buffer up to half of the total number of possible received packets */
+#define PTP_RX_THREAD_PRIORITY                (3)
+#define PTP_RX_QUEUE_SIZE                     MIN(NUM_PHYS * 3, NUM_BIG_PACKETS / 2) /* Buffer up to 3 received PTP packets per port. Don't use more than half the available packets */
+
+#define PTP_CLOCK_THREAD_STACK_SIZE           (1024 * 2)
+#define PTP_CLOCK_THREAD_PRIORITY             (6)
+#define PTP_CLOCK_QUEUE_SIZE                  (10)
 
 #define PTP_MAC_SYNC_THREAD_STACK_SIZE        (1024 * 2)
-#define PTP_MAC_SYNC_THREAD_PRIORITY          (7)
+#define PTP_MAC_SYNC_THREAD_PRIORITY          (8)
 #define PTP_MAC_SYNC_INTERVAL                 (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
 #define PTP_MAC_SYNC_QUEUE_SIZE               (4)                              /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 
 #define PTP_SWITCH_SYNC_THREAD_STACK_SIZE     (1024 * 2)
-#define PTP_SWITCH_SYNC_THREAD_PRIORITY       (7)
+#define PTP_SWITCH_SYNC_THREAD_PRIORITY       (8)
 #define PTP_SWITCH_SYNC_INTERVAL              (100)
 #define PTP_SWITCH_SYNC_SKIP                  (9)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 
@@ -174,10 +161,6 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_VLAN                              (0)
 
 #define PTP_CLK_FREQ                          (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
-
-#define PTP_ETHERNET_ADDR_MSW                 (0x0180)
-#define PTP_ETHERNET_ADDR_LSW                 (0xc200000e)
-#define PTP_HEADER_PORT_OFFSET                (28)
 
 /* Management route variables */
 #define PTP_TX_TIMEOUT    (500) /* The maximum number of ms to wait to send a packet */
@@ -191,14 +174,11 @@ extern uint32_t __TRACE_SIZE__;
 /* Switch Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_SWITCHES                      ((HW_VERSION == 4) ? 1 : 2)
-
 #define SWITCH_TIMEOUT_MS                 (100)  /* Default timeout for switch operations in ms */
 #define SWITCH_MANAGMENT_ROUTE_TIMEOUT_MS (1000) /* The time after allocating a management route when that route can be freed if not used */
 
 #define SWITCH_THREAD_STACK_SIZE          (4 * 1024)
 #define SWITCH_THREAD_PRIORITY            (15)
-#define SWITCH_THREAD_PREMPTION_PRIORITY  (15)
 
 #define SWITCH_MAINTENANCE_INTERVAL       (500)                     /* Time between performing switch maintenance operations in ms */
 #define SWITCH_PUBLISH_STATS_INTERVAL     (1000)                    /* Time between publishing switch statistic in ms */
@@ -212,13 +192,10 @@ extern uint32_t __TRACE_SIZE__;
 /* PHY Config */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_PHYS                              ((HW_VERSION == 4) ? 4 : 7)
-#define NUM_PORTS                             (NUM_PHYS + 1) /* Count the host as a port */
-#define PHY_TIMEOUT_MS                        (100)          /* Default timeout for PHY operations in ms */
+#define PHY_TIMEOUT_MS                        (100) /* Default timeout for PHY operations in ms */
 
 #define PHY_THREAD_STACK_SIZE                 (2 * 1024)
 #define PHY_THREAD_PRIORITY                   (9)   /* Higher priority than IP thread */
-#define PHY_THREAD_PREMPTION_PRIORITY         (9)
 #define PHY_THREAD_INTERVAL                   (100) /* Execute frequently, work done is dependent on PHY state machines so higher frequency doesn't mean more computation */
 
 #define PHY_TEMPERATURE_READ_INTERVAL         (1000)
@@ -231,14 +208,12 @@ extern uint32_t __TRACE_SIZE__;
 #define PHY_RECONNECT_INTERVAL                (100)
 #define PHY_RECONNECT_ATTEMPTS                (20)
 
-#define PHY_SLEEP_INTERVAL                    (PHY_WAITING_FOR_LINK_TIME * 4)                    /* 80% Of the time spent asleep */
+#define PHY_SLEEP_INTERVAL                    (PHY_WAITING_FOR_LINK_TIME * 4) /* 80% Of the time spent asleep */
 
-#define PHY_SELF_TEST_ON_STARTUP              (true)                                             /* Note that the PHY will make one attempt at linkup first */
-#define PHY_SELF_TEST_INTERVAL                (1000 * 60 * 10)                                   /* Every 10 minutes */
+#define PHY_SELF_TEST_ON_STARTUP              (true)                          /* Note that the PHY will make one attempt at linkup first */
+#define PHY_SELF_TEST_INTERVAL                (1000 * 60 * 10)                /* Every 10 minutes */
 
-#define PHY_POLL_STAGGERING                   (true)                                             /* Stagger polling loops so all the PHYs don't wake up at the same time to check for links */
-#define PHY_POLL_PERIOD                       ((PHY_WAITING_FOR_LINK_TIME) + PHY_SLEEP_INTERVAL) /* The time spent for a full loop of waiting for link -> sleep -> waiting for link */
-#define PHY_POLL_STAGGER_TIME                 (MIN(PHY_POLL_PERIOD / NUM_PHYS, PHY_WAITING_FOR_LINK_TIME))
+#define PHY_POLL_STAGGERING                   (true)                          /* Stagger polling loops so all the PHYs don't wake up at the same time to check for links */
 
 #if HW_VERSION == 4
 #define PHY_T_RESET_WIDTH (MAX(PHY_88Q211X_T_RESET, PHY_LAN867X_T_RSTIA))
@@ -289,24 +264,9 @@ extern uint32_t __TRACE_SIZE__;
 /* Background Thread Config */
 /* ---------------------------------------------------------------------------- */
 
-#define BACKGROUND_THREAD_STACK_SIZE         (1024)
-#define BACKGROUND_THREAD_PRIORITY           (15)
-#define BACKGROUND_THREAD_PREMPTION_PRIORITY (15)
-
-#define BACKGROUND_THREAD_INTERVAL           (1000) /* ms, how often to run */
-
-/* ---------------------------------------------------------------------------- */
-/* User storage config */
-/* ---------------------------------------------------------------------------- */
-
-#define USER_STORAGE_DHCP_VALID_ADDR  (0)
-#define USER_STORAGE_DHCP_VALID_SIZE  (sizeof(bool))
-
-#define USER_STORAGE_DHCP_RECORD_ADDR (USER_STORAGE_DHCP_VALID_ADDR + USER_STORAGE_DHCP_VALID_SIZE)
-#define USER_STORAGE_DHCP_RECORD_SIZE (sizeof(NX_DHCP_CLIENT_RECORD))
-
-#define USER_STORAGE_TEST_ADDR        (USER_STORAGE_DHCP_RECORD_ADDR + USER_STORAGE_DHCP_RECORD_SIZE)
-#define USER_STORAGE_TEST_SIZE        (sizeof(uint32_t))
+#define BACKGROUND_THREAD_STACK_SIZE (1024)
+#define BACKGROUND_THREAD_PRIORITY   (15)
+#define BACKGROUND_THREAD_INTERVAL   (1000) /* ms, how often to run */
 
 /* ---------------------------------------------------------------------------- */
 /* Validation */

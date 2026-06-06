@@ -7,8 +7,6 @@
 
 #include "app.h"
 #include "utils.h"
-#include "sja1105.h"
-#include "secure_nsc.h"
 
 
 /* This function should be called in MX_ETH_Init */

@@ -5,17 +5,12 @@
  *      Author: bens1
  */
 
-#include "logging.h"
 #include "stdint.h"
 #include "stdatomic.h"
 
 #include "app.h"
 #include "tx_app.h"
-#include "switch_thread.h"
-#include "switch_callbacks.h"
-#include "switch_diagnostics.h"
-#include "switch_utils.h"
-#include "sja1105.h"
+#include "switch.h"
 #include "utils.h"
 
 

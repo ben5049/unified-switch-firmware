@@ -18,7 +18,7 @@ extern "C" {
 
 #include "tx_app.h"
 #include "nx_app.h"
-#include "phy_thread.h"
+#include "phy.h"
 
 
 #define PTP_CLIENT_MSG_SIZE_WORDS ((sizeof(ptp_client_event_info_t) + 3) / 4) /* Round up */
@@ -64,7 +64,7 @@ typedef enum {
     PTP_RX_EVENT_RECEIVE_PTP_PACKET,
     PTP_RX_EVENT_RECEIVE_META_FRAME,
 
-    /* PTP Clock queue event */
+    /* PTP MAC Sync queue event */
     PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP,
     PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP,
     PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP,
@@ -73,6 +73,10 @@ typedef enum {
     /* PTP Clock event flags */
     PTP_CLOCK_EVENT_MAC_SYNC    = 1UL << 11, /* Time to sync the STM32's MAC clock with the main SJA1105's */
     PTP_CLOCK_EVENT_SWITCH_SYNC = 1UL << 12, /* Time to sync the SJA1105s' clocks together */
+
+    /* PTP Clock queue event */
+    PTP_CLOCK_EVENT_ADJUST,
+    PTP_CLOCK_EVENT_SET,
 
     PTP_EVENT_ALL = 0xffffffffUL
 

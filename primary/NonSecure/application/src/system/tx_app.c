@@ -8,11 +8,8 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "nx_link_thread.h"
-#include "switch_thread.h"
-#include "switch_callbacks.h"
-#include "phy_thread.h"
-#include "phy_callbacks.h"
+#include "switch.h"
+#include "phy.h"
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp.h"
@@ -95,9 +92,9 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_thread_create(&nx_link_thread_handle,         "nx_link_thread",         (void (*)(ULONG)) nx_link_thread_entry,         thread_number++, nx_link_thread_stack,         NX_LINK_THREAD_STACK_SIZE,         NX_LINK_THREAD_PRIORITY,         NX_LINK_THREAD_PRIORITY,          TX_NO_TIME_SLICE, TX_DONT_START);
     TX_CHECK(status);
-    status = tx_thread_create(&switch_thread_handle,          "switch_thread",          (void (*)(ULONG)) switch_thread_entry,          thread_number++, switch_thread_stack,          SWITCH_THREAD_STACK_SIZE,          SWITCH_THREAD_PRIORITY,          SWITCH_THREAD_PREMPTION_PRIORITY, 1,                TX_DONT_START);
+    status = tx_thread_create(&switch_thread_handle,          "switch_thread",          (void (*)(ULONG)) switch_thread_entry,          thread_number++, switch_thread_stack,          SWITCH_THREAD_STACK_SIZE,          SWITCH_THREAD_PRIORITY,          SWITCH_THREAD_PRIORITY, 1,                TX_DONT_START);
     TX_CHECK(status);
-    status = tx_thread_create(&phy_thread_handle,             "phy_thread",             (void (*)(ULONG)) phy_thread_entry,             thread_number++, phy_thread_stack,             PHY_THREAD_STACK_SIZE,             PHY_THREAD_PRIORITY,             PHY_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);
+    status = tx_thread_create(&phy_thread_handle,             "phy_thread",             (void (*)(ULONG)) phy_thread_entry,             thread_number++, phy_thread_stack,             PHY_THREAD_STACK_SIZE,             PHY_THREAD_PRIORITY,             PHY_THREAD_PRIORITY,    1,                TX_DONT_START);
     TX_CHECK(status);
 #if FEAT_STP
     status = tx_thread_create(&stp_thread_handle,             "stp_thread",             (void (*)(ULONG)) stp_thread_entry,             thread_number++, stp_thread_stack,             STP_THREAD_STACK_SIZE,             STP_THREAD_PRIORITY,             STP_THREAD_PREMPTION_PRIORITY,    1,                TX_DONT_START);

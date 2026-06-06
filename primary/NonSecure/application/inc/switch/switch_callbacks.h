@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 
-#include "sja1105.h"
+#include "switch.h"
 
 
 #define SWCH_SPI   hspi2

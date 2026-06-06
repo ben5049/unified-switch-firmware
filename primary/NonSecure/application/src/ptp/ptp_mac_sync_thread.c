@@ -6,9 +6,10 @@
  */
 
 #include "app.h"
-#include "utils.h"
 #include "ptp.h"
-#include "switch_utils.h"
+#include "switch.h"
+#include "utils.h"
+#include "validation.h"
 
 
 #define PTP_SYNC_PAYLOAD_LENGTH (44)
@@ -166,7 +167,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
             NX_CHECK(nx_status);
             dummy_sync_packet_ptr = NULL;
 
-            DEBUG_STOP();
+            VAL_TERMINATE();
             continue;
         }
 

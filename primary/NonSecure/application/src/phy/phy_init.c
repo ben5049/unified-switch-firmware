@@ -7,13 +7,11 @@
 
 #include "stdbool.h"
 #include "stdint.h"
-#include "main.h"
 
-#include "phy_thread.h"
-#include "phy_callbacks.h"
-#include "phy_utils.h"
-#include "config.h"
+#include "app.h"
+#include "phy.h"
 #include "utils.h"
+#include "validation.h"
 
 
 #if HW_VERSION == 4
@@ -266,7 +264,7 @@ phy_status_t phys_init() {
         status = PHY_Init(phy_handles[i], phy_configs[i], phy_callbacks[i], &phy_info[i]);
         if (status != PHY_OK) {
             LOG_ERROR("Failed to initialise PHY %d", i);
-            DEBUG_STOP();
+            VAL_TERMINATE();
             phy_info[i].connection_state = PHY_STATE_ERROR_UNRECOVERABLE; /* Allowed to continue in degraded state */
         }
     }

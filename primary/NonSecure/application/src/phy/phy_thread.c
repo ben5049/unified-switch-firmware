@@ -8,14 +8,13 @@
 #include "stdint.h"
 #include "hal.h"
 
-#include "app.h"
 #include "88q211x.h"
 #include "lan867x.h"
-#include "phy_thread.h"
-#include "phy_callbacks.h"
-#include "phy_utils.h"
-#include "utils.h"
+
+#include "app.h"
 #include "tx_app.h"
+#include "phy.h"
+#include "utils.h"
 
 
 /* Private function prototypes */

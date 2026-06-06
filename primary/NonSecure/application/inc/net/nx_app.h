@@ -21,10 +21,13 @@ extern "C" {
 #include "nxd_ptp_client.h"
 
 #include "config.h"
+#include "nx_link_thread.h"
 
 
-#define NX_CHECK(status)                        \
-    if ((status) != NX_SUCCESS) error_handler()
+#define NX_CHECK(status)                             \
+    do {                                             \
+        if ((status) != NX_SUCCESS) error_handler(); \
+    } while (0)
 
 
 /* Copy all the NetX Duo return codes into an enum for easier use */

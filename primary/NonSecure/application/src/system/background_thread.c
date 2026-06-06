@@ -10,11 +10,11 @@
 
 #include "dts.h"
 
+#include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
 #include "background_thread.h"
 #include "utils.h"
-#include "secure_nsc.h"
 
 
 #define BACKGROUND_THREAD_READY (1)

@@ -32,14 +32,26 @@ extern "C" {
 #define VALIDATION_FAULT_INJECTION (0) /* Disabled by default */
 #endif
 
-#define VAL_INIT()                                     _VAL_BASE(ENABLE, validation_init())
-#define VAL_COVER(unit, item)                          _VAL_BASE(unit, _VAL_COVER_NAME(unit, item)++)
-#define VAL_CHANCE(unit, item, chance, logic)          _VAL_BASE(unit, _VAL_CHANCE(unit, item, chance, logic))
-#define VAL_EARLY_RETURN(unit, item, chance, ret)      VAL_CHANCE(unit, item, chance, return (ret))
-#define VAL_INJECT_VALUE(unit, item, chance, var, val) VAL_CHANCE(unit, item, chance, (var) = (val))
-#define VAL_EARLY_BREAK(unit, item, chance)            ({bool _b = false; VAL_INJECT_VALUE(unit, item, chance, _b, true); if (_b) break; })
+#ifndef VALIDATION_COVER_STRUCT
+#define VALIDATION_COVER_STRUCT coverage
+#endif
 
-/* Possible chance values */
+/* Generic macros */
+#define VAL_INIT()      _VAL_BASE(ENABLE, validation_init()) /* Initialise validation (reset coverage, seed RNG, etc) */
+#define VAL_TERMINATE() _VAL_BASE(ENABLE, error_handler())   /* Stop execution so the state can be inspected */
+
+/* Coverage macros */
+#define VAL_COVER_DECLARE(unit, item) atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)                       /* Add item to VALIDATION_COVER_STRUCT */
+#define VAL_COVER(unit, item)         _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)++) /* Cover an item */
+
+/* Fault injection macros */
+#define VAL_FAULT_DECLARE(unit, item)                  atomic_uint_fast32_t _VAL_FAULT_NAME(unit, item)              /* Add item to VALIDATION_COVER_STRUCT */
+#define VAL_FAULT_CHANCE(unit, item, chance, logic)    _VAL_BASE(unit, _VAL_FAULT_CHANCE(unit, item, chance, logic)) /* Random chance of logic being executed */
+#define VAL_FAULT_RETURN(unit, item, chance, ret)      VAL_FAULT_CHANCE(unit, item, chance, return (ret))            /* Random chance of returning */
+#define VAL_FAULT_MODIFY(unit, item, chance, var, val) VAL_FAULT_CHANCE(unit, item, chance, (var) = (val))           /* Random chance of var being modified to val */
+#define VAL_FAULT_BREAK(unit, item, chance)            ({bool _b = false; VAL_FAULT_MODIFY(unit, item, chance, _b, true); if (_b) break; })                                                         /* Random chance of breaking */
+
+/* Chance constants */
 #define VAL_NEVER      (0)
 #define VAL_ALWAYS     (UINT32_MAX)
 #define VAL_1_IN_10    (UINT32_MAX / 10)
@@ -71,39 +83,24 @@ extern "C" {
     } while (0)
 #endif
 
-#define _VAL_CHANCE(unit, item, chance, logic)                                  \
-    do {                                                                        \
-        if (VALIDATION_FAULT_INJECTION && (validation_rand_u32() < (chance))) { \
-            VAL_COVER(unit, item);                                              \
-            logic;                                                              \
-        }                                                                       \
+#define _VAL_FAULT_CHANCE(unit, item, chance, logic)                                \
+    do {                                                                            \
+        if (VALIDATION_FAULT_INJECTION && (validation_rand_u32() < (chance))) {     \
+            _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_FAULT_NAME(unit, item)++); \
+            logic;                                                                  \
+        }                                                                           \
     } while (0)
 
-#define _VAL_COVER_NAME(unit, item) coverage.unit##_##item
-
-
-typedef struct {
-
-#if VALIDATION_PTP
-
-    /* Normal covers */
-    atomic_uint_fast32_t PTP_MASTER_SYNC_TIMEOUT;
-
-    /* Fault injection covers */
-    atomic_uint_fast32_t PTP_FAULT_RX_FILTER_DROP_META;
-    atomic_uint_fast32_t PTP_FAULT_RX_FILTER_DROP_PTP;
-    atomic_uint_fast32_t PTP_FAULT_MASTER_SYNC_TIMEOUT;
-
-#endif
-
-} validation_coverage_t;
-
-
-extern validation_coverage_t coverage;
+#define _VAL_COVER_NAME(unit, item) unit##_COVER_##item
+#define _VAL_FAULT_NAME(unit, item) unit##_FAULT_##item
 
 
 void     validation_init(void);
 uint32_t validation_rand_u32(void);
+
+
+/* Include application specific coverage definitions */
+#include "coverage.h"
 
 
 #ifdef __cplusplus

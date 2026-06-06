@@ -17,10 +17,11 @@ extern "C" {
 #include "stdatomic.h"
 #include "hal.h"
 
+#include "app.h"
 #include "tx_app.h"
 #include "config.h"
 #include "sja1105.h"
-#include "phy_thread.h"
+#include "phy.h"
 
 
 /* Enums */

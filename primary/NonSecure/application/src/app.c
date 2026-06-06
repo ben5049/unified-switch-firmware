@@ -22,9 +22,8 @@
 #include "secure_nsc.h"
 
 #include "app.h"
-#include "switch_thread.h"
-#include "switch_utils.h"
-#include "phy_thread.h"
+#include "switch.h"
+#include "phy.h"
 #include "utils.h"
 #include "static_checks.h"
 #include "validation.h"

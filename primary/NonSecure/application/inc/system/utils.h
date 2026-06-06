@@ -54,8 +54,10 @@ extern "C" {
                                       ((uint32_t) (o5) << 8) |  \
                                       ((uint32_t) (o6)))
 
-#define LOG_CHECK(s)                     \
-    if (s != LOGGING_OK) error_handler()
+#define LOG_CHECK(s)                          \
+    do {                                      \
+        if (s != LOGGING_OK) error_handler(); \
+    } while (0)
 
 #define LOG_INFO(format, ...)                                         \
     ({                                                                \

@@ -14,10 +14,9 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "utils.h"
 #include "ptp.h"
-#include "switch_thread.h"
-#include "switch_utils.h"
+#include "switch.h"
+#include "utils.h"
 
 
 /* PTP_COUNTER_INCREMENT is the resolution of the PTP clock. TimestampRolloverMode = 1 so the timer value

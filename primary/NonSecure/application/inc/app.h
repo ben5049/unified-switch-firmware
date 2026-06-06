@@ -15,6 +15,7 @@ extern "C" {
 
 #include "main.h"
 #include "config.h"
+#include "constants.h"
 #include "logging.h"
 #include "error.h"
 

@@ -12,15 +12,13 @@
 static uint32_t        seed;
 static atomic_uint32_t global_random_number;
 
-validation_coverage_t coverage;
-
 
 void validation_init() {
 
     assert(DEBUG);
     assert(VALIDATION_ENABLE);
 
-    memset(&coverage, 0, sizeof(coverage));
+    memset(&VALIDATION_COVER_STRUCT, 0, sizeof(VALIDATION_COVER_STRUCT));
 
     /* Choose non-zero seed */
     seed = VALIDATION_SEED;

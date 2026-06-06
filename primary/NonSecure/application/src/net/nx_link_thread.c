@@ -12,9 +12,8 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "nx_link_thread.h"
-#include "utils.h"
 #include "state_machine.h"
+#include "utils.h"
 
 
 #define NULL_ADDRESS 0

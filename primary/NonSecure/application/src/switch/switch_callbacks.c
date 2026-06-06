@@ -9,14 +9,12 @@
 #include "stdarg.h"
 #include "stdalign.h"
 
-#include "tx_api.h"
 #include "hal.h"
 
 #include "app.h"
+#include "tx_app.h"
+#include "switch.h"
 #include "utils.h"
-#include "switch_thread.h"
-#include "switch_callbacks.h"
-#include "sja1105.h"
 
 
 TX_MUTEX switch_mutex_handle;

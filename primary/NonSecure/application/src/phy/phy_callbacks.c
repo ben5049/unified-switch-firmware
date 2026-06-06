@@ -9,18 +9,15 @@
 #include "stdbool.h"
 
 #include "hal.h"
-#include "tx_api.h"
+
+#include "88q211x.h"
+#include "lan867x.h"
 
 #include "app.h"
 #include "tx_app.h"
+#include "nx_app.h"
+#include "phy.h"
 #include "utils.h"
-#include "88q211x.h"
-#include "lan867x.h"
-#include "phy_callbacks.h"
-#include "phy_thread.h"
-#include "phy_utils.h"
-#include "phy_platform.h"
-#include "nx_link_thread.h"
 
 
 TX_MUTEX             phy_mutex_handle;
