@@ -150,11 +150,11 @@ extern uint32_t __TRACE_SIZE__;
 
 #define PTP_TX_THREAD_STACK_SIZE              (1024 * 2)
 #define PTP_TX_THREAD_PRIORITY                (4)
-#define PTP_TX_QUEUE_SIZE                     (NUM_PHYS * 10) /* Buffer up to 10 transmitted PTP packets per port */
+#define PTP_TX_QUEUE_SIZE                     MIN(NUM_PHYS * 8, NUM_SMALL_PACKETS) /* Buffer up to 8 transmitted PTP packets per port */
 
 #define PTP_RX_THREAD_STACK_SIZE              (1024 * 2)
 #define PTP_RX_THREAD_PRIORITY                (4)
-#define PTP_RX_QUEUE_SIZE                     (NUM_PHYS * 10) /* Buffer up to 10 received PTP packets per port */
+#define PTP_RX_QUEUE_SIZE                     (NUM_BIG_PACKETS / 2) /* Buffer up to half of the total number of possible received packets */
 
 #define PTP_MAC_SYNC_THREAD_STACK_SIZE        (1024 * 2)
 #define PTP_MAC_SYNC_THREAD_PRIORITY          (7)
@@ -167,6 +167,7 @@ extern uint32_t __TRACE_SIZE__;
 #define PTP_SWITCH_SYNC_SKIP                  (9)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 
 #define PTP_PRINT_TIME_INTERVAL               (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_SYNC_TIMEOUT                      (10000) /* A SYNC event should generated within this amount of time after connecting to a master */
 
 #define PTP_CLIENT_MASTER_SUB_PRIORITY        (248)   /* The subpriority of this device for BMCA. Default for an end instance is 248 */
 #define PTP_DOMAIN                            (0)
@@ -311,14 +312,14 @@ extern uint32_t __TRACE_SIZE__;
 /* Validation */
 /* ---------------------------------------------------------------------------- */
 
-/* Can't use parethesis due to macro shenanigans */
+/* Can't use parentheses due to macro shenanigans */
 
-#if DEBUG
-#define VALIDATION_ENABLE 1
-#else
-#define VALIDATION_ENABLE 0
-#endif
+#define VALIDATION_ENABLE          1 /* Set to 0 to disable all validation (coverage & fault injection) */
+#define VALIDATION_FAULT_INJECTION 1 /* Set to 1 to enable random fault injection */
 
+#define VALIDATION_SEED            0 /* Seed for the psuedo random number generator. 0 Means true random seed */
+
+/* Unit enables */
 #define VALIDATION_PTP 1
 
 

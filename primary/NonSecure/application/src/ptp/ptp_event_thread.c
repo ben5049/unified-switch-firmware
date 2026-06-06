@@ -13,6 +13,7 @@
 #include "nx_app.h"
 #include "utils.h"
 #include "ptp.h"
+#include "validation.h"
 
 
 SHORT ptp_utc_offset = 0;
@@ -28,10 +29,12 @@ TX_EVENT_FLAGS_GROUP ptp_events_handle;
 #if PTP_PRINT_TIME_INTERVAL
 TX_TIMER ptp_events_print_time_timer;
 #endif
+TX_TIMER ptp_sync_timeout_timer;
 
 ptp_event_counters_t ptp_event_counters;
 
 volatile atomic_uint_fast8_t ptp_port_connected_to_master = PORT_HOST;
+static volatile atomic_bool  new_master_waiting_for_sync  = false;
 static uint8_t               grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
 
 
@@ -100,12 +103,57 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
 
 #if PTP_PRINT_TIME_INTERVAL
 
-void ptp_events_print_time_timer_callback(ULONG id) {
+void ptp_events_print_time_timer_callback(uint32_t id) {
     tx_status_t status = tx_event_flags_set(&ptp_events_handle, PTP_EVENT_PRINT_TIME, TX_OR);
     TX_CHECK(status);
 }
 
 #endif
+
+
+void ptp_sync_timeout_timer_callback(uint32_t id) {
+
+    tx_status_t status = TX_SUCCESS;
+
+    if (new_master_waiting_for_sync && (ptp_port_connected_to_master != PORT_HOST)) {
+        new_master_waiting_for_sync = false;
+        status                      = tx_event_flags_set(&ptp_events_handle, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
+        TX_CHECK(status);
+    }
+}
+
+
+static tx_status_t ptp_sync_timeout_reset() {
+
+    tx_status_t status = TX_SUCCESS;
+
+    new_master_waiting_for_sync = false;
+
+    status = tx_timer_deactivate(&ptp_sync_timeout_timer);
+    if (status != TX_SUCCESS) return status;
+
+    return status;
+}
+
+
+static tx_status_t ptp_sync_timeout_start() {
+
+    tx_status_t status = TX_SUCCESS;
+
+    // TODO: when clock adjusting is done re-enable this function
+    // Since there is no adjusting, the offset from the master is
+    // greater than the maximum allowed gPTP delay (800ns) and so
+    // a SYNC is never triggered
+
+    // new_master_waiting_for_sync = true;
+
+    // status = tx_timer_change(&ptp_sync_timeout_timer, PTP_SYNC_TIMEOUT, 0);
+    // if (status != TX_SUCCESS) return status;
+    // status = tx_timer_activate(&ptp_sync_timeout_timer);
+    // if (status != TX_SUCCESS) return status;
+
+    return status;
+}
 
 
 /* This Thread starts the PTP client, and prints status information */
@@ -132,6 +180,10 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
     static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
 
+    /* Reset variables */
+    ptp_port_connected_to_master = PORT_HOST;
+    new_master_waiting_for_sync  = false;
+
     /* Enable master mode initially on all ports with the lowest priority so
      * it is only used as a last restort. */
     nx_status = ptp_client_restart_all();
@@ -156,17 +208,22 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                 /* Receive event */
                 tx_status = tx_queue_receive(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
-                if (tx_status == NX_SUCCESS) {
+                if (tx_status == TX_SUCCESS) {
                     switch (event_info.event) {
 
                         case PTP_CLIENT_EVENT_MASTER: {
 
                             ptp_unpack_master_message(&event_info);
+                            ptp_sync_timeout_reset();
                             new_master = false;
 
                             /* No master assigned, take the first one to appear */
                             if (ptp_port_connected_to_master == PORT_HOST) {
                                 new_master = true;
+
+                                /* Ensure there is a corresponding sync event */
+                                tx_status = ptp_sync_timeout_start();
+                                TX_CHECK(tx_status);
                             }
 
                             /* There is a master assigned, need to compare clocks */
@@ -176,7 +233,12 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                                 /* If the new master is better than the current one then use it */
                                 if (clock_comparison > 0) {
-                                    new_master = true;
+                                    new_master                  = true;
+                                    new_master_waiting_for_sync = true;
+
+                                    /* Ensure there is a corresponding sync event */
+                                    tx_status = ptp_sync_timeout_start();
+                                    TX_CHECK(tx_status);
                                 }
 
                                 /* When the client times out it will update itself to be the master with its worse clock */
@@ -260,6 +322,11 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         }
 
                         case PTP_CLIENT_EVENT_SYNC: {
+
+                            VAL_EARLY_BREAK(PTP, FAULT_RX_FILTER_DROP_META, VAL_1_IN_10);
+
+                            new_master_waiting_for_sync = false;
+
                             ptp_event_counters.sync++;
                             nx_ptp_client_sync_info_get(&event_info.sync, NX_NULL, &ptp_utc_offset);
                             LOG_INFO("PTP: SYNC event, utc offset=%d", ptp_utc_offset);
@@ -287,7 +354,6 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                         default: {
                             LOG_WARNING("PTP: Unknown event");
                             error_handler();
-                            break;
                         }
                     }
                     queue_empty = false;
@@ -295,13 +361,19 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                 else if (tx_status != TX_STATUS_QUEUE_EMPTY) {
                     error_handler();
-                    queue_empty = false;
                 }
 
                 else {
                     queue_empty = true;
                 }
             } while (!queue_empty);
+        }
+
+        /* Sync missed */
+        if (event_flags & PTP_EVENT_MASTER_SYNC_TIMEOUT) {
+            VAL_COVER(PTP, MASTER_SYNC_TIMEOUT);
+            ptp_notify_port_down(ptp_port_connected_to_master);
+            LOG_WARNING("PTP: No SYNC event after new external master");
         }
 
 #if PTP_PRINT_TIME_INTERVAL

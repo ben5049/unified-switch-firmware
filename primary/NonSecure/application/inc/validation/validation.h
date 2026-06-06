@@ -20,47 +20,24 @@ extern "C" {
 #include "secure_nsc.h"
 
 
-#ifndef VAL_SEED
-#define VAL_SEED (0) /* 0 Means random seed */
+/* ---------------------------------------------------------------------------- */
+/* Public Macros */
+/* ---------------------------------------------------------------------------- */
+
+#ifndef VALIDATION_SEED
+#define VALIDATION_SEED (0) /* 0 Means random seed */
 #endif
 
-#define VAL_CONCAT(a, b) a##b
-#define _VAL_EVAL(a, b)  VAL_CONCAT(a, b)
-
-#define _VAL_BASE_1(...) \
-    do {                 \
-        __VA_ARGS__;     \
-    } while (0)
-#define _VAL_BASE_0(...) \
-    do {                 \
-    } while (0)
-
-#if VALIDATION_ENABLE
-#define VAL_BASE(unit, ...) _VAL_EVAL(_VAL_BASE_, VALIDATION_##unit)(__VA_ARGS__)
-#else
-#define VAL_BASE(unit, ...) \
-    do {                    \
-    } while (0)
+#ifndef VALIDATION_FAULT_INJECTION
+#define VALIDATION_FAULT_INJECTION (0) /* Disabled by default */
 #endif
 
-#define VAL_INIT()                 VAL_BASE(ENABLE, validation_init())
-
-#define VAL_COVER_NAME(unit, item) coverage.unit##_##item
-#define VAL_COVER(unit, item)      VAL_BASE(unit, VAL_COVER_NAME(unit, item)++)
-
-#define _VAL_CHANCE(unit, item, chance, logic)  \
-    do {                                        \
-        if (validation_rand_u32() < (chance)) { \
-            VAL_COVER(unit, item);              \
-            logic;                              \
-        }                                       \
-    } while (0)
-
-#define VAL_CHANCE(unit, item, chance, logic)          VAL_BASE(unit, _VAL_CHANCE(unit, item, chance, logic))
-
+#define VAL_INIT()                                     _VAL_BASE(ENABLE, validation_init())
+#define VAL_COVER(unit, item)                          _VAL_BASE(unit, _VAL_COVER_NAME(unit, item)++)
+#define VAL_CHANCE(unit, item, chance, logic)          _VAL_BASE(unit, _VAL_CHANCE(unit, item, chance, logic))
 #define VAL_EARLY_RETURN(unit, item, chance, ret)      VAL_CHANCE(unit, item, chance, return (ret))
 #define VAL_INJECT_VALUE(unit, item, chance, var, val) VAL_CHANCE(unit, item, chance, (var) = (val))
-
+#define VAL_EARLY_BREAK(unit, item, chance)            ({bool _b = false; VAL_INJECT_VALUE(unit, item, chance, _b, true); if (_b) break; })
 
 /* Possible chance values */
 #define VAL_NEVER      (0)
@@ -70,12 +47,53 @@ extern "C" {
 #define VAL_1_IN_1000  (UINT32_MAX / 1000)
 #define VAL_1_IN_10000 (UINT32_MAX / 10000)
 
+/* ---------------------------------------------------------------------------- */
+/* Private Macros */
+/* ---------------------------------------------------------------------------- */
+
+#define _VAL_CONCAT(a, b) a##b
+#define _VAL_EVAL(a, b)   _VAL_CONCAT(a, b)
+
+#define _VAL_BASE_1(...) \
+    do {                 \
+        __VA_ARGS__;     \
+    } while (0)
+#define _VAL_BASE_0(...) \
+    do {                 \
+    } while (0)
+
+/* _VAL_BASE Must be used by all public macros */
+#if VALIDATION_ENABLE
+#define _VAL_BASE(unit, ...) _VAL_EVAL(_VAL_BASE_, VALIDATION_##unit)(__VA_ARGS__)
+#else
+#define _VAL_BASE(unit, ...) \
+    do {                     \
+    } while (0)
+#endif
+
+#define _VAL_CHANCE(unit, item, chance, logic)                                  \
+    do {                                                                        \
+        if (VALIDATION_FAULT_INJECTION && (validation_rand_u32() < (chance))) { \
+            VAL_COVER(unit, item);                                              \
+            logic;                                                              \
+        }                                                                       \
+    } while (0)
+
+#define _VAL_COVER_NAME(unit, item) coverage.unit##_##item
+
 
 typedef struct {
 
 #if VALIDATION_PTP
-    atomic_uint_fast32_t PTP_RX_FILTER_DROP_META;
-    atomic_uint_fast32_t PTP_RX_FILTER_DROP_PTP;
+
+    /* Normal covers */
+    atomic_uint_fast32_t PTP_MASTER_SYNC_TIMEOUT;
+
+    /* Fault injection covers */
+    atomic_uint_fast32_t PTP_FAULT_RX_FILTER_DROP_META;
+    atomic_uint_fast32_t PTP_FAULT_RX_FILTER_DROP_PTP;
+    atomic_uint_fast32_t PTP_FAULT_MASTER_SYNC_TIMEOUT;
+
 #endif
 
 } validation_coverage_t;

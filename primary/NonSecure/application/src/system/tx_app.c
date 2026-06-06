@@ -159,6 +159,12 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
 
     /* Assign loggers to threads */
+#ifndef TX_TIMER_PROCESS_IN_ISR
+    NX_CALLER_CHECKING_EXTERNS
+    UNUSED(_tx_thread_current_ptr);
+    UNUSED(_tx_thread_system_state);
+    _tx_timer_thread.logger              = &hlog_system;
+#endif
     state_machine_thread_handle.logger   = &hlog_generic;
     nx_link_thread_handle.logger         = &hlog_network;
     switch_thread_handle.logger          = &hlog_sw;
@@ -196,6 +202,8 @@ void tx_setup(void *memory_ptr) {
     status = tx_timer_create(&ptp_events_print_time_timer, "ptp_events_print_time_timer", ptp_events_print_time_timer_callback, 0, PTP_PRINT_TIME_INTERVAL,              PTP_PRINT_TIME_INTERVAL,              TX_NO_ACTIVATE);
     TX_CHECK(status);
 #endif
+    status = tx_timer_create(&ptp_sync_timeout_timer,      "ptp_sync_timeout_timer",      ptp_sync_timeout_timer_callback,      0, PTP_SYNC_TIMEOUT,                     0,                                    TX_NO_ACTIVATE);
+    TX_CHECK(status);
     status = tx_timer_create(&ptp_mac_sync_timer,          "ptp_mac_sync_timer",          ptp_mac_sync_timer_callback,          0, PTP_MAC_SYNC_INTERVAL,                PTP_MAC_SYNC_INTERVAL,                TX_NO_ACTIVATE);
     TX_CHECK(status);
 #if NUM_SWITCHES > 1

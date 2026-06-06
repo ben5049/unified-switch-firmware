@@ -17,12 +17,13 @@ validation_coverage_t coverage;
 
 void validation_init() {
 
+    assert(DEBUG);
     assert(VALIDATION_ENABLE);
 
     memset(&coverage, 0, sizeof(coverage));
 
     /* Choose non-zero seed */
-    seed = VAL_SEED;
+    seed = VALIDATION_SEED;
     while (seed == 0) {
         seed = s_random_u32();
     }

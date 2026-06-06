@@ -49,15 +49,16 @@ typedef enum {
     PTP_CLIENT_EVENT_TIMEOUT = NX_PTP_CLIENT_EVENT_TIMEOUT,
 
     /* PTP Event flags */
-    PTP_EVENT_CLIENT     = 1UL << 6, /* Master, SYNC or timeout */
-    PTP_EVENT_PRINT_TIME = 1UL << 7,
+    PTP_EVENT_CLIENT              = 1UL << 6, /* Master, SYNC or timeout */
+    PTP_EVENT_MASTER_SYNC_TIMEOUT = 1UL << 7, /* SYNC Missed */
+    PTP_EVENT_PRINT_TIME          = 1UL << 8,
 
     /* PTP TX Queue event */
     PTP_TX_EVENT_SEND_PACKET,
 
     /* PTP TX Event flags */
-    PTP_TX_EVENT_MGMT_FREE   = 1UL << 8, /* All management routes have been used */
-    PTP_TX_EVENT_PACKET_FREE = 1UL << 9, /* Ethernet driver is done with packet and it can be freed */
+    PTP_TX_EVENT_MGMT_FREE   = 1UL << 9,  /* All management routes have been used */
+    PTP_TX_EVENT_PACKET_FREE = 1UL << 10, /* Ethernet driver is done with packet and it can be freed */
 
     /* PTP RX Queue event */
     PTP_RX_EVENT_RECEIVE_PTP_PACKET,
@@ -70,8 +71,8 @@ typedef enum {
     PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP,
 
     /* PTP Clock event flags */
-    PTP_CLOCK_EVENT_MAC_SYNC    = 1UL << 10, /* Time to sync the STM32's MAC clock with the main SJA1105's */
-    PTP_CLOCK_EVENT_SWITCH_SYNC = 1UL << 11, /* Time to sync the SJA1105s' clocks together */
+    PTP_CLOCK_EVENT_MAC_SYNC    = 1UL << 11, /* Time to sync the STM32's MAC clock with the main SJA1105's */
+    PTP_CLOCK_EVENT_SWITCH_SYNC = 1UL << 12, /* Time to sync the SJA1105s' clocks together */
 
     PTP_EVENT_ALL = 0xffffffffUL
 
@@ -174,6 +175,7 @@ extern TX_EVENT_FLAGS_GROUP ptp_switch_sync_events_handle;
 #if PTP_PRINT_TIME_INTERVAL
 extern TX_TIMER ptp_events_print_time_timer;
 #endif
+extern TX_TIMER ptp_sync_timeout_timer;
 extern TX_TIMER ptp_mac_sync_timer;
 #if NUM_SWITCHES > 1
 extern TX_TIMER ptp_switch_sync_timer;
@@ -196,11 +198,12 @@ void ptp_switch_sync_thread_entry(uint32_t initial_input);
 
 /* Timer callbacks */
 #if PTP_PRINT_TIME_INTERVAL
-void ptp_events_print_time_timer_callback(ULONG id);
+void ptp_events_print_time_timer_callback(uint32_t id);
 #endif
-void ptp_mac_sync_timer_callback(ULONG id);
+void ptp_sync_timeout_timer_callback(uint32_t id);
+void ptp_mac_sync_timer_callback(uint32_t id);
 #if NUM_SWITCHES > 1
-void ptp_switch_sync_timer_callback(ULONG id);
+void ptp_switch_sync_timer_callback(uint32_t id);
 #endif
 
 /* Filtering functions to place in Ethernet driver to intercept packets */

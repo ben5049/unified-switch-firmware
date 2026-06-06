@@ -53,7 +53,7 @@ static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
 };
 
 
-void ptp_mac_sync_timer_callback(ULONG id) {
+void ptp_mac_sync_timer_callback(uint32_t id) {
     tx_status_t status = tx_event_flags_set(&ptp_mac_sync_events_handle, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR);
     TX_CHECK(status);
 }

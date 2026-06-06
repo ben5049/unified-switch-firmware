@@ -22,7 +22,7 @@ TX_EVENT_FLAGS_GROUP ptp_switch_sync_events_handle;
 TX_TIMER ptp_switch_sync_timer;
 
 
-void ptp_switch_sync_timer_callback(ULONG id) {
+void ptp_switch_sync_timer_callback(uint32_t id) {
     tx_status_t status = tx_event_flags_set(&ptp_switch_sync_events_handle, PTP_CLOCK_EVENT_SWITCH_SYNC, TX_OR);
     TX_CHECK(status);
 }
