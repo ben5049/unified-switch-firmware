@@ -104,46 +104,6 @@ typedef struct {
     port_index_t port;
 } ptp_packet_event_info_t;
 
-typedef struct {
-
-    /* TX */
-    atomic_uint_fast32_t tx_packets_sent[NUM_PORTS];
-    atomic_uint_fast32_t tx_packets_dropped[NUM_PORTS];
-    atomic_uint_fast32_t tx_packets_invalid_port;
-    atomic_uint_fast32_t tx_timestamps_received[NUM_PORTS];
-    atomic_uint_fast32_t tx_timestamps_missed[NUM_PORTS];
-    atomic_uint_fast32_t tx_driver_error;       /* Failed to send packet */
-    atomic_uint_fast32_t tx_slow;               /* Took multiple polls for the management route to free */
-    atomic_uint_fast32_t tx_mgmt_route_timeout; /* Management route was never freed */
-
-    /* RX */
-    atomic_uint_fast32_t rx_meta;       /* Number of META frames filtered */
-    atomic_uint_fast32_t rx_packets;    /* Number of PTP packets filtered */
-    atomic_uint_fast32_t rx_events;     /* Number of event PTP packets received (SYNC, PDELAY_REQ, PDELAY_RESP) */
-    atomic_uint_fast32_t rx_general;    /* Number of general PTP packets received */
-    atomic_uint_fast32_t rx_port[NUM_PORTS];
-    atomic_uint_fast32_t rx_no_meta;    /* Expected a META frame but didn't get one */
-    atomic_uint_fast32_t rx_lone_meta;  /* Received a META frame but wasn't expecting one */
-    atomic_uint_fast32_t rx_wrong_dst;  /* gPTP Ethertype but wrong destination address */
-    atomic_uint_fast32_t rx_own_packet; /* gPTP Packet send and received by us */
-    atomic_uint_fast32_t rx_invalid_vlan;
-    atomic_uint_fast32_t rx_meta_dropped;
-    atomic_uint_fast32_t rx_packets_dropped;
-    atomic_uint_fast32_t rx_client_not_found[NUM_PORTS];
-
-    /* Events */
-    atomic_uint_fast32_t sync;
-    atomic_uint_fast32_t new_master;
-    atomic_uint_fast32_t master_timeout;
-
-    /* Clock events */
-    atomic_uint_fast32_t clock_set;
-    atomic_uint_fast32_t timestamps_extracted;
-    atomic_uint_fast32_t clock_get;
-    atomic_uint_fast32_t clock_adjusted;
-    atomic_uint_fast32_t mac_sync_failed;
-} ptp_event_counters_t;
-
 
 /* Exported variables */
 
@@ -186,7 +146,6 @@ extern TX_TIMER ptp_switch_sync_timer;
 #endif
 
 extern SHORT                        ptp_utc_offset;
-extern ptp_event_counters_t         ptp_event_counters;
 extern volatile atomic_uint_fast8_t ptp_port_connected_to_master;
 
 

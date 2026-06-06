@@ -228,8 +228,8 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
         /* Exit if missing timestamps */
         if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
+            VAL_COVER(PTP_CLOCK, MAC_SYNC_FAILED);
             LOG_WARNING("PTP: MAC Sync failed, missing timestamps (received 0x%01x)", timestamps_received);
-            ptp_event_counters.mac_sync_failed++;
             tx_thread_sleep_ms(100); /* Wait before trying again so packets can settle */
             continue;
         }

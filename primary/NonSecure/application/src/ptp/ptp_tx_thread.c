@@ -66,10 +66,10 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 if ((timestamp.nanosecond == 0) &&
                     (timestamp.second_low == 0) &&
                     (timestamp.second_high == 0)) {
-                    ptp_event_counters.tx_timestamps_missed[port]++;
+                    VAL_COVER_ARRAY(PTP_TX, TS_MISSED, port);
                     LOG_WARNING("PTP: TX Missed a timestamp on port %d", port);
                 } else {
-                    ptp_event_counters.tx_timestamps_received[port]++;
+                    VAL_COVER_ARRAY(PTP_TX, TS_RECEIVED, port);
                 }
             }
 
@@ -168,7 +168,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                 /* Most likely Ethernet is disabled due to no ports having an external connection.
                  * Note: The driver will have freed the packet */
                 if (nx_status == NX_STATUS_DRIVER_ERROR) {
-                    ptp_event_counters.tx_driver_error++;
+                    VAL_COVER(PTP_TX, DRIVER_ERROR);
                     switch_status = switch_purge_mgmt_routes();
                     SWITCH_CHECK(switch_status);
                     goto done;
@@ -181,7 +181,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 /* Transmit successful */
                 else {
-                    ptp_event_counters.tx_packets_sent[event_info.port]++;
+                    VAL_COVER_ARRAY(PTP_TX, PACKET_SENT, event_info.port);
                 }
 
                 /* Get confirmation the packet has been sent through the switch */
@@ -223,7 +223,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                     /* Timeout: packet may have failed to egress switch due to
                      * destination port being down */
                     if (ticks_waited >= MS_TO_TICKS(PTP_TX_TIMEOUT)) {
-                        ptp_event_counters.tx_mgmt_route_timeout++;
+                        VAL_COVER(PTP_TX, MGMT_ROUTE_TIMEOUT);
                         switch_status = switch_purge_mgmt_routes();
                         SWITCH_CHECK(switch_status);
                         goto release;
@@ -233,7 +233,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 /* Check if the transmit took longer than expected */
                 if (ticks_waited > 0) {
-                    ptp_event_counters.tx_slow++;
+                    VAL_COVER(PTP_TX, SLOW);
                     LOG_WARNING("PTP TX after %lu ms", TICKS_TO_MS(ticks_waited));
                 }
 
@@ -322,7 +322,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
         /* Invalid port, drop packet */
         if ((port_number < 0) || (port_number >= NUM_PHYS)) {
             VAL_TERMINATE();
-            ptp_event_counters.tx_packets_invalid_port++;
+            VAL_COVER(PTP_TX, PACKET_INVALID_PORT);
             nx_status = nx_packet_transmit_release(packet_ptr);
             NX_CHECK(nx_status);
         }
@@ -345,7 +345,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
                 VAL_TERMINATE();
 
                 /* Queue is full, release the packet instead */
-                ptp_event_counters.tx_packets_dropped[port_number]++;
+                VAL_COVER_ARRAY(PTP_TX, PACKET_DROPPED, port_number);
                 nx_status = nx_packet_transmit_release(packet_ptr);
                 NX_CHECK(nx_status);
             }

@@ -30,8 +30,6 @@ TX_TIMER ptp_events_print_time_timer;
 #endif
 TX_TIMER ptp_sync_timeout_timer;
 
-ptp_event_counters_t ptp_event_counters;
-
 volatile atomic_uint_fast8_t ptp_port_connected_to_master = PORT_HOST;
 static volatile atomic_bool  new_master_waiting_for_sync  = false;
 static uint8_t               grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
@@ -243,7 +241,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                 /* When the client times out it will update itself to be the master with its worse clock */
                                 else if ((clock_comparison < 0) && (event_info.port == ptp_port_connected_to_master)) {
                                     new_master = true;
-                                    ptp_event_counters.master_timeout++;
+                                    VAL_COVER(PTP_EVENT, MASTER_TIMEOUT);
                                 }
 
                                 /* New master on port connected to master with same grand master. This shouldn't be
@@ -266,7 +264,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
                             master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity;
                             ptp_client[event_info.port].ptp_master.nx_ptp_client_master_grandmaster_identity = ptp_client[event_info.port].nx_ptp_client_port_identity;
-                            ptp_event_counters.new_master++;
+                            VAL_COVER(PTP_EVENT, MASTER_NEW);
 
                             TX_RESTORE
 
@@ -322,11 +320,11 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                         case PTP_CLIENT_EVENT_SYNC: {
 
-                            VAL_FAULT_BREAK(PTP, RX_FILTER_DROP_META, VAL_1_IN_10);
+                            /* Randomly drop sync events to test recovery */
+                            VAL_FAULT_BREAK(PTP_EVENT, SYNC_DROP, VAL_1_IN_10);
+                            VAL_COVER(PTP_EVENT, SYNC);
 
                             new_master_waiting_for_sync = false;
-
-                            ptp_event_counters.sync++;
                             nx_ptp_client_sync_info_get(&event_info.sync, NX_NULL, &ptp_utc_offset);
                             LOG_INFO("PTP: SYNC event, utc offset=%d", ptp_utc_offset);
                             break;
@@ -340,12 +338,11 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             }
 
                             ptp_port_connected_to_master = PORT_HOST;
-                            ptp_event_counters.master_timeout++;
+                            VAL_COVER(PTP_EVENT, MASTER_TIMEOUT);
 
                             /* Restart all clients to begin looking for a new master */
                             nx_status = ptp_client_restart_all();
                             NX_CHECK(nx_status);
-
                             LOG_INFO("PTP: Master clock timeout on port %d", event_info.port);
                             break;
                         }
@@ -370,7 +367,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
         /* Sync missed */
         if (event_flags & PTP_EVENT_MASTER_SYNC_TIMEOUT) {
-            VAL_COVER(PTP, MASTER_SYNC_TIMEOUT);
+            VAL_COVER(PTP_EVENT, MASTER_SYNC_TIMEOUT);
             ptp_notify_port_down(ptp_port_connected_to_master);
             LOG_WARNING("PTP: No SYNC event after new external master");
         }

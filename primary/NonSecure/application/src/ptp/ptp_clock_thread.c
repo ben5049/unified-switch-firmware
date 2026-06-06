@@ -1,5 +1,5 @@
 /*
- * ptp_clock_callback.c
+ * ptp_clock_thread.c
  *
  *  Created on: May 26, 2026
  *      Author: bens1
@@ -13,6 +13,7 @@
 #include "ptp.h"
 #include "switch.h"
 #include "utils.h"
+#include "validation.h"
 
 
 TX_THREAD ptp_clock_thread_handle;
@@ -39,6 +40,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
         /* No initialisation to do */
         case NX_PTP_CLIENT_CLOCK_INIT:
+            VAL_COVER(PTP_CLOCK, CB_INIT);
             break;
 
         /* Set all switch clocks and stm32 clock if this client is connected to
@@ -51,7 +53,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
             if (port == ptp_port_connected_to_master) {
 
-                ptp_event_counters.clock_set++;
+                VAL_COVER(PTP_CLOCK, CB_SET);
 
                 /* Set the switch times */
                 switch_status = switch_set_time_all(time_ptr);
@@ -63,7 +65,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
         /* Extract timestamp from packet */
         case NX_PTP_CLIENT_CLOCK_PACKET_TS_EXTRACT:
 
-            ptp_event_counters.timestamps_extracted++;
+            VAL_COVER(PTP_CLOCK, CB_TS_EXTRACT);
 
             /* Return timestamp stored at the beginning of the packet.  */
             ptp_packet_extract_timestamp(packet_ptr, time_ptr);
@@ -72,7 +74,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
         /* Get clock */
         case NX_PTP_CLIENT_CLOCK_GET:
 
-            ptp_event_counters.clock_get++;
+            VAL_COVER(PTP_CLOCK, CB_GET);
 
             /* Use the local PTP clock which the application synchronises to SWITCH0 */
             ptp_mac_get_time(time_ptr);
@@ -83,13 +85,13 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
             if (port == ptp_port_connected_to_master) {
 
-                ptp_event_counters.clock_adjusted++;
+                VAL_COVER(PTP_CLOCK, CB_ADJUST);
 
                 event_info.event = PTP_CLOCK_EVENT_ADJUST;
                 event_info.time  = *time_ptr;
                 event_info.port  = port;
-                tx_status        = tx_queue_send(&ptp_clock_queue, &event_info, TX_NO_WAIT);
-                if ((tx_status != TX_SUCCESS) && (tx_status != TX_QUEUE_FULL)) error_handler();
+                // tx_status        = tx_queue_send(&ptp_clock_queue, &event_info, TX_NO_WAIT);
+                // if ((tx_status != TX_SUCCESS) && (tx_status != TX_QUEUE_FULL)) error_handler();
             }
 
             break;
@@ -98,6 +100,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
          * needs to be immediately fetched from the SJA1105. This is handled by
          * the application */
         case NX_PTP_CLIENT_CLOCK_PACKET_TS_PREPARE:
+            VAL_COVER(PTP_CLOCK, CB_TS_PREPARE);
             break;
 
         /* Update soft timer. Not used by hardware callback function */
@@ -106,6 +109,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
         default:
             nx_status = NX_PTP_PARAM_ERROR;
+            VAL_COVER(PTP_CLOCK, CB_INVALID);
             break;
     }
 

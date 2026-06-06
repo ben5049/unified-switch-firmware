@@ -276,11 +276,15 @@ extern "C" {
 
 #define VALIDATION_ENABLE          1 /* Set to 0 to disable all validation (coverage & fault injection) */
 #define VALIDATION_FAULT_INJECTION 1 /* Set to 1 to enable random fault injection */
+#define VALIDATION_TERMINATE       1 /* Set to 1 to stop on VAL_TERMINATE() calls so the state can be inspected */
 
 #define VALIDATION_SEED            0 /* Seed for the psuedo random number generator. 0 Means true random seed */
 
 /* Unit enables */
-#define VALIDATION_PTP 1
+#define VALIDATION_PTP_TX    1
+#define VALIDATION_PTP_RX    1
+#define VALIDATION_PTP_EVENT 1
+#define VALIDATION_PTP_CLOCK 1
 
 
 #ifdef __cplusplus

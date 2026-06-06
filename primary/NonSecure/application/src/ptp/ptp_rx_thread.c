@@ -98,7 +98,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             nx_status = nx_packet_release(ptp_packet);
             NX_CHECK(nx_status);
 
-            ptp_event_counters.rx_lone_meta++;
+            VAL_COVER(PTP_RX, LONE_META);
             LOG_WARNING("Received isolated META frame");
             continue;
         }
@@ -122,7 +122,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             tx_status = ptp_flush_rx_queue();
             TX_CHECK(tx_status);
 
-            ptp_event_counters.rx_no_meta++;
+            VAL_COVER(PTP_RX, NO_META);
             LOG_ERROR("PTP: RX No META frame found");
             continue;
         }
@@ -134,11 +134,11 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         NX_CHECK(nx_status);
         event_packet = ptp_is_event_packet(ptp_packet->nx_packet_prepend_ptr + header_size);
         if (event_packet) {
-            ptp_event_counters.rx_events++;
+            VAL_COVER(PTP_RX, EVENT);
         } else {
-            ptp_event_counters.rx_general++;
+            VAL_COVER(PTP_RX, GENERAL);
         }
-        ptp_event_counters.rx_port[port]++;
+        VAL_COVER_ARRAY(PTP_RX, PORT, port);
 
         /* Parse META frame for timestamp and port then free it */
         switch_status = switch_parse_and_free_meta_frame(
@@ -281,7 +281,8 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
             /* META Frame */
             if (meta_frame) {
 
-                VAL_FAULT_RETURN(PTP, RX_FILTER_DROP_META, VAL_1_IN_1000, false);
+                /* Randomly drop META frames to test recovery */
+                VAL_FAULT_RETURN(PTP_RX, FILTER_DROP_META, VAL_1_IN_1000, false);
 
                 /* Queue the packet to be sent */
                 event_info.event      = PTP_RX_EVENT_RECEIVE_META_FRAME;
@@ -291,7 +292,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                     VAL_TERMINATE();
 
                     /* Queue is full, release the packet instead */
-                    ptp_event_counters.rx_meta_dropped++;
+                    VAL_COVER(PTP_RX, META_DROP);
                     nx_status = nx_packet_release(packet_ptr);
                     NX_CHECK(nx_status);
 
@@ -300,14 +301,15 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                     TX_CHECK(tx_status);
 
                 } else {
-                    ptp_event_counters.rx_meta++;
+                    VAL_COVER(PTP_RX, META);
                 }
             }
 
             /* PTP Packet */
             else {
 
-                VAL_FAULT_RETURN(PTP, RX_FILTER_DROP_PTP, VAL_1_IN_1000, false);
+                /* Randomly drop PTP packets to test recovery */
+                VAL_FAULT_RETURN(PTP_RX, FILTER_DROP_PTP, VAL_1_IN_1000, false);
 
                 /* Store the receive timestamp at the start of the packet */
                 NX_PTP_TIME timestamp;
@@ -324,14 +326,14 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                     VAL_TERMINATE();
 
                     /* Queue is full, release the packet instead */
-                    ptp_event_counters.rx_packets_dropped++;
+                    VAL_COVER(PTP_RX, PACKET_DROP);
                     nx_status = nx_packet_release(packet_ptr);
                     NX_CHECK(nx_status);
 
                     /* Ignore the next META frame */
                     meta_debt++;
                 } else {
-                    ptp_event_counters.rx_packets++;
+                    VAL_COVER(PTP_RX, PACKET);
                 }
             }
         }
@@ -340,7 +342,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
         else {
             VAL_TERMINATE();
 
-            ptp_event_counters.rx_invalid_vlan++;
+            VAL_COVER(PTP_RX, INVALID_VLAN);
             nx_status = nx_packet_release(packet_ptr);
             NX_CHECK(nx_status);
 

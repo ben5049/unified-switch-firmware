@@ -37,19 +37,30 @@ extern "C" {
 #endif
 
 /* Generic macros */
-#define VAL_INIT()      _VAL_BASE(ENABLE, validation_init()) /* Initialise validation (reset coverage, seed RNG, etc) */
-#define VAL_TERMINATE() _VAL_BASE(ENABLE, error_handler())   /* Stop execution so the state can be inspected */
+#define VAL_INIT()      _VAL_BASE(ENABLE, validation_init())  /* Initialise validation (reset coverage, seed RNG, etc) */
+#define VAL_TERMINATE() _VAL_BASE(TERMINATE, error_handler()) /* Stop execution so the state can be inspected */
 
 /* Coverage macros */
-#define VAL_COVER_DECLARE(unit, item) atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)                       /* Add item to VALIDATION_COVER_STRUCT */
-#define VAL_COVER(unit, item)         _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)++) /* Cover an item */
+#define VAL_COVER_DECLARE(unit, item)             atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)                       /* Add item to VALIDATION_COVER_STRUCT */
+#define VAL_COVER_ARRAY_DECLARE(unit, item, size) atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)[(size)]               /* Add array to VALIDATION_COVER_STRUCT */
+#define VAL_COVER(unit, item)                     _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)++) /* Cover an item */
+#define VAL_COVER_ARRAY(unit, item, index)                                               \
+    ({                                                                                   \
+        assert(index < sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)));     \
+        _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[(index)]++); \
+    }) /* Cover an item in an array */
 
 /* Fault injection macros */
 #define VAL_FAULT_DECLARE(unit, item)                  atomic_uint_fast32_t _VAL_FAULT_NAME(unit, item)              /* Add item to VALIDATION_COVER_STRUCT */
 #define VAL_FAULT_CHANCE(unit, item, chance, logic)    _VAL_BASE(unit, _VAL_FAULT_CHANCE(unit, item, chance, logic)) /* Random chance of logic being executed */
 #define VAL_FAULT_RETURN(unit, item, chance, ret)      VAL_FAULT_CHANCE(unit, item, chance, return (ret))            /* Random chance of returning */
 #define VAL_FAULT_MODIFY(unit, item, chance, var, val) VAL_FAULT_CHANCE(unit, item, chance, (var) = (val))           /* Random chance of var being modified to val */
-#define VAL_FAULT_BREAK(unit, item, chance)            ({bool _b = false; VAL_FAULT_MODIFY(unit, item, chance, _b, true); if (_b) break; })                                                         /* Random chance of breaking */
+#define VAL_FAULT_BREAK(unit, item, chance)             \
+    ({                                                  \
+        bool _b = false;                                \
+        VAL_FAULT_MODIFY(unit, item, chance, _b, true); \
+        if (_b) break;                                  \
+    }) /* Random chance of breaking */
 
 /* Chance constants */
 #define VAL_NEVER      (0)
@@ -91,8 +102,8 @@ extern "C" {
         }                                                                           \
     } while (0)
 
-#define _VAL_COVER_NAME(unit, item) unit##_COVER_##item
-#define _VAL_FAULT_NAME(unit, item) unit##_FAULT_##item
+#define _VAL_COVER_NAME(unit, item) unit##_COVER__##item
+#define _VAL_FAULT_NAME(unit, item) unit##_FAULT__##item
 
 
 void     validation_init(void);
