@@ -36,9 +36,9 @@ typedef struct {
 } ptp_controller_t;
 
 
-void    ptp_pi_controller_clear(ptp_controller_t *controller);
-void    ptp_pi_controller_init(ptp_controller_t *controller, float kp, float ki, uint64_t i_max);
-int32_t ptp_pi_controller_compute(ptp_controller_t *controller, int32_t error_current);
+void    ptp_pi_controller_clear(ptp_controller_t *controller, uint32_t time_current);
+void    ptp_pi_controller_init(ptp_controller_t *controller, float kp, float ki, uint64_t i_max, uint32_t time_start);
+int32_t ptp_pi_controller_compute(ptp_controller_t *controller, int32_t error_current, uint32_t time_current);
 
 
 #ifdef __cplusplus

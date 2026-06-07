@@ -33,15 +33,16 @@ struct coverage_s {
 
 #if VALIDATION_PTP_RX
 
-    VAL_COVER_DECLARE(PTP_RX, META);                  /* Number of META frames filtered */
-    VAL_COVER_DECLARE(PTP_RX, PACKET);                /* Number of PTP packets filtered */
-    VAL_COVER_DECLARE(PTP_RX, EVENT);                 /* Number of event PTP packets received (SYNC, PDELAY_REQ, PDELAY_RESP) */
-    VAL_COVER_DECLARE(PTP_RX, GENERAL);               /* Number of general PTP packets received */
-    VAL_COVER_ARRAY_DECLARE(PTP_RX, PORT, NUM_PORTS); /* Number of packets received on each port */
-    VAL_COVER_DECLARE(PTP_RX, NO_META);               /* Expected a META frame but didn't get one */
-    VAL_COVER_DECLARE(PTP_RX, META_DELAYED_BY_1);     /* Number of META frames that had 1 frame between them and the packets that generated them */
-    VAL_COVER_DECLARE(PTP_RX, LONE_META);             /* Received a META frame but wasn't expecting one */
-    VAL_COVER_DECLARE(PTP_RX, INVALID_VLAN);          /* Number of packets with invalid VLANs received */
+    VAL_COVER_DECLARE(PTP_RX, META);                    /* Number of META frames filtered */
+    VAL_COVER_DECLARE(PTP_RX, PACKET);                  /* Number of PTP packets filtered */
+    VAL_COVER_DECLARE(PTP_RX, EVENT);                   /* Number of event PTP packets received (SYNC, PDELAY_REQ, PDELAY_RESP) */
+    VAL_COVER_DECLARE(PTP_RX, GENERAL);                 /* Number of general PTP packets received */
+    VAL_COVER_ARRAY_DECLARE(PTP_RX, PORT, NUM_PORTS);   /* Number of packets received on each port */
+    VAL_COVER_DECLARE(PTP_RX, NO_META);                 /* Expected a META frame but didn't get one */
+    VAL_COVER_DECLARE(PTP_RX, META_DELAYED_BY_1);       /* Number of META frames that had 1 frame between them and the packets that generated them */
+    VAL_COVER_DECLARE(PTP_RX, META_DELAYED_BY_1_TWICE); /* Number of times META_DELAYED_BY_1 happens back to back. Represents a desync */
+    VAL_COVER_DECLARE(PTP_RX, LONE_META);               /* Received a META frame but wasn't expecting one */
+    VAL_COVER_DECLARE(PTP_RX, INVALID_VLAN);            /* Number of packets with invalid VLANs received */
     VAL_COVER_DECLARE(PTP_RX, META_DROP);
     VAL_COVER_DECLARE(PTP_RX, PACKET_DROP);
 
@@ -72,8 +73,16 @@ struct coverage_s {
     VAL_COVER_DECLARE(PTP_CLOCK, SWITCH_ADJUST_COARSE);
     VAL_COVER_DECLARE(PTP_CLOCK, SWITCH_ADJUST_FINE);
     VAL_COVER_DECLARE(PTP_CLOCK, MAC_SYNC_FAILED);
+    VAL_COVER_DECLARE(PTP_CLOCK, MAC_SYNC_ADJUST_COARSE);
+    VAL_COVER_DECLARE(PTP_CLOCK, MAC_SYNC_ADJUST_FINE);
 
     VAL_FAULT_DECLARE(PTP_CLOCK, THREAD_LAG); /* Lag injected into clock thread processing */
+
+#endif
+
+#if VALIDATION_SWITCH_UTILS
+
+    VAL_FAULT_DECLARE(SWITCH_UTILS, RATE_SET_PREEMPT);
 
 #endif
 };

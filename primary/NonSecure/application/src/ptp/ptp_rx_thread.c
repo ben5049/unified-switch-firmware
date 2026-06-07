@@ -24,7 +24,8 @@ uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 TX_QUEUE ptp_rx_queue;
 uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
-static volatile uint32_t meta_debt = 0;
+static volatile uint32_t meta_debt          = 0;
+static volatile uint32_t delayed_by_1_count = 0;
 
 
 static inline bool ptp_is_event_packet(const uint8_t *payload) {
@@ -45,8 +46,9 @@ static inline tx_status_t ptp_flush_rx_queue() {
     tx_status = ptp_flush_packet_queue(&ptp_rx_queue);
     if (tx_status != TX_SUCCESS) return tx_status;
 
-    /* Clear any pending debt since the queues have been completely reset */
-    meta_debt = 0;
+    /* Clear any state */
+    meta_debt          = 0;
+    delayed_by_1_count = 0;
 
     return tx_status;
 }
@@ -111,7 +113,11 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             tx_status = tx_queue_receive(&ptp_rx_queue, &event_info, MS_TO_TICKS(PTP_RX_TIMEOUT));
 
             /* No meta frame found, flush everything  */
-            if (tx_status != TX_SUCCESS) {
+            if ((tx_status != TX_SUCCESS) || (!FEAT_PTP_ALLOW_META_DELAY && (event_info.event != PTP_RX_EVENT_RECEIVE_META_FRAME))) {
+                if (tx_status == TX_SUCCESS) {
+                    nx_status = nx_packet_release(event_info.packet_ptr);
+                    NX_CHECK(nx_status);
+                }
                 nx_status = nx_packet_release(ptp_packet);
                 NX_CHECK(nx_status);
                 tx_status = ptp_flush_rx_queue();
@@ -132,9 +138,8 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                         nx_status = nx_packet_release(event_info_temp.packet_ptr);
                         NX_CHECK(nx_status);
                     }
-                    nx_status = nx_packet_release(event_info.packet_ptr);
-                    NX_CHECK(nx_status);
-                    nx_status = nx_packet_release(ptp_packet);
+                    nx_status = nx_packet_release2(event_info.packet_ptr,
+                                                   ptp_packet);
                     NX_CHECK(nx_status);
                     tx_status = ptp_flush_rx_queue();
                     TX_CHECK(tx_status);
@@ -146,17 +151,41 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                 /* Next event is the meta frame, put the first frame we took off back in the queue
                  * There should be space because we have taken two things off */
                 else if (event_info_temp.event == PTP_RX_EVENT_RECEIVE_META_FRAME) {
-                    tx_status = tx_queue_front_send(&ptp_rx_queue, &event_info, TX_NO_WAIT);
-                    TX_CHECK(tx_status);
-                    event_info = event_info_temp;
-                    VAL_COVER(PTP_RX, META_DELAYED_BY_1);
-                    LOG_WARNING("PTP: RX META Frame was delayed by 1");
+
+                    /* If this happens back to back it means we have desynced, flush everything */
+                    if (delayed_by_1_count > 0) {
+                        nx_status = nx_packet_release3(event_info_temp.packet_ptr,
+                                                       event_info.packet_ptr,
+                                                       ptp_packet);
+                        NX_CHECK(nx_status);
+                        tx_status = ptp_flush_rx_queue();
+                        TX_CHECK(tx_status);
+                        VAL_COVER(PTP_RX, META_DELAYED_BY_1_TWICE);
+                        LOG_WARNING("PTP: RX META Frame was delayed by 1 twice in a row");
+                        continue;
+                    }
+
+                    /* Otherwise we were successful */
+                    else {
+
+                        tx_status = tx_queue_front_send(&ptp_rx_queue, &event_info, TX_NO_WAIT);
+                        TX_CHECK(tx_status);
+                        event_info = event_info_temp;
+                        delayed_by_1_count++;
+                        VAL_COVER(PTP_RX, META_DELAYED_BY_1);
+                        LOG_WARNING("PTP: RX META Frame was delayed by 1");
+                    }
                 }
 
                 /* Invalid event */
                 else {
                     error_handler();
                 }
+            }
+
+            /* META frame received correctly */
+            else {
+                delayed_by_1_count = 0;
             }
         }
 

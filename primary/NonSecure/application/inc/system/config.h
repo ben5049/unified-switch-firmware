@@ -23,12 +23,13 @@ extern "C" {
 /* Feature Flags */
 /* ---------------------------------------------------------------------------- */
 
-#define FEAT_STP           (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
-#define FEAT_PTP           (1)
-#define FEAT_COMMS         (0) /* TODO: re-enable */
-#define FEAT_DHCP_RESTORE  (1)
-#define FEAT_PHY_SELF_TEST (1) // TODO: Use
-#define FEAT_SWITCH_SYNC   (1) // TODO: Use
+#define FEAT_DHCP_RESTORE         (1)
+#define FEAT_PHY_SELF_TEST        (1) // TODO: Use
+#define FEAT_PTP                  (1)
+#define FEAT_PTP_SWITCH_SYNC      (1) /* Actively synchronise the switches' clocks to each other */
+#define FEAT_PTP_ALLOW_META_DELAY (1) /* Allow META frames to have up to one packet between them and the PTP packet that generated them */
+#define FEAT_STP                  (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
+#define FEAT_COMMS                (0) /* TODO: re-enable */
 
 /* ---------------------------------------------------------------------------- */
 /* Common Config */
@@ -131,6 +132,8 @@ extern "C" {
 #define PTP_EVENT_THREAD_STACK_SIZE           (1024 * 2)
 #define PTP_EVENT_THREAD_PRIORITY             (7)
 #define PTP_EVENT_QUEUE_SIZE                  (10)
+#define PTP_PRINT_TIME_INTERVAL               (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
+#define PTP_SYNC_TIMEOUT                      (10000) /* A SYNC event should generated within this amount of time after connecting to a master */
 
 #define PTP_TX_THREAD_STACK_SIZE              (1024 * 2)
 #define PTP_TX_THREAD_PRIORITY                (4)
@@ -139,39 +142,51 @@ extern "C" {
 #define PTP_RX_THREAD_STACK_SIZE              (1024 * 2)
 #define PTP_RX_THREAD_PRIORITY                (3)
 #define PTP_RX_QUEUE_SIZE                     MIN(NUM_PHYS * 3, NUM_BIG_PACKETS / 2) /* Buffer up to 3 received PTP packets per port. Don't use more than half the available packets */
+#define PTP_RX_TIMEOUT                        (100)                                  /* How long to wait for a meta frame */
 
 #define PTP_CLOCK_THREAD_STACK_SIZE           (1024 * 2)
 #define PTP_CLOCK_THREAD_PRIORITY             (6)
-#define PTP_CLOCK_QUEUE_SIZE                  (10)
+#define PTP_CLOCK_QUEUE_SIZE                  (3) /* Number of adjustments to buffer, if this queue fills up then it is flushed and the latest adjustment is resent so small size is fine */
+#define PTP_CLOCK_TIMEOUT                     (200)
 
-#define PTP_MAC_SYNC_THREAD_STACK_SIZE        (1024 * 2)
-#define PTP_MAC_SYNC_THREAD_PRIORITY          (5)
-#define PTP_MAC_SYNC_INTERVAL                 (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
-#define PTP_MAC_SYNC_QUEUE_SIZE               (4)                              /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
+#define PTP_CLOCK_PRINT_OFFSET                (0)
+#define PTP_CLOCK_FINE_ADJUST_THRESHOLD       (10)                               /* ms, the PI controller will be used for errors less than this */
+#define PTP_CLOCK_CONTROLLER_KP               (2.0f)                             /* Proportional gain */
+#define PTP_CLOCK_CONTROLLER_KI               (0.25f)                            /* Integral gain */
+#define PTP_CLOCK_CONTROLLER_INTEGRAL_MAX     (1000000LL)                        /* Integral saturation */
+#define PTP_CLOCK_CONTROLLER_MIN_RATE         (SJA1105_PTP_CLK_RATE_MUCH_SLOWER) /* Corresponds to -1% */
+#define PTP_CLOCK_CONTROLLER_MAX_RATE         (SJA1105_PTP_CLK_RATE_MUCH_FASTER) /* Corresponds to +1% */
 
-#define PTP_SWITCH_SYNC_INTERVAL              (100)
-#define PTP_SWITCH_SYNC_SKIP                  (9)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
+#if FEAT_PTP_SWITCH_SYNC
+#define PTP_SWITCH_SYNC_INTERVAL                (100)
+#define PTP_SWITCH_SYNC_PRINT_OFFSET            (0)
+#define PTP_SWITCH_SYNC_CONTROLLER_KP           (1.0f)                             /* Proportional gain */
+#define PTP_SWITCH_SYNC_CONTROLLER_KI           (0.05f)                            /* Integral gain */
+#define PTP_SWITCH_SYNC_CONTROLLER_INTEGRAL_MAX (1000000LL)                        /* Integral saturation */
+#define PTP_SWITCH_SYNC_CONTROLLER_MIN_RATE     (SJA1105_PTP_CLK_RATE_MUCH_SLOWER) /* Corresponds to -1% */
+#define PTP_SWITCH_SYNC_CONTROLLER_MAX_RATE     (SJA1105_PTP_CLK_RATE_MUCH_FASTER) /* Corresponds to +1% */
+#endif
 
-#define PTP_PRINT_TIME_INTERVAL               (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
-#define PTP_SYNC_TIMEOUT                      (10000) /* A SYNC event should generated within this amount of time after connecting to a master */
+#define PTP_MAC_SYNC_THREAD_STACK_SIZE       (1024 * 2)
+#define PTP_MAC_SYNC_THREAD_PRIORITY         (5)
+#define PTP_MAC_SYNC_INTERVAL                (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
+#define PTP_MAC_SYNC_QUEUE_SIZE              (4)                              /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 
-#define PTP_CLIENT_MASTER_SUB_PRIORITY        (248)   /* The subpriority of this device for BMCA. Default for an end instance is 248 */
-#define PTP_DOMAIN                            (0)
-#define PTP_VLAN                              (0)
+#define PTP_MAC_SYNC_PRINT_OFFSET            (0)
+#define PTP_MAC_SYNC_FINE_ADJUST_THRESHOLD   (1)          /* ms, the PI controller will be used for errors less than this */
+#define PTP_MAC_SYNC_CONTROLLER_KP           (20.0f)      /* Proportional gain */
+#define PTP_MAC_SYNC_CONTROLLER_KI           (20.0f)      /* Integral gain */
+#define PTP_MAC_SYNC_CONTROLLER_INTEGRAL_MAX (1000000LL)  /* Integral saturation */
+#define PTP_MAC_SYNC_CONTROLLER_MIN_RATE     (-10000000L) /* Corresponds to -1% */
+#define PTP_MAC_SYNC_CONTROLLER_MAX_RATE     (10000000L)  /* Corresponds to +1% */
 
-#define PTP_CLK_FREQ                          (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
+#define PTP_CLIENT_MASTER_SUB_PRIORITY       (248)        /* The subpriority of this device for BMCA. Default for an end instance is 248 */
+#define PTP_DOMAIN                           (0)
+#define PTP_VLAN                             (0)
 
 /* Management route variables */
-#define PTP_TX_TIMEOUT    (500) /* The maximum number of ms to wait to send a packet */
-#define PTP_TX_TSREG      (0)
-
-#define PTP_RX_TIMEOUT    (100) /* How long to wait for a meta frame */
-#define PTP_CLOCK_TIMEOUT (200)
-
-/* PI Controller gains */
-#define PTP_CLOCK_CONTROLLER_KP           (2.0f)      /* Proportional gain */
-#define PTP_CLOCK_CONTROLLER_KI           (0.1f)      /* Integral gain */
-#define PTP_CLOCK_CONTROLLER_INTEGRAL_MAX (1000000LL) /* Integral saturation */
+#define PTP_TX_TIMEOUT (500) /* The maximum number of ms to wait to send a packet */
+#define PTP_TX_TSREG   (0)
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */
@@ -284,10 +299,11 @@ extern "C" {
 #define VALIDATION_SEED            0 /* Seed for the psuedo random number generator. 0 Means true random seed */
 
 /* Unit enables */
-#define VALIDATION_PTP_TX    1
-#define VALIDATION_PTP_RX    1
-#define VALIDATION_PTP_EVENT 1
-#define VALIDATION_PTP_CLOCK 1
+#define VALIDATION_PTP_TX       1
+#define VALIDATION_PTP_RX       1
+#define VALIDATION_PTP_EVENT    1
+#define VALIDATION_PTP_CLOCK    1
+#define VALIDATION_SWITCH_UTILS 1
 
 
 #ifdef __cplusplus

@@ -35,6 +35,8 @@ TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_group;
 
 TX_TIMER ptp_mac_sync_timer;
 
+atomic_bool mac_synced = false;
+
 static volatile NX_PACKET *dummy_sync_packet_ptr = NULL; /* Packet pointer of dummy packet */
 
 static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
@@ -100,6 +102,11 @@ end:
  * SJA1105 clock. */
 void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
+    static_assert(PTP_MAC_SYNC_CONTROLLER_KP >= 0);
+    static_assert(PTP_MAC_SYNC_CONTROLLER_KI >= 0);
+    static_assert(PTP_MAC_SYNC_CONTROLLER_INTEGRAL_MAX >= 0);
+    static_assert(PTP_MAC_SYNC_CONTROLLER_OUTPUT_MAX <= INT32_MAX); /* For typeof(controller_output) = int32_t */
+
     nx_status_t      nx_status     = NX_SUCCESS;
     tx_status_t      tx_status     = TX_SUCCESS;
     sja1105_status_t switch_status = SJA1105_OK;
@@ -122,157 +129,211 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
     uint16_t host_speed_mbps;
 
+    ptp_controller_t mac_sync_controller = {.initialised = false};
+    int32_t          controller_output;
+    uint32_t         addend;
+    int64_t          addend_adjustment;
+
+    /* Initialise PI controller */
+    ptp_pi_controller_init(&mac_sync_controller,
+                           PTP_MAC_SYNC_CONTROLLER_KP,
+                           PTP_MAC_SYNC_CONTROLLER_KI,
+                           PTP_MAC_SYNC_CONTROLLER_INTEGRAL_MAX,
+                           tx_time_get_ms());
+
     /* Start the timer */
     tx_status = tx_timer_activate(&ptp_mac_sync_timer);
     TX_CHECK(tx_status);
 
     while (1) {
 
-        /* Wait for an event from the timers */
+        /* Wait for an event from the timer */
         tx_status = tx_event_flags_get(
             &ptp_mac_sync_events_group,
-            PTP_CLOCK_EVENT_MAC_SYNC,
+            PTP_CLOCK_EVENT_MAC_SYNC | PTP_CLOCK_EVENT_RESET,
             TX_OR_CLEAR,
             &event_flags,
             TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
-        assert(event_flags == PTP_CLOCK_EVENT_MAC_SYNC);
+        /* Reset the controller and MAC rate */
+        if (event_flags & PTP_CLOCK_EVENT_RESET) {
+            ptp_pi_controller_clear(&mac_sync_controller, tx_time_get_ms());
+            ptp_mac_set_addend(PTP_COUNTER_ADDEND_DEFAULT);
+        }
 
-        /* If PTP hasn't been started don't send a packet */
-        if (!ptp_initialised) continue;
+        /* Sync the MAC */
+        if (event_flags & PTP_CLOCK_EVENT_MAC_SYNC) {
 
-        /* Create a dummy sync packet that will look convincing enough to make
-         * the STM32's MAC timestamp it */
-        nx_status = ptp_create_dummy_sync(&packet_ptr);
-        NX_CHECK(nx_status);
+            /* If PTP hasn't been started don't send a packet */
+            if (!ptp_initialised) continue;
 
-        /* Save packet pointer for callback filtering and length for timestamp corrections */
-        dummy_sync_packet_ptr    = packet_ptr;
-        dummy_sync_packet_length = packet_ptr->nx_packet_length;
-
-        /* Flush the timestamp queue so we don't receive any from previous failed syncs */
-        tx_status = tx_queue_flush(&ptp_mac_sync_queue);
-        TX_CHECK(tx_status);
-
-        /* Send the packet so that it bounces back into the host port */
-        event_info.event      = PTP_TX_EVENT_SEND_PACKET;
-        event_info.packet_ptr = packet_ptr;
-        event_info.port       = PORT_HOST;
-        tx_status             = tx_queue_send(&ptp_tx_queue, &event_info, TX_NO_WAIT);
-        if (tx_status != TX_SUCCESS) {
-
-            /* Free the packet */
-            nx_status = nx_packet_release(packet_ptr);
+            /* Create a dummy sync packet that will look convincing enough to make
+             * the STM32's MAC timestamp it */
+            nx_status = ptp_create_dummy_sync(&packet_ptr);
             NX_CHECK(nx_status);
+
+            /* Save packet pointer for callback filtering and length for timestamp corrections */
+            dummy_sync_packet_ptr    = packet_ptr;
+            dummy_sync_packet_length = packet_ptr->nx_packet_length;
+
+            /* Flush the timestamp queue so we don't receive any from previous failed syncs */
+            tx_status = tx_queue_flush(&ptp_mac_sync_queue);
+            TX_CHECK(tx_status);
+
+            /* Send the packet so that it bounces back into the host port */
+            event_info.event      = PTP_TX_EVENT_SEND_PACKET;
+            event_info.packet_ptr = packet_ptr;
+            event_info.port       = PORT_HOST;
+            tx_status             = tx_queue_send(&ptp_tx_queue, &event_info, TX_NO_WAIT);
+            if (tx_status != TX_SUCCESS) {
+
+                /* Free the packet */
+                nx_status = nx_packet_release(packet_ptr);
+                NX_CHECK(nx_status);
+                dummy_sync_packet_ptr = NULL;
+
+                VAL_TERMINATE();
+                continue;
+            }
+
+            /* Gather up all the timestamps */
+            timestamps_received = MAC_SYNC_TIMESTAMP_NONE;
+            while (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
+
+                /* Receive timestamp from the queue */
+                tx_status = tx_queue_receive(&ptp_mac_sync_queue, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
+                if (tx_status == TX_QUEUE_EMPTY) {
+                    break;
+                } else {
+                    TX_CHECK(tx_status);
+                }
+
+                assert(event_info.port == PORT_HOST);
+
+                /* Invalid timestamp, error has occured */
+                if ((event_info.time.nanosecond == 0) &&
+                    (event_info.time.second_low == 0) &&
+                    (event_info.time.second_high == 0)) {
+                    break;
+                }
+
+                switch (event_info.event) {
+                    case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T1_MAC_TX)); /* Timestamp shouldn't be received twice */
+                        mac_tx_timestamp     = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T1_MAC_TX;
+                        break;
+                    }
+                    case PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP: {
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T2_SWITCH_RX)); /* Timestamp shouldn't be received twice */
+                        switch_rx_timestamp  = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T2_SWITCH_RX;
+                        break;
+                    }
+                    case PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP: {
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T3_SWITCH_TX)); /* Timestamp shouldn't be received twice */
+                        switch_tx_timestamp  = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T3_SWITCH_TX;
+                        break;
+                    }
+                    case PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP: {
+                        assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T4_MAC_RX)); /* Timestamp shouldn't be received twice */
+                        mac_rx_timestamp     = event_info.time;
+                        timestamps_received |= MAC_SYNC_TIMESTAMP_T4_MAC_RX;
+                        break;
+                    }
+                    default:
+                        error_handler();
+                        break;
+                }
+            }
+
+            /* Note: The TX and RX threads handle releasing packets */
             dummy_sync_packet_ptr = NULL;
 
-            VAL_TERMINATE();
-            continue;
-        }
-
-        /* Gather up all the timestamps */
-        timestamps_received = MAC_SYNC_TIMESTAMP_NONE;
-        while (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
-
-            /* Receive timestamp from the queue */
-            tx_status = tx_queue_receive(&ptp_mac_sync_queue, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
-            if (tx_status == TX_QUEUE_EMPTY) {
-                break;
-            } else {
-                TX_CHECK(tx_status);
+            /* Exit if missing timestamps */
+            if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
+                VAL_COVER(PTP_CLOCK, MAC_SYNC_FAILED);
+                LOG_WARNING("PTP: MAC Sync failed, missing timestamps (received 0x%01x)", timestamps_received);
+                tx_thread_sleep_ms(100); /* Wait before trying again so packets can settle */
+                continue;
             }
 
-            assert(event_info.port == PORT_HOST);
+            /* The switch's egress timestamp in this scenario is for the start of
+             * the META frame so we must subtract the time it took to send the PTP
+             * packet and the time between frames (AH1704 p65).
+             *
+             * Note: An Ethernet packet cannot be shorter than 64 bytes.
+             */
+            switch_status = switch_get_speed(PORT_HOST, &host_speed_mbps);
+            SWITCH_CHECK(switch_status);
+            switch_tx_correction.nanosecond  = (MAX(dummy_sync_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
+            switch_tx_correction.second_low  = 0;
+            switch_tx_correction.second_high = 0;
+            _nx_ptp_client_utility_time_diff(&switch_tx_timestamp, &switch_tx_correction, &switch_tx_timestamp);
 
-            /* Invalid timestamp, error has occured */
-            if ((event_info.time.nanosecond == 0) &&
-                (event_info.time.second_low == 0) &&
-                (event_info.time.second_high == 0)) {
-                break;
+            /* Calculate the offset between local (MAC) and remote (switch) clocks
+             * for both the TX and RX path
+             *
+             * Note: This eliminates the approximately 1000ns of combined ingress
+             *       and egress latency from the SJA1105, assuming they are equal.
+             */
+            ptp_compute_offset(&mac_tx_timestamp, &switch_rx_timestamp, &switch_tx_timestamp, &mac_rx_timestamp, &offset);
+
+            /* Check there wasn't a reset while calculating the offset (timestamps could be corrupted) */
+            tx_status = tx_event_flags_get(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_RESET, TX_OR, &event_flags, TX_NO_WAIT);
+            if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
+            if (event_flags & PTP_CLOCK_EVENT_RESET) {
+                continue;
             }
 
-            switch (event_info.event) {
-                case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
-                    assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T1_MAC_TX)); /* Timestamp shouldn't be received twice */
-                    mac_tx_timestamp     = event_info.time;
-                    timestamps_received |= MAC_SYNC_TIMESTAMP_T1_MAC_TX;
-                    break;
+            /* Adjust time */
+            if ((offset.second_high == 0) && (offset.second_low == 0)) {
+
+                /* Count as synced when within 5 clock cycles (100ns) */
+                mac_synced = ABS(offset.nanosecond) < (PTP_COUNTER_INCREMENT * 10);
+
+                /* Coarse adjustment */
+                if (ABS(offset.nanosecond) > MS_TO_NS(PTP_MAC_SYNC_FINE_ADJUST_THRESHOLD)) {
+                    ptp_mac_adjust_time_coarse(&offset);
+                    ptp_pi_controller_clear(&mac_sync_controller, tx_time_get_ms());
+
+                    VAL_COVER(PTP_CLOCK, MAC_SYNC_ADJUST_COARSE);
                 }
-                case PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP: {
-                    assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T2_SWITCH_RX)); /* Timestamp shouldn't be received twice */
-                    switch_rx_timestamp  = event_info.time;
-                    timestamps_received |= MAC_SYNC_TIMESTAMP_T2_SWITCH_RX;
-                    break;
+
+                /* Fine adjustment */
+                else {
+
+                    assert(mac_sync_controller.initialised);
+
+                    /* Compute the controller output */
+                    controller_output = ptp_pi_controller_compute(&mac_sync_controller,
+                                                                  -offset.nanosecond,
+                                                                  tx_time_get_ms());
+                    controller_output = CONSTRAIN(controller_output,
+                                                  PTP_MAC_SYNC_CONTROLLER_MIN_RATE,
+                                                  PTP_MAC_SYNC_CONTROLLER_MAX_RATE);
+
+                    /* Convert to addend and apply */
+                    addend_adjustment = ((int64_t) PTP_COUNTER_ADDEND_DEFAULT * controller_output) / 1000000000LL;
+                    addend            = (uint32_t) ((int64_t) PTP_COUNTER_ADDEND_DEFAULT + addend_adjustment);
+                    ptp_mac_set_addend(addend);
+
+                    VAL_COVER(PTP_CLOCK, MAC_SYNC_ADJUST_FINE);
                 }
-                case PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP: {
-                    assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T3_SWITCH_TX)); /* Timestamp shouldn't be received twice */
-                    switch_tx_timestamp  = event_info.time;
-                    timestamps_received |= MAC_SYNC_TIMESTAMP_T3_SWITCH_TX;
-                    break;
-                }
-                case PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP: {
-                    assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T4_MAC_RX)); /* Timestamp shouldn't be received twice */
-                    mac_rx_timestamp     = event_info.time;
-                    timestamps_received |= MAC_SYNC_TIMESTAMP_T4_MAC_RX;
-                    break;
-                }
-                default:
-                    error_handler();
-                    break;
-            }
-        }
 
-        /* Note: The TX and RX threads handle releasing packets */
-        dummy_sync_packet_ptr = NULL;
-
-        /* Exit if missing timestamps */
-        if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
-            VAL_COVER(PTP_CLOCK, MAC_SYNC_FAILED);
-            LOG_WARNING("PTP: MAC Sync failed, missing timestamps (received 0x%01x)", timestamps_received);
-            tx_thread_sleep_ms(100); /* Wait before trying again so packets can settle */
-            continue;
-        }
-
-        /* The switch's egress timestamp in this scenario is for the start of
-         * the META frame so we must subtract the time it took to send the PTP
-         * packet and the time between frames (AH1704 p65).
-         *
-         * Note: An Ethernet packet cannot be shorter than 64 bytes.
-         */
-        switch_status = switch_get_speed(PORT_HOST, &host_speed_mbps);
-        SWITCH_CHECK(switch_status);
-        switch_tx_correction.nanosecond  = (MAX(dummy_sync_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
-        switch_tx_correction.second_low  = 0;
-        switch_tx_correction.second_high = 0;
-        _nx_ptp_client_utility_time_diff(&switch_tx_timestamp, &switch_tx_correction, &switch_tx_timestamp);
-
-        /* Calculate the offset between local (MAC) and remote (switch) clocks
-         * for both the TX and RX path
-         *
-         * Note: This eliminates the approximately 1000ns of combined ingress
-         *       and egress latency from the SJA1105, assuming they are equal.
-         */
-        ptp_compute_offset(&mac_tx_timestamp, &switch_rx_timestamp, &switch_tx_timestamp, &mac_rx_timestamp, &offset);
-
-        /* Adjust time */
-        if ((offset.second_high == 0) && (offset.second_low == 0)) {
-
-            /* Coarse adjustment */
-            if (ABS(offset.nanosecond) > MS_TO_NS(100)) {
-                ptp_mac_adjust_time_coarse(&offset);
+#if PTP_MAC_SYNC_PRINT_OFFSET
+                LOG_INFO("PTP: MAC Sync offset is %li ns", offset.nanosecond);
+#endif
             }
 
-            /* Fine adjustment */
+            /* Set time */
             else {
-                // TODO: control loop instead
-                ptp_mac_adjust_time_coarse(&offset);
+                ptp_mac_set_time(&switch_rx_timestamp);
+                ptp_pi_controller_clear(&mac_sync_controller, tx_time_get_ms());
+                mac_synced = false;
             }
-        }
-
-        /* Set time */
-        else {
-            ptp_mac_set_time(&switch_rx_timestamp);
         }
     }
 }

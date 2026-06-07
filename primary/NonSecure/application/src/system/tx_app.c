@@ -195,7 +195,7 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
     status = tx_timer_create(&ptp_mac_sync_timer,          "ptp_mac_sync_timer",          ptp_mac_sync_timer_callback,          0, PTP_MAC_SYNC_INTERVAL,                PTP_MAC_SYNC_INTERVAL,                TX_NO_ACTIVATE);
     TX_CHECK(status);
-#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
     status = tx_timer_create(&ptp_switch_sync_timer,       "ptp_switch_sync_timer",       ptp_switch_sync_timer_callback,       0, PTP_SWITCH_SYNC_INTERVAL,             PTP_SWITCH_SYNC_INTERVAL,             TX_NO_ACTIVATE);
     TX_CHECK(status);
 #endif

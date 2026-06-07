@@ -45,7 +45,26 @@ extern uint32_t __TRACE_SIZE__;
 /* PTP */
 /* ---------------------------------------------------------------------------- */
 
-#define PTP_CLOCK_CONTROLLER_OUTPUT_MAX ((PTP_CLOCK_CONTROLLER_KP * S_TO_NS(1)) + (PTP_CLOCK_CONTROLLER_KI * PTP_CLOCK_CONTROLLER_INTEGRAL_MAX))
+/* PTP_COUNTER_INCREMENT is the resolution of the PTP clock. TimestampRolloverMode = 1 so the timer value
+ * is 1:1 with ns. Using TimestampRolloverMode = 0 would improve the resolution from 1ns to 0.465ns, but
+ * this is enough for most applications and simplifies timer reading and writing.
+ *
+ * Note: An increment of 10ns with a 100MHz PTP_CLK_FREQ would cause addend to overflow. To prevent this,
+ *       and to leave headroom for fine adjustment the increment is set to 20ns. There is therefore no
+ *       advantage to using a 100MHz clock over a 50MHz one.
+ */
+#define PTP_CLK_FREQ                    (100000000) /* Frequency of clk_ptp_ref_i (fed by PLL1Q's output) */
+#define PTP_COUNTER_INCREMENT           (20)        /* 20ns */
+#define PTP_COUNTER_ADDEND_DEFAULT      ((((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ))
+
+#define PTP_CLOCK_CONTROLLER_OUTPUT_MAX ((PTP_CLOCK_CONTROLLER_KP * MS_TO_NS(PTP_CLOCK_FINE_ADJUST_THRESHOLD)) + \
+                                         (PTP_CLOCK_CONTROLLER_KI * PTP_CLOCK_CONTROLLER_INTEGRAL_MAX))
+#if FEAT_PTP_SWITCH_SYNC
+#define PTP_SWITCH_SYNC_CONTROLLER_OUTPUT_MAX ((PTP_SWITCH_SYNC_CONTROLLER_KP * S_TO_NS(1)) +                             \
+                                               (PTP_SWITCH_SYNC_CONTROLLER_KI * PTP_SWITCH_SYNC_CONTROLLER_INTEGRAL_MAX))
+#endif
+#define PTP_MAC_SYNC_CONTROLLER_OUTPUT_MAX ((PTP_MAC_SYNC_CONTROLLER_KP * MS_TO_NS(PTP_MAC_SYNC_FINE_ADJUST_THRESHOLD)) + \
+                                            (PTP_MAC_SYNC_CONTROLLER_KI * PTP_MAC_SYNC_CONTROLLER_INTEGRAL_MAX))
 
 /* ---------------------------------------------------------------------------- */
 /* Switch */

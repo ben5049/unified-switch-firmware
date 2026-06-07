@@ -154,6 +154,34 @@ extern NX_DHCP        dhcp_client;
 nx_status_t nx_setup(TX_BYTE_POOL *byte_pool);
 
 
+static inline nx_status_t nx_packet_release2(NX_PACKET *packet_ptr1, NX_PACKET *packet_ptr2) {
+
+    nx_status_t status = NX_SUCCESS;
+
+    status = nx_packet_release(packet_ptr1);
+    if (status != NX_SUCCESS) return status;
+    status = nx_packet_release(packet_ptr2);
+    if (status != NX_SUCCESS) return status;
+
+    return status;
+}
+
+
+static inline nx_status_t nx_packet_release3(NX_PACKET *packet_ptr1, NX_PACKET *packet_ptr2, NX_PACKET *packet_ptr3) {
+
+    nx_status_t status = NX_SUCCESS;
+
+    status = nx_packet_release(packet_ptr1);
+    if (status != NX_SUCCESS) return status;
+    status = nx_packet_release(packet_ptr2);
+    if (status != NX_SUCCESS) return status;
+    status = nx_packet_release(packet_ptr3);
+    if (status != NX_SUCCESS) return status;
+
+    return status;
+}
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,20 +19,6 @@
 #include "utils.h"
 
 
-/* PTP_COUNTER_INCREMENT is the resolution of the PTP clock. TimestampRolloverMode = 1 so the timer value
- * is 1:1 with ns. Using TimestampRolloverMode = 0 would improve the resolution from 1ns to 0.465ns, but
- * this is enough for most applications and simplifies timer reading and writing.
- *
- *
- * Note: An increment of 10ns with a 100MHz PTP_CLK_FREQ would cause addend to overflow. To prevent this,
- *       and to leave headroom for fine adjustment the increment is set to 20ns. There is therefore no
- *       advantage to using a 100MHz clock over a 50MHz one.
- */
-
-#define PTP_COUNTER_INCREMENT (20) /* 20ns */
-#define PTP_COUNTER_ADDEND    (((uint64_t) 1 << 32) * (uint64_t) HZ_TO_NS(1)) / ((uint64_t) PTP_COUNTER_INCREMENT * (uint64_t) PTP_CLK_FREQ)
-
-
 volatile uint32_t ptp_srcmeta_msw, ptp_srcmeta_lsw;
 volatile uint32_t ptp_mac_flt_msw, ptp_mac_flt_lsw;
 volatile uint32_t ptp_mac_fltres_msw, ptp_mac_fltres_lsw;
@@ -80,7 +66,7 @@ static hal_status_t ptp_configure() {
     hal_status_t status = HAL_OK;
 
     static_assert(PTP_CLK_FREQ <= 100000000, "PTP_CLK_FREQ too high");
-    static_assert(PTP_COUNTER_ADDEND <= (1 << 31), "PTP_COUNTER_INCREMENT too small");
+    static_assert(PTP_COUNTER_ADDEND_DEFAULT <= (1 << 31), "PTP_COUNTER_INCREMENT too small");
 
     /* Configure the ethernet timestamping register for PTP */
     ETH_PTP_ConfigTypeDef ptp_config;
@@ -91,7 +77,7 @@ static hal_status_t ptp_configure() {
 
     /* Update the config */
     ptp_config.TimestampUpdateMode   = ENABLE; /* Fine mode */
-    ptp_config.TimestampAddend       = PTP_COUNTER_ADDEND;
+    ptp_config.TimestampAddend       = PTP_COUNTER_ADDEND_DEFAULT;
     ptp_config.TimestampAddendUpdate = ENABLE;
     ptp_config.TimestampSubsecondInc = (PTP_COUNTER_INCREMENT & 0xff) << 16; /* For a 50MHz PTP clock increment by 20ns each time (RM0481 page 2935)*/
 

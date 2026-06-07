@@ -7,7 +7,9 @@
 
 #include "switch.h"
 #include "phy.h"
+#include "ptp.h"
 #include "utils.h"
+#include "validation.h"
 
 
 sja1105_status_t switch_byte_pool_init_all() {
@@ -164,8 +166,8 @@ static void switch_format_timestamp(int64_t timestamp_raw, NX_PTP_TIME *timestam
 /* This function assumes the switches are already synchronised */
 sja1105_status_t switch_set_time_all(const NX_PTP_TIME *time) {
 
-    sja1105_status_t status    = SJA1105_OK;
-    tx_status_t      tx_status = TX_SUCCESS;
+    sja1105_status_t switch_status = SJA1105_OK;
+    tx_status_t      tx_status     = TX_SUCCESS;
     uint64_t         raw_time_new;
     uint64_t         raw_time_current;
     bool             add;
@@ -194,13 +196,13 @@ sja1105_status_t switch_set_time_all(const NX_PTP_TIME *time) {
      *       otherwise. */
     tx_status = tx_mutex_get(&switch_mutex_handle, PTP_CLOCK_TIMEOUT);
     if (tx_status != TX_SUCCESS) {
-        status = SJA1105_MUTEX_ERROR;
-        return status;
+        switch_status = SJA1105_MUTEX_ERROR;
+        return switch_status;
     }
 
     /* Get the current time from the main SJA1105 */
-    status = SJA1105_GetCurrentTime(switch_handles, &raw_time_current);
-    if (status != SJA1105_OK) return status;
+    switch_status = SJA1105_GetCurrentTime(switch_handles, &raw_time_current);
+    if (switch_status != SJA1105_OK) return switch_status;
 
     /* Calculate the difference */
     if (raw_time_new >= raw_time_current) {
@@ -213,18 +215,22 @@ sja1105_status_t switch_set_time_all(const NX_PTP_TIME *time) {
 
     /* Add the offset to all the switches */
     for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
-        status = SJA1105_UpdateTimestamp(&switch_handles[i], raw_time_new, add, !add);
-        if (status != SJA1105_OK) return status;
+        switch_status = SJA1105_UpdateTimestamp(&switch_handles[i], raw_time_new, add, !add);
+        if (switch_status != SJA1105_OK) return switch_status;
     }
+
+    /* Notify the MAC sync thread that there may be invalid time stamps */
+    tx_status = tx_event_flags_set(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_RESET, TX_OR);
+    TX_CHECK(tx_status);
 
     /* Release the mutex */
     tx_status = tx_mutex_put(&switch_mutex_handle);
     if (tx_status != TX_SUCCESS) {
-        status = SJA1105_MUTEX_ERROR;
-        return status;
+        switch_status = SJA1105_MUTEX_ERROR;
+        return switch_status;
     }
 
-    return status;
+    return switch_status;
 }
 
 
@@ -266,10 +272,12 @@ sja1105_status_t switch_add_ns_all(int32_t nanoseconds) {
 }
 
 
-sja1105_status_t switch_set_rate_all(uint32_t rate) {
+sja1105_status_t switch_set_rate_all(uint32_t rate, const int32_t *corrections) {
 
     sja1105_status_t status    = SJA1105_OK;
     tx_status_t      tx_status = TX_SUCCESS;
+    uint32_t         rate_corrected;
+    static uint32_t  rates_previous[NUM_SWITCHES] = {0};
 
     /* Take the mutex to ensure rate setting is atomic
      * Note: Operations are already atomic within each switch, but delays
@@ -280,10 +288,33 @@ sja1105_status_t switch_set_rate_all(uint32_t rate) {
         return status;
     }
 
-    /* Add the offset to all the switches */
+    /* Apply the rate to all the switches */
     for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
-        status = SJA1105_SetPTPClockRate(&switch_handles[i], rate);
-        if (status != SJA1105_OK) return status;
+
+        /*  Apply per switch corrections */
+        if (corrections == NULL) {
+            rate_corrected = rate;
+        } else if ((corrections[i] >= 0) && ((UINT32_MAX - rate) < (uint32_t) corrections[i])) {
+            rate_corrected = UINT32_MAX;
+        } else if ((corrections[i] < 0) && ((uint32_t) (-corrections[i]) > rate)) {
+            rate_corrected = 0;
+        } else {
+            rate_corrected = rate + corrections[i];
+        }
+
+        /* Set the rate */
+        if (rates_previous[i] != rate_corrected) {
+            status = SJA1105_SetPTPClockRate(
+                &switch_handles[i],
+                rate_corrected);
+            if (status != SJA1105_OK) return status;
+            rates_previous[i] = rate_corrected;
+        }
+
+        /* Inject delay to see if the switch sync thread can fix it */
+        if (i != (NUM_SWITCHES - 1)) {
+            VAL_FAULT_CHANCE(SWITCH_UTILS, RATE_SET_PREEMPT, VAL_1_IN_100, tx_thread_sleep_ms(10));
+        }
     }
 
     /* Release the mutex */

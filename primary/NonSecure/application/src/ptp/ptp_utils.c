@@ -100,6 +100,33 @@ void ptp_mac_adjust_time_coarse(const NX_PTP_TIME *offset_time) {
 }
 
 
+void ptp_mac_set_addend(uint32_t addend) {
+
+    TX_INTERRUPT_SAVE_AREA
+
+    uint32_t tickstart;
+
+    TX_DISABLE
+
+    /* Wait for MAC to be ready */
+    tickstart = HAL_GetTick();
+    while (__HAL_ETH_GET_PTP_CONTROL(&heth, ETH_MACTSCR_TSADDREG) != 0) {
+        if ((HAL_GetTick() - tickstart) > 100) {
+            error_handler();
+            return;
+        }
+    }
+
+    /* Write the new addend value */
+    WRITE_REG(heth.Instance->MACTSAR, addend);
+
+    /* Apply the new value */
+    SET_BIT(heth.Instance->MACTSCR, ETH_MACTSCR_TSADDREG);
+
+    TX_RESTORE
+}
+
+
 /* Set the STM32 MAC timestamp counter */
 void ptp_mac_set_time(const NX_PTP_TIME *time_ptr) {
 
@@ -112,7 +139,7 @@ void ptp_mac_set_time(const NX_PTP_TIME *time_ptr) {
 
     /* Wait for MAC to be ready */
     tickstart = HAL_GetTick();
-    while (__HAL_ETH_GET_PTP_CONTROL(&heth, ETH_MACTSCR_TSUPDT) != 0) {
+    while (__HAL_ETH_GET_PTP_CONTROL(&heth, ETH_MACTSCR_TSINIT) != 0) {
         if ((HAL_GetTick() - tickstart) > 100) {
             error_handler();
             return;

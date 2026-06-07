@@ -26,9 +26,21 @@ TX_EVENT_FLAGS_GROUP ptp_clock_events_group;
 TX_QUEUE ptp_clock_queue;
 uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
-#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
 TX_TIMER ptp_switch_sync_timer;
 #endif
+
+
+static void ptp_init_switch_sync_controllers(ptp_controller_t *controllers, uint32_t time, int32_t *corrections) {
+    for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
+        ptp_pi_controller_init(&controllers[i - 1],
+                               PTP_SWITCH_SYNC_CONTROLLER_KP,
+                               PTP_SWITCH_SYNC_CONTROLLER_KI,
+                               PTP_SWITCH_SYNC_CONTROLLER_INTEGRAL_MAX,
+                               time);
+        corrections[i] = 0;
+    }
+}
 
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
@@ -71,18 +83,18 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                 TX_CHECK(tx_status);
 
                 /* A set implies a new master or catastrophic desync so reset the clock rates */
-                switch_status = switch_set_rate_all(SJA1105_PTP_CLK_RATE_DEFAULT);
+                switch_status = switch_set_rate_all(SJA1105_PTP_CLK_RATE_DEFAULT, NULL);
                 SWITCH_CHECK(switch_status);
 
                 /* Set the switch time(s). Apply a correction for how long it takes to set */
                 static NX_PTP_TIME correction = {
                     .second_high = 0,
                     .second_low  = 0,
-                    .nanosecond  = ((NUM_SWITCHES * SJA1105_WRITE_TIME(1)) + /* Set rate */
-                                   SJA1105_READ_TIME(2) +                   /* Read current time */
-                                   SJA1105_WRITE_TIME(1) +                  /* Write PTP Control reg */
-                                   SJA1105_WRITE_TIME(2) +                  /* Write new time */
-                                   US_TO_NS(1)                              /* Plus some time to execute instructions */
+                    .nanosecond  = (((NUM_SWITCHES - 1) * SJA1105_WRITE_TIME(1)) + /* Set rate (only needed for non-host switch due to switch_set_rate_all caching) */
+                                   SJA1105_READ_TIME(2) +                         /* Read current time */
+                                   SJA1105_WRITE_TIME(1) +                        /* Write PTP Control reg */
+                                   SJA1105_WRITE_TIME(2) +                        /* Write new time */
+                                   US_TO_NS(1)                                    /* Plus some time to execute instructions */
                                    )};
                 nx_status = _nx_ptp_client_utility_time_sum(time_ptr, &correction, time_ptr);
                 NX_CHECK(nx_status);
@@ -100,10 +112,6 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                 /* Copy the time from the switch back to the STM32's MAC */
                 tx_status = tx_event_flags_set(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR);
                 TX_CHECK(tx_status);
-
-                // /* Print the new time for good measure */
-                // tx_status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_PRINT_TIME, TX_OR);
-                // TX_CHECK(tx_status);
             }
 
             break;
@@ -142,8 +150,13 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
                 tx_status = tx_queue_send(&ptp_clock_queue, &event_info, TX_NO_WAIT);
                 if (tx_status == TX_QUEUE_FULL) {
 
-                    /* Adjustments can be dropped */
                     VAL_COVER(PTP_CLOCK, QUEUE_FULL);
+
+                    /* If adjustments have built up then flush them because only the most recent one is valid */
+                    tx_status = tx_queue_flush(&ptp_clock_queue);
+                    TX_CHECK(tx_status);
+                    tx_status = tx_queue_send(&ptp_clock_queue, &event_info, TX_NO_WAIT);
+                    TX_CHECK(tx_status);
                 }
 
                 /* Error */
@@ -177,7 +190,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 }
 
 
-#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
 
 void ptp_switch_sync_timer_callback(uint32_t id) {
     tx_status_t status = tx_event_flags_set(&ptp_clock_events_group, PTP_CLOCK_EVENT_SWITCH_SYNC, TX_OR);
@@ -194,23 +207,45 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     static_assert(PTP_CLOCK_CONTROLLER_INTEGRAL_MAX >= 0);
     static_assert(PTP_CLOCK_CONTROLLER_OUTPUT_MAX <= INT32_MAX); /* For typeof(controller_output) = int32_t */
 
-    tx_status_t tx_status = TX_SUCCESS;
-    // nx_status_t      nx_status     = NX_SUCCESS;
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
+    static_assert(PTP_SWITCH_SYNC_CONTROLLER_KP >= 0);
+    static_assert(PTP_SWITCH_SYNC_CONTROLLER_KI >= 0);
+    static_assert(PTP_SWITCH_SYNC_CONTROLLER_INTEGRAL_MAX >= 0);
+    static_assert(PTP_SWITCH_SYNC_CONTROLLER_OUTPUT_MAX <= INT32_MAX); /* For typeof(controller_output) = int32_t */
+#endif
+
+    tx_status_t      tx_status     = TX_SUCCESS;
     sja1105_status_t switch_status = SJA1105_OK;
 
     uint32_t                event_flags;
     ptp_packet_event_info_t event_info;
 
-    ptp_controller_t pi_controller = {.initialised = false};
+    ptp_controller_t clock_controller = {.initialised = false};
     int32_t          controller_output;
     uint32_t         rate;
+
+    uint32_t time_current;
+    uint32_t time_last_rate_write = 0;
+
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
+    NX_PTP_TIME      offset;
+    ptp_controller_t switch_sync_controllers[NUM_SWITCHES - 1];
+    int32_t          rate_corrections[NUM_SWITCHES] = {[SWITCH0] = 0};
+#else
+    static const int32_t *rate_corrections = NULL;
+#endif
 
 #if DEBUG
     uint32_t enqueued;
     uint32_t queue_high_water_mark = 0;
 #endif
 
-#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
+
+    /* Set the switch sync controllers to uninitialised */
+    for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
+        switch_sync_controllers[i - 1].initialised = false;
+    }
 
     /* Start the switch sync timer */
     tx_status = tx_timer_activate(&ptp_switch_sync_timer);
@@ -226,10 +261,22 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
 
         /* Reset the control loop */
         if (event_flags & PTP_CLOCK_EVENT_RESET) {
-            ptp_pi_controller_init(&pi_controller,
+
+            time_current = tx_time_get_ms();
+
+            /* Reset clock controller */
+            ptp_pi_controller_init(&clock_controller,
                                    PTP_CLOCK_CONTROLLER_KP,
                                    PTP_CLOCK_CONTROLLER_KI,
-                                   PTP_CLOCK_CONTROLLER_INTEGRAL_MAX);
+                                   PTP_CLOCK_CONTROLLER_INTEGRAL_MAX,
+                                   time_current);
+
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
+
+            /* Reset switch sync controller(s) */
+            ptp_init_switch_sync_controllers(switch_sync_controllers, time_current, rate_corrections);
+
+#endif
         }
 
         /* Adjust the time */
@@ -260,18 +307,18 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 assert(event_info.time.second_low == 0);
                 assert(ABS(event_info.time.nanosecond) <= S_TO_NS(1)); /* Error should be less than 1s */
 
-                /* Inject 500ms of lag to test queue overflow handling TODO: keep? */
-                // VAL_FAULT_CHANCE(PTP_CLOCK, THREAD_LAG, VAL_1_IN_100, tx_thread_sleep_ms(500));
+                /* Inject 500ms of lag to test queue overflow handling */
+                VAL_FAULT_CHANCE(PTP_CLOCK, THREAD_LAG, VAL_1_IN_100, tx_thread_sleep_ms(500));
 
                 /* For large offsets simply add/subtract */
-                if (ABS(event_info.time.nanosecond) > MS_TO_NS(100)) {
+                if (ABS(event_info.time.nanosecond) > MS_TO_NS(PTP_CLOCK_FINE_ADJUST_THRESHOLD)) {
 
                     /* Add/sub */
                     switch_status = switch_add_ns_all(event_info.time.nanosecond);
                     SWITCH_CHECK(switch_status);
 
                     /* Clear the integral */
-                    ptp_pi_controller_clear(&pi_controller);
+                    ptp_pi_controller_clear(&clock_controller, tx_time_get_ms());
 
                     VAL_COVER(PTP_CLOCK, SWITCH_ADJUST_COARSE);
                 }
@@ -279,30 +326,80 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 /* For small offsets use a PI controller */
                 else {
 
-                    assert(pi_controller.initialised);
+                    assert(clock_controller.initialised);
 
                     /* Compute the controller output */
-                    controller_output = ptp_pi_controller_compute(&pi_controller, event_info.time.nanosecond);
+                    controller_output = ptp_pi_controller_compute(&clock_controller, event_info.time.nanosecond, tx_time_get_ms());
 
                     /* Convert to fixed point rate */
-                    rate = controller_output + 0x80000000U;
+                    rate = SJA1105_PTP_I32_TO_RATE(controller_output);
+                    rate = CONSTRAIN(rate,
+                                     PTP_CLOCK_CONTROLLER_MIN_RATE,
+                                     PTP_CLOCK_CONTROLLER_MAX_RATE);
 
                     /* Apply the rate */
-                    switch_status = switch_set_rate_all(rate);
+                    switch_status = switch_set_rate_all(rate, rate_corrections);
                     SWITCH_CHECK(switch_status);
+                    time_last_rate_write = tx_time_get_ms();
 
                     VAL_COVER(PTP_CLOCK, SWITCH_ADJUST_FINE);
-                    // LOG_INFO("PTP: Clock PI output = %li", controller_output);
                 }
 
+#if PTP_CLOCK_PRINT_OFFSET
                 LOG_INFO("PTP: Clock error = %li ns", event_info.time.nanosecond);
+#endif
             }
         }
 
-#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
 
-        // TODO: move over
+        /* Synchronise the SJA1105 clocks with each other */
         if (event_flags & PTP_CLOCK_EVENT_SWITCH_SYNC) {
+
+            time_current = tx_time_get_ms();
+
+            /* Initialise controllers if not already done */
+            if (!switch_sync_controllers[0].initialised) {
+                ptp_init_switch_sync_controllers(switch_sync_controllers, time_current, rate_corrections);
+            }
+
+            /* Calculate corrections */
+            for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
+
+                /* Get the offset between the two switches */
+                switch_status = switch_get_timestamp_offsets(SWITCH0, i, &offset);
+                SWITCH_CHECK(switch_status);
+
+                /* Very out of sync, re-sync (also notify the MAC sync thread that timestamps may be invalid) */
+                if ((offset.second_high != 0) || (offset.second_low != 0)) {
+                    switch_status = SJA1105_SyncTimestamps(&switch_handles[SWITCH0], &switch_handles[SWITCH1]);
+                    SWITCH_CHECK(switch_status);
+                    tx_status = tx_event_flags_set(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_RESET, TX_OR);
+                    TX_CHECK(tx_status);
+                    continue;
+                }
+
+                /* Compute the controller output */
+                controller_output = ptp_pi_controller_compute(&switch_sync_controllers[i - 1], offset.nanosecond, time_current);
+
+                /* Convert to fixed point rate */
+                rate                = SJA1105_PTP_I32_TO_RATE(controller_output);
+                rate                = CONSTRAIN(rate,
+                                                PTP_SWITCH_SYNC_CONTROLLER_MIN_RATE,
+                                                PTP_SWITCH_SYNC_CONTROLLER_MAX_RATE);
+                rate_corrections[i] = SJA1105_PTP_RATE_TO_I32(rate);
+
+#if PTP_SWITCH_SYNC_PRINT_OFFSET
+                LOG_INFO("PTP: Switch %d current offset = %li ns", i, offset.nanosecond);
+#endif
+            }
+
+            /* Apply corrections if the rates haven't been set in a while */
+            if ((time_current - time_last_rate_write) > (PTP_SWITCH_SYNC_INTERVAL - 1)) {
+                switch_status = switch_set_rate_all(SJA1105_PTP_CLK_RATE_DEFAULT, rate_corrections);
+                SWITCH_CHECK(switch_status);
+                time_last_rate_write = time_current;
+            }
         }
 
 #endif

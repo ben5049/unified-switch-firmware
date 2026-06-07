@@ -54,10 +54,10 @@ extern "C" {
 #define VAL_COVER_DECLARE(unit, item)             atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)                       /* Add item to VALIDATION_COVER_STRUCT */
 #define VAL_COVER_ARRAY_DECLARE(unit, item, size) atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)[(size)]               /* Add array to VALIDATION_COVER_STRUCT */
 #define VAL_COVER(unit, item)                     _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)++) /* Cover an item */
-#define VAL_COVER_ARRAY(unit, item, index)                                                                                                              \
-    do {                                                                                                                                                \
-        assert(index < (sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)) / sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[0]))); \
-        _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[(index)]++);                                                                \
+#define VAL_COVER_ARRAY(unit, item, index)                                                                                                                               \
+    do {                                                                                                                                                                 \
+        _VAL_BASE(unit, assert(index < (sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)) / sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[0])))); \
+        _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[(index)]++);                                                                                 \
     } while (0) /* Cover an item in an array */
 
 /* Fault injection macros */

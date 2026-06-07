@@ -111,11 +111,19 @@ void ptp_events_print_time_timer_callback(uint32_t id) {
 void ptp_sync_timeout_timer_callback(uint32_t id) {
 
     tx_status_t status = TX_SUCCESS;
+    bool        master_is_capable;
 
-    if (new_master_waiting_for_sync && (ptp_port_connected_to_master != PORT_HOST)) {
+    /* No SYNC received after timeout */
+    if (new_master_waiting_for_sync) {
+
         new_master_waiting_for_sync = false;
-        status                      = tx_event_flags_set(&ptp_events_group, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
-        TX_CHECK(status);
+        master_is_capable           = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond <= NX_PTP_CLIENT_DELAY_THRESH;
+
+        /* Master is_capable so sync should have been received but wasn't */
+        if ((ptp_port_connected_to_master != PORT_HOST) && master_is_capable) {
+            status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
+            TX_CHECK(status);
+        }
     }
 }
 
@@ -137,17 +145,12 @@ static tx_status_t ptp_sync_timeout_start() {
 
     tx_status_t status = TX_SUCCESS;
 
-    // TODO: when clock adjusting is done re-enable this function
-    // Since there is no adjusting, the offset from the master is
-    // greater than the maximum allowed gPTP delay (800ns) and so
-    // a SYNC is never triggered
+    new_master_waiting_for_sync = true;
 
-    // new_master_waiting_for_sync = true;
-
-    // status = tx_timer_change(&ptp_sync_timeout_timer, PTP_SYNC_TIMEOUT, 0);
-    // if (status != TX_SUCCESS) return status;
-    // status = tx_timer_activate(&ptp_sync_timeout_timer);
-    // if (status != TX_SUCCESS) return status;
+    status = tx_timer_change(&ptp_sync_timeout_timer, PTP_SYNC_TIMEOUT, 0);
+    if (status != TX_SUCCESS) return status;
+    status = tx_timer_activate(&ptp_sync_timeout_timer);
+    if (status != TX_SUCCESS) return status;
 
     return status;
 }
@@ -261,7 +264,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             ptp_port_connected_to_master = event_info.port;
                             master                       = event_info.master;
                             memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
-                            master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity; // TODO: does this cancel with the line below?
+                            master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity;
                             ptp_client[event_info.port].ptp_master.nx_ptp_client_master_grandmaster_identity = ptp_client[event_info.port].nx_ptp_client_port_identity;
                             VAL_COVER(PTP_EVENT, MASTER_NEW);
 
@@ -305,14 +308,16 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                 NX_CHECK(nx_status);
                             }
 
-                            LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x",
+                            LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x (port %d), %d steps removed",
                                      event_info.port,
                                      grandmaster_identity[0],
                                      grandmaster_identity[1],
                                      grandmaster_identity[2],
                                      grandmaster_identity[5],
                                      grandmaster_identity[6],
-                                     grandmaster_identity[7]);
+                                     grandmaster_identity[7],
+                                     ((uint16_t) grandmaster_identity[8] << 8) | grandmaster_identity[9],
+                                     master.nx_ptp_client_master_steps_removed + 1);
 
                             break;
                         }

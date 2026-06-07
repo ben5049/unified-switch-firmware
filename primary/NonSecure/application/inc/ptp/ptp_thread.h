@@ -137,7 +137,7 @@ extern TX_TIMER ptp_events_print_time_timer;
 #endif
 extern TX_TIMER ptp_sync_timeout_timer;
 extern TX_TIMER ptp_mac_sync_timer;
-#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
 extern TX_TIMER ptp_switch_sync_timer;
 #endif
 
