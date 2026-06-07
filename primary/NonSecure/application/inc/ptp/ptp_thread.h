@@ -71,19 +71,18 @@ typedef enum {
     PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP,
 
     /* PTP Clock event flags */
-    PTP_CLOCK_EVENT_MAC_SYNC    = 1UL << 11, /* Time to sync the STM32's MAC clock with the main SJA1105's */
-    PTP_CLOCK_EVENT_SWITCH_SYNC = 1UL << 12, /* Time to sync the SJA1105s' clocks together */
-
-    /* PTP Clock queue event */
-    PTP_CLOCK_EVENT_ADJUST,
-    PTP_CLOCK_EVENT_SET,
+    PTP_CLOCK_EVENT_ADJUST      = 1UL << 11, /* Adjust the time */
+    PTP_CLOCK_EVENT_MAC_SYNC    = 1UL << 12, /* Time to sync the STM32's MAC clock with the main SJA1105's */
+    PTP_CLOCK_EVENT_SWITCH_SYNC = 1UL << 13, /* Time to sync the SJA1105s' clocks together */
+    PTP_CLOCK_EVENT_RESET       = 1UL << 14, /* Reset clock rate controller TODO: use */
 
     PTP_EVENT_ALL = 0xffffffffUL
 
 } ptp_event_t;
 
 typedef struct {
-    ptp_event_t event;
+    ptp_event_t  event;
+    port_index_t port;
     union {
         struct {
             NX_PTP_CLIENT_MASTER master;
@@ -91,57 +90,54 @@ typedef struct {
         };
         NX_PTP_CLIENT_SYNC sync;
     };
-    port_index_t port;
 } ptp_client_event_info_t;
 
 
 typedef struct {
-    ptp_event_t event;
+    ptp_event_t  event;
+    port_index_t port;
     union {
         NX_PACKET  *packet_ptr;
         NX_PTP_TIME time;
     };
-    port_index_t port;
 } ptp_packet_event_info_t;
 
 
 /* Exported variables */
 
-extern TX_THREAD ptp_event_thread_handle;
+extern TX_THREAD ptp_event_thread;
 extern uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
-extern TX_THREAD ptp_tx_thread_handle;
+extern TX_THREAD ptp_tx_thread;
 extern uint8_t   ptp_tx_thread_stack[PTP_TX_THREAD_STACK_SIZE];
-extern TX_THREAD ptp_rx_thread_handle;
+extern TX_THREAD ptp_rx_thread;
 extern uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
-extern TX_THREAD ptp_mac_sync_thread_handle;
+extern TX_THREAD ptp_clock_thread;
+extern uint8_t   ptp_clock_thread_stack[PTP_CLOCK_THREAD_STACK_SIZE];
+extern TX_THREAD ptp_mac_sync_thread;
 extern uint8_t   ptp_mac_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
-#if NUM_SWITCHES > 1
-extern TX_THREAD ptp_switch_sync_thread_handle;
-extern uint8_t   ptp_switch_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
-#endif
 
-extern TX_QUEUE ptp_event_queue_handle;
+extern TX_QUEUE ptp_event_queue;
 extern uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS];
-extern TX_QUEUE ptp_tx_queue_handle;
+extern TX_QUEUE ptp_tx_queue;
 extern uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
-extern TX_QUEUE ptp_rx_queue_handle;
+extern TX_QUEUE ptp_rx_queue;
 extern uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
-extern TX_QUEUE ptp_mac_sync_queue_handle;
+extern TX_QUEUE ptp_clock_queue;
+extern uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
+extern TX_QUEUE ptp_mac_sync_queue;
 extern uint32_t ptp_mac_sync_queue_stack[PTP_MAC_SYNC_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
-extern TX_EVENT_FLAGS_GROUP ptp_events_handle;
-extern TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
-extern TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_handle;
-#if NUM_SWITCHES > 1
-extern TX_EVENT_FLAGS_GROUP ptp_switch_sync_events_handle;
-#endif
+extern TX_EVENT_FLAGS_GROUP ptp_events_group;
+extern TX_EVENT_FLAGS_GROUP ptp_tx_events_group;
+extern TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_group;
+extern TX_EVENT_FLAGS_GROUP ptp_clock_events_group;
 
 #if PTP_PRINT_TIME_INTERVAL
 extern TX_TIMER ptp_events_print_time_timer;
 #endif
 extern TX_TIMER ptp_sync_timeout_timer;
 extern TX_TIMER ptp_mac_sync_timer;
-#if NUM_SWITCHES > 1
+#if FEAT_SWITCH_SYNC && (NUM_SWITCHES > 1)
 extern TX_TIMER ptp_switch_sync_timer;
 #endif
 
@@ -155,9 +151,6 @@ void ptp_tx_thread_entry(uint32_t initial_input);
 void ptp_rx_thread_entry(uint32_t initial_input);
 void ptp_clock_thread_entry(uint32_t initial_input);
 void ptp_mac_sync_thread_entry(uint32_t initial_input);
-#if NUM_SWITCHES > 1
-void ptp_switch_sync_thread_entry(uint32_t initial_input);
-#endif
 
 /* Timer callbacks */
 #if PTP_PRINT_TIME_INTERVAL

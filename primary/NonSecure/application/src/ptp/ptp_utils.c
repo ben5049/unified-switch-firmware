@@ -12,6 +12,7 @@
 #include "tx_app.h"
 #include "nx_app.h"
 #include "ptp.h"
+#include "utils.h"
 
 
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
@@ -57,7 +58,7 @@ void write_port_identity_number(uint8_t *port_identity, uint16_t number) {
 }
 
 
-void ptp_compute_offset(const NX_PTP_TIME *t1, const NX_PTP_TIME *t2, const NX_PTP_TIME *t3, const NX_PTP_TIME *t4, NX_PTP_TIME *offset) {
+void ptp_compute_offset(NX_PTP_TIME *t1, NX_PTP_TIME *t2, NX_PTP_TIME *t3, NX_PTP_TIME *t4, NX_PTP_TIME *offset) {
 
     NX_PTP_TIME a;
     NX_PTP_TIME b;
@@ -152,6 +153,27 @@ void ptp_mac_get_time(NX_PTP_TIME *time_ptr) {
     time_ptr->nanosecond = (LONG) ns;
 
     TX_RESTORE
+}
+
+
+nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr) {
+
+    nx_status_t      status = NX_SUCCESS;
+    NX_PTP_DATE_TIME date;
+
+    status = nx_ptp_client_utility_convert_time_to_date(
+        time_ptr,
+        (time_ptr->second_high == 0)
+            ? -CONSTRAIN(ptp_utc_offset, 0, time_ptr->second_low)
+            : -ptp_utc_offset, /* Prevent the offset from making the time negative */
+        &date);
+    if (status != NX_SUCCESS) return status;
+
+    LOG_INFO("PTP: Time is %2u/%02u/%u %02u:%02u:%02u.%09lu (UTC)",
+             date.day, date.month, date.year,
+             date.hour, date.minute, date.second, date.nanosecond);
+
+    return status;
 }
 
 

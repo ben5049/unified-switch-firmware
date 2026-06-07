@@ -31,6 +31,7 @@ extern "C" {
 #define MS_TO_TICKS(ms)           (((ms) * TX_TIMER_TICKS_PER_SECOND) / 1000)
 #define MS_TO_NS(ms)              (1000000UL * (ms))
 #define S_TO_NS(s)                (1000000000ULL * (s))
+#define US_TO_NS(us)              (1000UL * (us))
 
 #define HZ_TO_NS(hz)              (S_TO_NS(1) / (hz))
 #define MHZ_TO_NS(mhz)            (HZ_TO_NS(1000000) / (mhz))

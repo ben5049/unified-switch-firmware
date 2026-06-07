@@ -17,13 +17,13 @@
 
 SHORT ptp_utc_offset = 0;
 
-TX_THREAD ptp_event_thread_handle;
+TX_THREAD ptp_event_thread;
 uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
 
-TX_QUEUE ptp_event_queue_handle;
+TX_QUEUE ptp_event_queue;
 uint32_t ptp_event_queue_stack[PTP_EVENT_QUEUE_SIZE * PTP_CLIENT_MSG_SIZE_WORDS];
 
-TX_EVENT_FLAGS_GROUP ptp_events_handle;
+TX_EVENT_FLAGS_GROUP ptp_events_group;
 
 #if PTP_PRINT_TIME_INTERVAL
 TX_TIMER ptp_events_print_time_timer;
@@ -101,7 +101,7 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
 #if PTP_PRINT_TIME_INTERVAL
 
 void ptp_events_print_time_timer_callback(uint32_t id) {
-    tx_status_t status = tx_event_flags_set(&ptp_events_handle, PTP_EVENT_PRINT_TIME, TX_OR);
+    tx_status_t status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_PRINT_TIME, TX_OR);
     TX_CHECK(status);
 }
 
@@ -114,7 +114,7 @@ void ptp_sync_timeout_timer_callback(uint32_t id) {
 
     if (new_master_waiting_for_sync && (ptp_port_connected_to_master != PORT_HOST)) {
         new_master_waiting_for_sync = false;
-        status                      = tx_event_flags_set(&ptp_events_handle, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
+        status                      = tx_event_flags_set(&ptp_events_group, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
         TX_CHECK(status);
     }
 }
@@ -161,8 +161,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     nx_status_t nx_status = NX_SUCCESS;
     tx_status_t tx_status = TX_SUCCESS;
 
-    NX_PTP_TIME      time;
-    NX_PTP_DATE_TIME date;
+    NX_PTP_TIME time;
 
     uint32_t                event_flags;
     ptp_client_event_info_t event_info;
@@ -170,9 +169,9 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
     uint8_t port_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE]; /* 64-bit EUI + port */
 
-    bool    new_master;
-    int32_t clock_comparison;
-
+    bool                 new_master;
+    int32_t              clock_comparison;
+    int32_t              master_delay;
     NX_PTP_CLIENT_MASTER master; /* Note: the nx_ptp_client_master_address and nx_ptp_client_master_port_identity fields are ALWAYS INVALID (due to copying struct with pointers) */
 
     static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
@@ -196,7 +195,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
-        tx_status = tx_event_flags_get(&ptp_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
+        tx_status = tx_event_flags_get(&ptp_events_group, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
         /* Receive events from the event queue */
@@ -204,7 +203,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
             do {
 
                 /* Receive event */
-                tx_status = tx_queue_receive(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
+                tx_status = tx_queue_receive(&ptp_event_queue, &event_info, TX_NO_WAIT);
                 if (tx_status == TX_SUCCESS) {
                     switch (event_info.event) {
 
@@ -262,7 +261,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             ptp_port_connected_to_master = event_info.port;
                             master                       = event_info.master;
                             memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
-                            master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity;
+                            master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity; // TODO: does this cancel with the line below?
                             ptp_client[event_info.port].ptp_master.nx_ptp_client_master_grandmaster_identity = ptp_client[event_info.port].nx_ptp_client_port_identity;
                             VAL_COVER(PTP_EVENT, MASTER_NEW);
 
@@ -377,20 +376,29 @@ void ptp_event_thread_entry(uint32_t initial_input) {
         /* Get, convert, and print the PTP time */
         if (event_flags & PTP_EVENT_PRINT_TIME) {
 
-            /* Get time from the STM32's MAC */
-            ptp_mac_get_time(&time);
+            /* Check the delay to the master */
+            master_delay = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond;
+            if (master_delay > NX_PTP_CLIENT_DELAY_THRESH) {
+                LOG_WARNING("PTP: Delay to master is %li ns (larger than %d ns threshold)",
+                            master_delay, NX_PTP_CLIENT_DELAY_THRESH);
+            }
 
-            /* Convert and print time */
-            nx_status = nx_ptp_client_utility_convert_time_to_date(
-                &time,
-                (time.second_high == 0)
-                    ? -CONSTRAIN(ptp_utc_offset, 0, time.second_low)
-                    : -ptp_utc_offset, /* Prevent the offset from making the time negative */
-                &date);
-            NX_CHECK(nx_status);
-            LOG_INFO("PTP: Time is %2u/%02u/%u %02u:%02u:%02u.%09lu (UTC)",
-                     date.day, date.month, date.year,
-                     date.hour, date.minute, date.second, date.nanosecond);
+            /* Only print the time if its valid */
+            else {
+
+                /* Ignore exactly 800ns since that is the default value when
+                 * nothing is connected */
+                if (master_delay != NX_PTP_CLIENT_DELAY_THRESH) {
+                    LOG_INFO("PTP: Delay to master is %li ns", master_delay);
+                }
+
+                /* Get time from the STM32's MAC */
+                ptp_mac_get_time(&time);
+
+                /* Convert and print the time */
+                nx_status = ptp_print_date(&time);
+                NX_CHECK(nx_status);
+            }
         }
 
 #endif

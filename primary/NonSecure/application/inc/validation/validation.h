@@ -14,7 +14,9 @@ extern "C" {
 
 
 #include "stdint.h"
+#include "stdbool.h"
 #include "stdatomic.h"
+#include "assert.h"
 
 #include "app.h"
 #include "secure_nsc.h"
@@ -24,12 +26,20 @@ extern "C" {
 /* Public Macros */
 /* ---------------------------------------------------------------------------- */
 
+#ifndef VALIDATION_ENABLE
+#define VALIDATION_ENABLE 0 /* Disabled by default */
+#endif
+
 #ifndef VALIDATION_SEED
 #define VALIDATION_SEED (0) /* 0 Means random seed */
 #endif
 
 #ifndef VALIDATION_FAULT_INJECTION
 #define VALIDATION_FAULT_INJECTION (0) /* Disabled by default */
+#endif
+
+#ifndef VALIDATION_TERMINATE
+#define VALIDATION_TERMINATE 0 /* Disabled by default */
 #endif
 
 #ifndef VALIDATION_COVER_STRUCT
@@ -44,23 +54,23 @@ extern "C" {
 #define VAL_COVER_DECLARE(unit, item)             atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)                       /* Add item to VALIDATION_COVER_STRUCT */
 #define VAL_COVER_ARRAY_DECLARE(unit, item, size) atomic_uint_fast32_t _VAL_COVER_NAME(unit, item)[(size)]               /* Add array to VALIDATION_COVER_STRUCT */
 #define VAL_COVER(unit, item)                     _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)++) /* Cover an item */
-#define VAL_COVER_ARRAY(unit, item, index)                                               \
-    ({                                                                                   \
-        assert(index < sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)));     \
-        _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[(index)]++); \
-    }) /* Cover an item in an array */
+#define VAL_COVER_ARRAY(unit, item, index)                                                                                                              \
+    do {                                                                                                                                                \
+        assert(index < (sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)) / sizeof(VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[0]))); \
+        _VAL_BASE(unit, VALIDATION_COVER_STRUCT._VAL_COVER_NAME(unit, item)[(index)]++);                                                                \
+    } while (0) /* Cover an item in an array */
 
 /* Fault injection macros */
 #define VAL_FAULT_DECLARE(unit, item)                  atomic_uint_fast32_t _VAL_FAULT_NAME(unit, item)              /* Add item to VALIDATION_COVER_STRUCT */
 #define VAL_FAULT_CHANCE(unit, item, chance, logic)    _VAL_BASE(unit, _VAL_FAULT_CHANCE(unit, item, chance, logic)) /* Random chance of logic being executed */
 #define VAL_FAULT_RETURN(unit, item, chance, ret)      VAL_FAULT_CHANCE(unit, item, chance, return (ret))            /* Random chance of returning */
 #define VAL_FAULT_MODIFY(unit, item, chance, var, val) VAL_FAULT_CHANCE(unit, item, chance, (var) = (val))           /* Random chance of var being modified to val */
-#define VAL_FAULT_BREAK(unit, item, chance)             \
-    ({                                                  \
-        bool _b = false;                                \
-        VAL_FAULT_MODIFY(unit, item, chance, _b, true); \
-        if (_b) break;                                  \
-    }) /* Random chance of breaking */
+#define VAL_FAULT_BREAK(unit, item, chance)                                                                    \
+    ({                                                                                                         \
+        bool _b = false;                                                                                       \
+        VAL_FAULT_MODIFY(unit, item, chance, _b, true);                                                        \
+        if (_b) break;                                                                                         \
+    }) /* Random chance of breaking. Note: do {...} while (0) can't be used since it would absorb the break */
 
 /* Chance constants */
 #define VAL_NEVER      (0)

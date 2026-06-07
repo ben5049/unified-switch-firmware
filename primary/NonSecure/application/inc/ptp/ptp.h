@@ -17,6 +17,7 @@ extern "C" {
 #include "ptp_init.h"
 #include "ptp_client.h"
 #include "ptp_utils.h"
+#include "ptp_controller.h"
 
 
 #ifdef __cplusplus

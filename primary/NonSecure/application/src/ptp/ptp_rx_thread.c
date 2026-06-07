@@ -18,10 +18,10 @@
 #include "validation.h"
 
 
-TX_THREAD ptp_rx_thread_handle;
+TX_THREAD ptp_rx_thread;
 uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 
-TX_QUEUE ptp_rx_queue_handle;
+TX_QUEUE ptp_rx_queue;
 uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 static volatile uint32_t meta_debt = 0;
@@ -42,7 +42,7 @@ static inline tx_status_t ptp_flush_rx_queue() {
 
     tx_status_t tx_status = TX_SUCCESS;
 
-    tx_status = ptp_flush_packet_queue(&ptp_rx_queue_handle);
+    tx_status = ptp_flush_packet_queue(&ptp_rx_queue);
     if (tx_status != TX_SUCCESS) return tx_status;
 
     /* Clear any pending debt since the queues have been completely reset */
@@ -59,6 +59,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
     sja1105_status_t switch_status = SJA1105_OK;
 
     ptp_packet_event_info_t event_info;
+    ptp_packet_event_info_t event_info_temp;
     ptp_event_t             event;
 
     NX_PACKET   *ptp_packet;
@@ -74,12 +75,12 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
-        tx_status = tx_queue_receive(&ptp_rx_queue_handle, &event_info, TX_WAIT_FOREVER);
+        tx_status = tx_queue_receive(&ptp_rx_queue, &event_info, TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
 #if DEBUG
 
-        tx_status = tx_queue_info_get(&ptp_rx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+        tx_status = tx_queue_info_get(&ptp_rx_queue, NULL, &enqueued, NULL, NULL, NULL, NULL);
         TX_CHECK(tx_status);
         if ((enqueued + 1) > queue_high_water_mark) {
             queue_high_water_mark = (enqueued + 1);
@@ -99,32 +100,64 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             NX_CHECK(nx_status);
 
             VAL_COVER(PTP_RX, LONE_META);
-            LOG_WARNING("Received isolated META frame");
+            LOG_WARNING("PTP: RX Received isolated META frame");
             continue;
         }
 
         assert(event == PTP_RX_EVENT_RECEIVE_PTP_PACKET);
 
         /* Get the follow up META frame */
-        tx_status = tx_queue_receive(&ptp_rx_queue_handle, &event_info, MS_TO_TICKS(PTP_RX_TIMEOUT));
+        {
+            tx_status = tx_queue_receive(&ptp_rx_queue, &event_info, MS_TO_TICKS(PTP_RX_TIMEOUT));
 
-        /* META frame lost, drop the PTP packet since it cannot be timestamped.
-         * Also flush the queues to prevent alignment issues. */
-        if ((tx_status != TX_SUCCESS) || (event_info.event != PTP_RX_EVENT_RECEIVE_META_FRAME)) {
-
-            /* Release all RX packets */
-            if (tx_status == TX_SUCCESS) {
-                nx_status = nx_packet_release(event_info.packet_ptr);
+            /* No meta frame found, flush everything  */
+            if (tx_status != TX_SUCCESS) {
+                nx_status = nx_packet_release(ptp_packet);
                 NX_CHECK(nx_status);
+                tx_status = ptp_flush_rx_queue();
+                TX_CHECK(tx_status);
+                VAL_COVER(PTP_RX, NO_META);
+                LOG_ERROR("PTP: RX No META frame found");
+                continue;
             }
-            nx_status = nx_packet_release(ptp_packet);
-            NX_CHECK(nx_status);
-            tx_status = ptp_flush_rx_queue();
-            TX_CHECK(tx_status);
 
-            VAL_COVER(PTP_RX, NO_META);
-            LOG_ERROR("PTP: RX No META frame found");
-            continue;
+            /* META frame lost, attempt to read the next event in the queue to see
+             * if that is the META frame */
+            else if (event_info.event != PTP_RX_EVENT_RECEIVE_META_FRAME) {
+                tx_status = tx_queue_receive(&ptp_rx_queue, &event_info_temp, MS_TO_TICKS(PTP_RX_TIMEOUT));
+
+                /* That failed, flush everything */
+                if ((tx_status != TX_SUCCESS) || (event_info_temp.event != PTP_RX_EVENT_RECEIVE_META_FRAME)) {
+                    if (tx_status == TX_SUCCESS) {
+                        nx_status = nx_packet_release(event_info_temp.packet_ptr);
+                        NX_CHECK(nx_status);
+                    }
+                    nx_status = nx_packet_release(event_info.packet_ptr);
+                    NX_CHECK(nx_status);
+                    nx_status = nx_packet_release(ptp_packet);
+                    NX_CHECK(nx_status);
+                    tx_status = ptp_flush_rx_queue();
+                    TX_CHECK(tx_status);
+                    VAL_COVER(PTP_RX, NO_META);
+                    LOG_ERROR("PTP: RX No META frame found");
+                    continue;
+                }
+
+                /* Next event is the meta frame, put the first frame we took off back in the queue
+                 * There should be space because we have taken two things off */
+                else if (event_info_temp.event == PTP_RX_EVENT_RECEIVE_META_FRAME) {
+                    tx_status = tx_queue_front_send(&ptp_rx_queue, &event_info, TX_NO_WAIT);
+                    TX_CHECK(tx_status);
+                    event_info = event_info_temp;
+                    VAL_COVER(PTP_RX, META_DELAYED_BY_1);
+                    LOG_WARNING("PTP: RX META Frame was delayed by 1");
+                }
+
+                /* Invalid event */
+                else {
+                    error_handler();
+                }
+            }
         }
 
         /* Parse information from the PTP packet header
@@ -138,7 +171,6 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         } else {
             VAL_COVER(PTP_RX, GENERAL);
         }
-        VAL_COVER_ARRAY(PTP_RX, PORT, port);
 
         /* Parse META frame for timestamp and port then free it */
         switch_status = switch_parse_and_free_meta_frame(
@@ -147,6 +179,7 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             &port,
             &timestamp);
         SWITCH_CHECK(switch_status);
+        VAL_COVER_ARRAY(PTP_RX, PORT, port);
 
         /* Packet was sent by us to synchronise switch clock with
          * STM32 MAC clock */
@@ -157,13 +190,13 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
             /* Send switch timestamp */
             event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
             event_info.time  = timestamp;
-            tx_status        = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
+            tx_status        = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
             TX_CHECK(tx_status);
 
             /* Send MAC timestamp */
             event_info.event = PTP_CLOCK_EVENT_RX_MAC_TIMESTAMP;
             ptp_packet_extract_timestamp(ptp_packet, &event_info.time);
-            tx_status = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
+            tx_status = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
             TX_CHECK(tx_status);
 
             /* Release the packet */
@@ -238,6 +271,8 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
         &header_size);
     NX_CHECK(nx_status);
 
+    // TODO: inject invalid vlan tag (do same in tx?)
+
     /* Get information about the frame */
     meta_frame       = (src_msw == ptp_srcmeta_msw) && (src_lsw == ptp_srcmeta_lsw);
     management_frame = ((dst_msw & ptp_mac_flt_msw) == ptp_mac_fltres_msw) &&
@@ -287,7 +322,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                 /* Queue the packet to be sent */
                 event_info.event      = PTP_RX_EVENT_RECEIVE_META_FRAME;
                 event_info.packet_ptr = packet_ptr;
-                tx_status             = tx_queue_send(&ptp_rx_queue_handle, &event_info, TX_NO_WAIT);
+                tx_status             = tx_queue_send(&ptp_rx_queue, &event_info, TX_NO_WAIT);
                 if (tx_status != TX_SUCCESS) {
                     VAL_TERMINATE();
 
@@ -321,7 +356,7 @@ uint8_t ptp_rx_filter_packet(NX_PACKET *packet_ptr, uint32_t ts[2]) {
                 /* Queue the packet to be processed */
                 event_info.event      = PTP_RX_EVENT_RECEIVE_PTP_PACKET;
                 event_info.packet_ptr = packet_ptr;
-                tx_status             = tx_queue_send(&ptp_rx_queue_handle, &event_info, TX_NO_WAIT);
+                tx_status             = tx_queue_send(&ptp_rx_queue, &event_info, TX_NO_WAIT);
                 if (tx_status != TX_SUCCESS) {
                     VAL_TERMINATE();
 

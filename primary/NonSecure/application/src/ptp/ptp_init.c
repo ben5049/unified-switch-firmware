@@ -179,46 +179,46 @@ tx_status_t ptp_start() {
     HAL_CHECK(hal_status);
 
     /* Flush the queues. Queues containing packets must have all their packets released */
-    status = ptp_flush_packet_queue(&ptp_tx_queue_handle);
+    status = ptp_flush_packet_queue(&ptp_tx_queue);
     if (status != TX_SUCCESS) return status;
-    status = ptp_flush_packet_queue(&ptp_rx_queue_handle);
+    status = ptp_flush_packet_queue(&ptp_rx_queue);
     if (status != TX_SUCCESS) return status;
-    status = tx_queue_flush(&ptp_event_queue_handle);
+    status = tx_queue_flush(&ptp_event_queue);
     if (status != TX_SUCCESS) return status;
-    status = tx_queue_flush(&ptp_mac_sync_queue_handle);
+    status = tx_queue_flush(&ptp_clock_queue);
+    if (status != TX_SUCCESS) return status;
+    status = tx_queue_flush(&ptp_mac_sync_queue);
     if (status != TX_SUCCESS) return status;
 
     /* Clear event flags */
-    status = tx_event_flags_get(&ptp_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_events_group, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
-    status = tx_event_flags_get(&ptp_tx_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_tx_events_group, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
-    status = tx_event_flags_get(&ptp_mac_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_mac_sync_events_group, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 #if NUM_SWITCHES > 1
-    status = tx_event_flags_get(&ptp_switch_sync_events_handle, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
+    status = tx_event_flags_get(&ptp_clock_events_group, PTP_EVENT_ALL, TX_OR_CLEAR, &event_flags, TX_NO_WAIT);
     if ((status != TX_SUCCESS) && (status != TX_NO_EVENTS)) return status;
 #endif
 
     /* Start the TX thread before the PTP clients to avoid queues building up */
-    status = tx_thread_resume(&ptp_tx_thread_handle);
+    status = tx_thread_resume(&ptp_tx_thread);
     if (status != TX_SUCCESS) return status;
 
     /* Start the event thread. This also starts the PTP clients */
-    status = tx_thread_resume(&ptp_event_thread_handle);
+    status = tx_thread_resume(&ptp_event_thread);
     if (status != TX_SUCCESS) return status;
 
     /* Start the RX thread after the PTP clients to avoid giving packets from before the PTP clients are started */
-    status = tx_thread_resume(&ptp_rx_thread_handle);
+    status = tx_thread_resume(&ptp_rx_thread);
     if (status != TX_SUCCESS) return status;
 
-    /* Start the sync threads last since they rely on both TX and RX threads */
-    status = tx_thread_resume(&ptp_mac_sync_thread_handle);
+    /* Start the clock threads last since they rely on both TX and RX threads */
+    status = tx_thread_resume(&ptp_clock_thread);
     if (status != TX_SUCCESS) return status;
-#if NUM_SWITCHES > 1
-    status = tx_thread_resume(&ptp_switch_sync_thread_handle);
+    status = tx_thread_resume(&ptp_mac_sync_thread);
     if (status != TX_SUCCESS) return status;
-#endif
 
     /* Set the flag to enable callback processing */
     ptp_initialised = true;

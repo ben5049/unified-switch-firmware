@@ -27,7 +27,8 @@ extern "C" {
 #define FEAT_PTP           (1)
 #define FEAT_COMMS         (0) /* TODO: re-enable */
 #define FEAT_DHCP_RESTORE  (1)
-#define FEAT_PHY_SELF_TEST (1) // TODO: use
+#define FEAT_PHY_SELF_TEST (1) // TODO: Use
+#define FEAT_SWITCH_SYNC   (1) // TODO: Use
 
 /* ---------------------------------------------------------------------------- */
 /* Common Config */
@@ -125,14 +126,14 @@ extern "C" {
 /* ---------------------------------------------------------------------------- */
 
 #define NX_INTERNAL_PTP_THREAD_STACK_SIZE     (1536)
-#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY (PTP_CLOCK_THREAD_PRIORITY + 1)
+#define NX_INTERNAL_PTP_EVENT_THREAD_PRIORITY (8)
 
 #define PTP_EVENT_THREAD_STACK_SIZE           (1024 * 2)
-#define PTP_EVENT_THREAD_PRIORITY             (5)
+#define PTP_EVENT_THREAD_PRIORITY             (7)
 #define PTP_EVENT_QUEUE_SIZE                  (10)
 
 #define PTP_TX_THREAD_STACK_SIZE              (1024 * 2)
-#define PTP_TX_THREAD_PRIORITY                (PTP_RX_THREAD_PRIORITY + 1)
+#define PTP_TX_THREAD_PRIORITY                (4)
 #define PTP_TX_QUEUE_SIZE                     MIN(NUM_PHYS * 8, NUM_SMALL_PACKETS / 2) /* Buffer up to 8 transmitted PTP packets per port. Don't use more than half the available packets */
 
 #define PTP_RX_THREAD_STACK_SIZE              (1024 * 2)
@@ -144,12 +145,10 @@ extern "C" {
 #define PTP_CLOCK_QUEUE_SIZE                  (10)
 
 #define PTP_MAC_SYNC_THREAD_STACK_SIZE        (1024 * 2)
-#define PTP_MAC_SYNC_THREAD_PRIORITY          (8)
+#define PTP_MAC_SYNC_THREAD_PRIORITY          (5)
 #define PTP_MAC_SYNC_INTERVAL                 (TX_TIMER_TICKS_PER_SECOND / 16) /* PTP Sync events happen at 8Hz and MAC syncs are an inner loop inside those, therefore must have at least double the frequency */
 #define PTP_MAC_SYNC_QUEUE_SIZE               (4)                              /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 
-#define PTP_SWITCH_SYNC_THREAD_STACK_SIZE     (1024 * 2)
-#define PTP_SWITCH_SYNC_THREAD_PRIORITY       (8)
 #define PTP_SWITCH_SYNC_INTERVAL              (100)
 #define PTP_SWITCH_SYNC_SKIP                  (9)     /* When the switches are synced, ignore this many PTP_SWITCH_SYNC_INTERVAL before checking again */
 
@@ -167,8 +166,12 @@ extern "C" {
 #define PTP_TX_TSREG      (0)
 
 #define PTP_RX_TIMEOUT    (100) /* How long to wait for a meta frame */
-
 #define PTP_CLOCK_TIMEOUT (200)
+
+/* PI Controller gains */
+#define PTP_CLOCK_CONTROLLER_KP           (2.0f)      /* Proportional gain */
+#define PTP_CLOCK_CONTROLLER_KI           (0.1f)      /* Integral gain */
+#define PTP_CLOCK_CONTROLLER_INTEGRAL_MAX (1000000LL) /* Integral saturation */
 
 /* ---------------------------------------------------------------------------- */
 /* Switch Config */
@@ -264,7 +267,7 @@ extern "C" {
 /* Background Thread Config */
 /* ---------------------------------------------------------------------------- */
 
-#define BACKGROUND_THREAD_STACK_SIZE (1024)
+#define BACKGROUND_THREAD_STACK_SIZE (1024 * 1)
 #define BACKGROUND_THREAD_PRIORITY   (15)
 #define BACKGROUND_THREAD_INTERVAL   (1000) /* ms, how often to run */
 
@@ -275,7 +278,7 @@ extern "C" {
 /* Can't use parentheses due to macro shenanigans */
 
 #define VALIDATION_ENABLE          1 /* Set to 0 to disable all validation (coverage & fault injection) */
-#define VALIDATION_FAULT_INJECTION 1 /* Set to 1 to enable random fault injection */
+#define VALIDATION_FAULT_INJECTION 0 /* Set to 1 to enable random fault injection */
 #define VALIDATION_TERMINATE       1 /* Set to 1 to stop on VAL_TERMINATE() calls so the state can be inspected */
 
 #define VALIDATION_SEED            0 /* Seed for the psuedo random number generator. 0 Means true random seed */

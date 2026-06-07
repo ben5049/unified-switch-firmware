@@ -33,11 +33,12 @@ void ptp_packet_extract_timestamp(const NX_PACKET *packet_ptr, NX_PTP_TIME *time
 void write_port_identity_eui(uint8_t *port_identity);
 void write_port_identity_number(uint8_t *port_identity, uint16_t number);
 
-void ptp_compute_offset(const NX_PTP_TIME *t1, const NX_PTP_TIME *t2, const NX_PTP_TIME *t3, const NX_PTP_TIME *t4, NX_PTP_TIME *offset);
+void ptp_compute_offset(NX_PTP_TIME *t1, NX_PTP_TIME *t2, NX_PTP_TIME *t3, NX_PTP_TIME *t4, NX_PTP_TIME *offset);
 
-void ptp_mac_adjust_time_coarse(const NX_PTP_TIME *offset_time);
-void ptp_mac_set_time(const NX_PTP_TIME *time_ptr);
-void ptp_mac_get_time(NX_PTP_TIME *time_ptr);
+void        ptp_mac_adjust_time_coarse(const NX_PTP_TIME *offset_time);
+void        ptp_mac_set_time(const NX_PTP_TIME *time_ptr);
+void        ptp_mac_get_time(NX_PTP_TIME *time_ptr);
+nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr);
 
 tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr);
 

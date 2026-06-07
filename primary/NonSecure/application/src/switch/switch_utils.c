@@ -228,6 +228,75 @@ sja1105_status_t switch_set_time_all(const NX_PTP_TIME *time) {
 }
 
 
+/* This function assumes the switches are already synchronised */
+sja1105_status_t switch_add_ns_all(int32_t nanoseconds) {
+
+    sja1105_status_t status    = SJA1105_OK;
+    tx_status_t      tx_status = TX_SUCCESS;
+    uint64_t         raw_time;
+    bool             add;
+
+    raw_time = ABS(nanoseconds) / SJA1105_NS_PER_TS_TICK;
+    add      = nanoseconds >= 0;
+
+    /* Take the mutex to ensure time setting is atomic
+     * Note: Operations are already atomic within each switch, but when
+     *       measuring offsets between switches there could be glitches
+     *       otherwise. */
+    tx_status = tx_mutex_get(&switch_mutex_handle, PTP_CLOCK_TIMEOUT);
+    if (tx_status != TX_SUCCESS) {
+        status = SJA1105_MUTEX_ERROR;
+        return status;
+    }
+
+    /* Add the offset to all the switches */
+    for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
+        status = SJA1105_UpdateTimestamp(&switch_handles[i], raw_time, add, !add);
+        if (status != SJA1105_OK) return status;
+    }
+
+    /* Release the mutex */
+    tx_status = tx_mutex_put(&switch_mutex_handle);
+    if (tx_status != TX_SUCCESS) {
+        status = SJA1105_MUTEX_ERROR;
+        return status;
+    }
+
+    return status;
+}
+
+
+sja1105_status_t switch_set_rate_all(uint32_t rate) {
+
+    sja1105_status_t status    = SJA1105_OK;
+    tx_status_t      tx_status = TX_SUCCESS;
+
+    /* Take the mutex to ensure rate setting is atomic
+     * Note: Operations are already atomic within each switch, but delays
+     *       between the setting operations leads to timing jitter */
+    tx_status = tx_mutex_get(&switch_mutex_handle, PTP_CLOCK_TIMEOUT);
+    if (tx_status != TX_SUCCESS) {
+        status = SJA1105_MUTEX_ERROR;
+        return status;
+    }
+
+    /* Add the offset to all the switches */
+    for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
+        status = SJA1105_SetPTPClockRate(&switch_handles[i], rate);
+        if (status != SJA1105_OK) return status;
+    }
+
+    /* Release the mutex */
+    tx_status = tx_mutex_put(&switch_mutex_handle);
+    if (tx_status != TX_SUCCESS) {
+        status = SJA1105_MUTEX_ERROR;
+        return status;
+    }
+
+    return status;
+}
+
+
 sja1105_status_t switch_get_egress_timestamp(port_index_t port, uint8_t tsreg, NX_PTP_TIME *timestamp) {
 
     sja1105_status_t status = SJA1105_OK;
@@ -284,7 +353,7 @@ sja1105_status_t switch_parse_and_free_meta_frame(NX_PACKET *packet, bool get_ti
 
 end:
 
-    /* Release the META frame packet and return */
+    /* Release the META frame and return */
     if (nx_packet_release(packet) != NX_SUCCESS) status = SJA1105_ERROR;
     return status;
 }

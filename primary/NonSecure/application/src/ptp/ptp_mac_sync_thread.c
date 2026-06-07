@@ -25,13 +25,13 @@ typedef enum {
 } mac_sync_timestamp_t;
 
 
-TX_THREAD ptp_mac_sync_thread_handle;
+TX_THREAD ptp_mac_sync_thread;
 uint8_t   ptp_mac_sync_thread_stack[PTP_MAC_SYNC_THREAD_STACK_SIZE];
 
-TX_QUEUE ptp_mac_sync_queue_handle;
+TX_QUEUE ptp_mac_sync_queue;
 uint32_t ptp_mac_sync_queue_stack[PTP_MAC_SYNC_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
-TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_handle;
+TX_EVENT_FLAGS_GROUP ptp_mac_sync_events_group;
 
 TX_TIMER ptp_mac_sync_timer;
 
@@ -55,7 +55,7 @@ static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
 
 
 void ptp_mac_sync_timer_callback(uint32_t id) {
-    tx_status_t status = tx_event_flags_set(&ptp_mac_sync_events_handle, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR);
+    tx_status_t status = tx_event_flags_set(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_MAC_SYNC, TX_OR);
     TX_CHECK(status);
 }
 
@@ -107,7 +107,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
     NX_PACKET *packet_ptr;
     uint16_t   dummy_sync_packet_length;
 
-    uint32_t                events;
+    uint32_t                event_flags;
     ptp_packet_event_info_t event_info;
 
     mac_sync_timestamp_t timestamps_received;
@@ -130,14 +130,14 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
         /* Wait for an event from the timers */
         tx_status = tx_event_flags_get(
-            &ptp_mac_sync_events_handle,
+            &ptp_mac_sync_events_group,
             PTP_CLOCK_EVENT_MAC_SYNC,
             TX_OR_CLEAR,
-            &events,
+            &event_flags,
             TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
-        assert(events == PTP_CLOCK_EVENT_MAC_SYNC);
+        assert(event_flags == PTP_CLOCK_EVENT_MAC_SYNC);
 
         /* If PTP hasn't been started don't send a packet */
         if (!ptp_initialised) continue;
@@ -152,14 +152,14 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         dummy_sync_packet_length = packet_ptr->nx_packet_length;
 
         /* Flush the timestamp queue so we don't receive any from previous failed syncs */
-        tx_status = tx_queue_flush(&ptp_mac_sync_queue_handle);
+        tx_status = tx_queue_flush(&ptp_mac_sync_queue);
         TX_CHECK(tx_status);
 
         /* Send the packet so that it bounces back into the host port */
         event_info.event      = PTP_TX_EVENT_SEND_PACKET;
         event_info.packet_ptr = packet_ptr;
         event_info.port       = PORT_HOST;
-        tx_status             = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
+        tx_status             = tx_queue_send(&ptp_tx_queue, &event_info, TX_NO_WAIT);
         if (tx_status != TX_SUCCESS) {
 
             /* Free the packet */
@@ -176,7 +176,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         while (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
 
             /* Receive timestamp from the queue */
-            tx_status = tx_queue_receive(&ptp_mac_sync_queue_handle, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
+            tx_status = tx_queue_receive(&ptp_mac_sync_queue, &event_info, MS_TO_TICKS(PTP_CLOCK_TIMEOUT));
             if (tx_status == TX_QUEUE_EMPTY) {
                 break;
             } else {
@@ -291,7 +291,7 @@ uint8_t ptp_tx_timestamp_filter_packet(const NX_PACKET *packet_ptr, NX_PTP_TIME 
         event_info.event = PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP;
         event_info.time  = *timestamp;
         event_info.port  = PORT_HOST;
-        status           = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
+        status           = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
         TX_CHECK(status);
     }
 

@@ -18,13 +18,13 @@
 #include "validation.h"
 
 
-TX_THREAD ptp_tx_thread_handle;
+TX_THREAD ptp_tx_thread;
 uint8_t   ptp_tx_thread_stack[PTP_TX_THREAD_STACK_SIZE];
 
-TX_QUEUE ptp_tx_queue_handle;
+TX_QUEUE ptp_tx_queue;
 uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
-TX_EVENT_FLAGS_GROUP ptp_tx_events_handle;
+TX_EVENT_FLAGS_GROUP ptp_tx_events_group;
 
 
 static NX_PACKET * volatile ptp_tx_packet = NULL; /* Packet pointer of management frame */
@@ -78,7 +78,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
                 event_info.time  = timestamp;
                 event_info.port  = PORT_HOST;
-                tx_status        = tx_queue_send(&ptp_mac_sync_queue_handle, &event_info, TX_NO_WAIT);
+                tx_status        = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
                 TX_CHECK(tx_status);
             }
 
@@ -98,7 +98,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
 
         /* PTP Packet fully sent, let the tx thread know */
         if (tx_send_count == ptp_tx_send_count) {
-            tx_status = tx_event_flags_set(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR);
+            tx_status = tx_event_flags_set(&ptp_tx_events_group, PTP_TX_EVENT_MGMT_FREE, TX_OR);
             TX_CHECK(tx_status);
         }
     }
@@ -134,12 +134,12 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
     while (1) {
 
-        tx_status = tx_queue_receive(&ptp_tx_queue_handle, &event_info, TX_WAIT_FOREVER);
+        tx_status = tx_queue_receive(&ptp_tx_queue, &event_info, TX_WAIT_FOREVER);
         TX_CHECK(tx_status);
 
 #if DEBUG
 
-        tx_status = tx_queue_info_get(&ptp_tx_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+        tx_status = tx_queue_info_get(&ptp_tx_queue, NULL, &enqueued, NULL, NULL, NULL, NULL);
         TX_CHECK(tx_status);
         if ((enqueued + 1) > queue_high_water_mark) {
             queue_high_water_mark = (enqueued + 1);
@@ -199,7 +199,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                      * Note: Despite polling over SPI frequently the packet is
                      *       almost always sent immediately so ticks_waited never
                      *       goes above 0. */
-                    tx_status = tx_event_flags_get(&ptp_tx_events_handle, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, (ticks_waited < 10) ? 1 : 10);
+                    tx_status = tx_event_flags_get(&ptp_tx_events_group, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, (ticks_waited < 10) ? 1 : 10);
 
                     /* Management route freed */
                     if (tx_status == TX_SUCCESS) {
@@ -241,7 +241,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 /* Wait for the ethernet driver to be done with the packet */
                 tx_status = tx_event_flags_get(
-                    &ptp_tx_events_handle,
+                    &ptp_tx_events_group,
                     PTP_TX_EVENT_PACKET_FREE,
                     TX_OR_CLEAR,
                     &event_flags,
@@ -340,7 +340,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
             event_info.port       = port_number;
 
             /* Queue the event */
-            tx_status = tx_queue_send(&ptp_tx_queue_handle, &event_info, TX_NO_WAIT);
+            tx_status = tx_queue_send(&ptp_tx_queue, &event_info, TX_NO_WAIT);
             if (tx_status != TX_SUCCESS) {
                 VAL_TERMINATE();
 
@@ -359,7 +359,7 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 /* Filter out the packets being freed by the ethernet driver in the transmit complete callback */
 uint8_t ptp_tx_filter_packet_free(const NX_PACKET *packet_ptr) {
     if (packet_ptr == ptp_tx_packet) {
-        if (tx_event_flags_set(&ptp_tx_events_handle, PTP_TX_EVENT_PACKET_FREE, TX_OR) != TX_SUCCESS) error_handler();
+        if (tx_event_flags_set(&ptp_tx_events_group, PTP_TX_EVENT_PACKET_FREE, TX_OR) != TX_SUCCESS) error_handler();
         return true;
     } else {
         return false;

@@ -42,6 +42,12 @@ extern uint32_t __TRACE_SIZE__;
 #define PRIMARY_INTERFACE             (0) /* Primary NetXduo interface (0 = first normal interface, 1 = loopback) */
 
 /* ---------------------------------------------------------------------------- */
+/* PTP */
+/* ---------------------------------------------------------------------------- */
+
+#define PTP_CLOCK_CONTROLLER_OUTPUT_MAX ((PTP_CLOCK_CONTROLLER_KP * S_TO_NS(1)) + (PTP_CLOCK_CONTROLLER_KI * PTP_CLOCK_CONTROLLER_INTEGRAL_MAX))
+
+/* ---------------------------------------------------------------------------- */
 /* Switch */
 /* ---------------------------------------------------------------------------- */
 

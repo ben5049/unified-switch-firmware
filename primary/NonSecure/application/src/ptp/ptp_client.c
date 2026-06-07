@@ -25,7 +25,7 @@ tx_status_t ptp_client_filter_event_queue(port_bitset_t keep_ports, port_bitset_
 
     /* Flush all ports */
     if ((keep_ports == PORT_BITS_NONE) && (remove_ports == PORT_BITS_ALL)) {
-        status = tx_queue_flush(&ptp_event_queue_handle);
+        status = tx_queue_flush(&ptp_event_queue);
         if (status != TX_SUCCESS) return status;
     }
 
@@ -36,14 +36,14 @@ tx_status_t ptp_client_filter_event_queue(port_bitset_t keep_ports, port_bitset_
         TX_CHECK(status);
 
         /* Get number of events to filter */
-        status = tx_queue_info_get(&ptp_event_queue_handle, NULL, &enqueued, NULL, NULL, NULL, NULL);
+        status = tx_queue_info_get(&ptp_event_queue, NULL, &enqueued, NULL, NULL, NULL, NULL);
         if (status != TX_SUCCESS) return status;
 
         /* Iterate through event indexes */
         for (uint_fast32_t i = 0; i < enqueued; i++) {
 
             /* Get an event */
-            status = tx_queue_receive(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
+            status = tx_queue_receive(&ptp_event_queue, &event_info, TX_NO_WAIT);
 
             /* Check the port of the event */
             if (status == TX_SUCCESS) {
@@ -57,7 +57,7 @@ tx_status_t ptp_client_filter_event_queue(port_bitset_t keep_ports, port_bitset_
 
                 /* Re-add the event to the back of the queue */
                 if (keep_event) {
-                    status = tx_queue_send(&ptp_event_queue_handle, &event_info, TX_NO_WAIT);
+                    status = tx_queue_send(&ptp_event_queue, &event_info, TX_NO_WAIT);
                     if (status != TX_SUCCESS) return status;
                 }
             }
@@ -88,11 +88,11 @@ tx_status_t ptp_client_event_queue_send(ptp_client_event_info_t *event_info) {
 
     status = tx_mutex_get(&ptp_client_event_queue_mutex_handle, 100);
     TX_CHECK(status);
-    status = tx_queue_send(&ptp_event_queue_handle, event_info, TX_NO_WAIT);
+    status = tx_queue_send(&ptp_event_queue, event_info, TX_NO_WAIT);
     TX_CHECK(status);
     status = tx_mutex_put(&ptp_client_event_queue_mutex_handle);
     TX_CHECK(status);
-    status = tx_event_flags_set(&ptp_events_handle, PTP_EVENT_CLIENT, TX_OR);
+    status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_CLIENT, TX_OR);
     TX_CHECK(status);
 
     return status;
