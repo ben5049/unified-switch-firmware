@@ -26,18 +26,19 @@ uint32_t ptp_tx_queue_stack[PTP_TX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 TX_EVENT_FLAGS_GROUP ptp_tx_events_group;
 
-
 static NX_PACKET * volatile ptp_tx_packet = NULL; /* Packet pointer of management frame */
-static volatile port_index_t ptp_tx_port;         /* Port the management frame will be sent through */
-static volatile uint8_t      ptp_tx_send_count;   /* How many switches the management frame is required to pass through */
-static volatile uint8_t      tx_send_count;       /* How many switches the management frame has passed through */
+static volatile uint8_t ptp_tx_send_count;        /* How many switches the management frame is required to pass through */
+static volatile uint8_t tx_send_count;            /* How many switches the management frame has passed through */
 
 
 static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_mgmt_free_t reason, void *context) {
 
-    sja1105_status_t        switch_status = SJA1105_OK;
     tx_status_t             tx_status     = TX_SUCCESS;
-    port_index_t            port          = (port_index_t) context;
+    nx_status_t             nx_status     = NX_SUCCESS;
+    sja1105_status_t        switch_status = SJA1105_OK;
+    NX_PACKET              *packet_ptr    = (NX_PACKET *) context;
+    UINT                    header_size;
+    uint16_t                port;
     ptp_packet_event_info_t event_info;
 
     /* Forced out or timed out, could be due to STM32 driver failure */
@@ -46,7 +47,14 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
     }
 
     /* The route freed is the one expected */
-    if (port == ptp_tx_port) {
+    if (packet_ptr == ptp_tx_packet) {
+
+        /* Get the port */
+        nx_status = nx_link_ethernet_header_parse(packet_ptr, NULL, NULL, NULL, NULL,
+                                                  NULL, NULL, NULL, &header_size);
+        NX_CHECK(nx_status);
+        nx_status = ptp_packet_extract_port(packet_ptr, header_size, &port);
+        NX_CHECK(nx_status);
 
         /* This is the last switch in the chain, get the timestamp */
         if (dev->config->switch_id == (ptp_tx_send_count - 1)) {
@@ -78,7 +86,9 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 event_info.event = PTP_CLOCK_EVENT_TX_SWITCH_TIMESTAMP;
                 event_info.time  = timestamp;
                 event_info.port  = PORT_HOST;
-                tx_status        = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
+                nx_status        = ptp_packet_extract_sequence_id(packet_ptr, header_size, &event_info.sequence_id);
+                NX_CHECK(nx_status);
+                tx_status = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
                 TX_CHECK(tx_status);
             }
 
@@ -103,8 +113,9 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
         }
     }
 
+    /* Unexpected management route free, do nothing */
     else {
-        switch_status = SJA1105_ERROR;
+        switch_status = SJA1105_OK;
     }
 
     return switch_status;
@@ -154,21 +165,31 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
 
                 /* Save packet info */
                 ptp_tx_packet = event_info.packet_ptr;
-                ptp_tx_port   = event_info.port;
                 tx_send_count = 0;
 
-                /* Create a management route for the packet */
-                switch_status = switch_create_mgmt_route(event_info.port, ptp_dst_addr, true, PTP_TX_TSREG, &depth, &ptp_tx_mgmt_route_freed, (void *) event_info.port);
+                /* Create a management route for the packet
+                 * Note: The number of times the route must be freed is equal
+                 *       to the number of switches it must pass through */
+                switch_status = switch_create_mgmt_route(event_info.port,
+                                                         ptp_dst_addr,
+                                                         true,
+                                                         PTP_TX_TSREG,
+                                                         &depth,
+                                                         &ptp_tx_mgmt_route_freed,
+                                                         (void *) ptp_tx_packet);
                 SWITCH_CHECK(switch_status);
-                ptp_tx_send_count = depth; /* The number of times the route must be freed is equal to the number of switches it must pass through */
+                ptp_tx_send_count = depth;
 
                 /* Send the packet */
-                nx_status = nx_link_raw_packet_send(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr);
+                nx_status = nx_link_raw_packet_send(&nx_ip_instance,
+                                                    PRIMARY_INTERFACE,
+                                                    event_info.packet_ptr);
 
                 /* Most likely Ethernet is disabled due to no ports having an external connection.
                  * Note: The driver will have freed the packet */
                 if (nx_status == NX_STATUS_DRIVER_ERROR) {
                     VAL_COVER(PTP_TX, DRIVER_ERROR);
+                    ptp_tx_packet = NULL;
                     switch_status = switch_purge_mgmt_routes();
                     SWITCH_CHECK(switch_status);
                     goto done;
@@ -199,7 +220,12 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                      * Note: Despite polling over SPI frequently the packet is
                      *       almost always sent immediately so ticks_waited never
                      *       goes above 0. */
-                    tx_status = tx_event_flags_get(&ptp_tx_events_group, PTP_TX_EVENT_MGMT_FREE, TX_OR_CLEAR, &event_flags, (ticks_waited < 10) ? 1 : 10);
+                    tx_status = tx_event_flags_get(&ptp_tx_events_group,
+                                                   PTP_TX_EVENT_MGMT_FREE,
+                                                   TX_OR_CLEAR,
+                                                   &event_flags,
+                                                   (ticks_waited < 10) ? 1 : 10);
+
 
                     /* Management route freed */
                     if (tx_status == TX_SUCCESS) {
@@ -224,6 +250,7 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                      * destination port being down */
                     if (ticks_waited >= MS_TO_TICKS(PTP_TX_TIMEOUT)) {
                         VAL_COVER(PTP_TX, MGMT_ROUTE_TIMEOUT);
+                        ptp_tx_packet = NULL;
                         switch_status = switch_purge_mgmt_routes();
                         SWITCH_CHECK(switch_status);
                         goto release;
@@ -249,7 +276,10 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                 if ((tx_status != TX_SUCCESS) && (tx_status != TX_NO_EVENTS)) error_handler();
 
                 /* Release the packet */
-                nx_link_packet_transmitted(&nx_ip_instance, PRIMARY_INTERFACE, event_info.packet_ptr, NULL);
+                nx_link_packet_transmitted(&nx_ip_instance,
+                                           PRIMARY_INTERFACE,
+                                           event_info.packet_ptr,
+                                           NULL);
 
             done:
 
@@ -281,20 +311,16 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
     UCHAR  vlan_tag_valid;
     UINT   header_size;
 
+    uint16_t                port_number;
+    ptp_packet_event_info_t event_info;
+
     /* If PTP hasn't been started don't filter */
     if (!ptp_initialised) return filter_packet;
 
     /* Get info from the header */
-    nx_status = nx_link_ethernet_header_parse(
-        packet_ptr,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        &ether_type,
-        &vlan_tag,
-        &vlan_tag_valid,
-        &header_size);
+    nx_status = nx_link_ethernet_header_parse(packet_ptr, NULL, NULL, NULL,
+                                              NULL, &ether_type, &vlan_tag,
+                                              &vlan_tag_valid, &header_size);
     NX_CHECK(nx_status);
 
     /* Packet has already been filtered */
@@ -306,51 +332,50 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
     else if (ether_type == NX_LINK_ETHERNET_PTP &&
              ((vlan_tag_valid != NX_TRUE) || ((vlan_tag & NX_LINK_VLAN_ID_MASK) == PTP_VLAN))) {
 
-        /* Queue the packet to be sent */
+        /* Take ownership of the packet */
         filter_packet = true;
 
-        uint8_t                 port_idx;
-        port_index_t            port_number;
-        ptp_packet_event_info_t event_info;
-
-        /* Extract the port */
-        port_idx    = header_size + PTP_HEADER_PORT_OFFSET;                         /* Index into the packet */
-        port_number = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[port_idx] << 8) |
-                                  packet_ptr->nx_packet_prepend_ptr[port_idx + 1]); /* Extract the 1-indexed port number */
-        port_number--;
+        /* Get the port */
+        nx_status = ptp_packet_extract_port(packet_ptr, header_size, &port_number);
+        if (nx_status != NX_SUCCESS) {
+            VAL_COVER(PTP_TX, PACKET_TOO_SHORT);
+            nx_status = nx_packet_transmit_release(packet_ptr);
+            NX_CHECK(nx_status);
+            goto end;
+        };
 
         /* Invalid port, drop packet */
-        if ((port_number < 0) || (port_number >= NUM_PHYS)) {
-            VAL_TERMINATE();
+        if (port_number >= NUM_PHYS) {
             VAL_COVER(PTP_TX, PACKET_INVALID_PORT);
             nx_status = nx_packet_transmit_release(packet_ptr);
             NX_CHECK(nx_status);
+            goto end;
         }
 
-        else {
+        /* Remove timestamps from filtered PTP packets. Timestamps are taken by
+         * the switch usually, or if MAC timestamping is needed then the packet
+         * can be sent directly to the PTP transmit queue */
+        packet_ptr->nx_packet_interface_capability_flag &= ~NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP;
 
-            /* Remove timestamps from filtered PTP packets. Timestamps are taken by
-             * the switch usually, or if MAC timestamping is needed then the packet
-             * can be sent directly to the PTP transmit queue */
-            packet_ptr->nx_packet_interface_capability_flag &= ~NX_INTERFACE_CAPABILITY_PTP_TIMESTAMP;
+        /* Fill the event struct */
+        event_info.event      = PTP_TX_EVENT_SEND_PACKET;
+        event_info.packet_ptr = packet_ptr;
+        event_info.port       = port_number;
 
-            /* Fill the event struct */
-            event_info.event      = PTP_TX_EVENT_SEND_PACKET;
-            event_info.packet_ptr = packet_ptr;
-            event_info.port       = port_number;
+        /* Queue the transmit event */
+        tx_status = tx_queue_send(&ptp_tx_queue, &event_info, TX_NO_WAIT);
+        if (tx_status != TX_SUCCESS) {
+            VAL_TERMINATE();
 
-            /* Queue the event */
-            tx_status = tx_queue_send(&ptp_tx_queue, &event_info, TX_NO_WAIT);
-            if (tx_status != TX_SUCCESS) {
-                VAL_TERMINATE();
-
-                /* Queue is full, release the packet instead */
-                VAL_COVER_ARRAY(PTP_TX, PACKET_DROPPED, port_number);
-                nx_status = nx_packet_transmit_release(packet_ptr);
-                NX_CHECK(nx_status);
-            }
+            /* Queue is full, release the packet instead */
+            VAL_COVER_ARRAY(PTP_TX, PACKET_DROPPED, port_number);
+            nx_status = nx_packet_transmit_release(packet_ptr);
+            NX_CHECK(nx_status);
+            goto end;
         }
     }
+
+end:
 
     return filter_packet;
 }
@@ -359,7 +384,9 @@ uint8_t ptp_tx_filter_packet_send(NX_PACKET *packet_ptr) {
 /* Filter out the packets being freed by the ethernet driver in the transmit complete callback */
 uint8_t ptp_tx_filter_packet_free(const NX_PACKET *packet_ptr) {
     if (packet_ptr == ptp_tx_packet) {
-        if (tx_event_flags_set(&ptp_tx_events_group, PTP_TX_EVENT_PACKET_FREE, TX_OR) != TX_SUCCESS) error_handler();
+        if (tx_event_flags_set(&ptp_tx_events_group,
+                               PTP_TX_EVENT_PACKET_FREE,
+                               TX_OR) != TX_SUCCESS) error_handler();
         return true;
     } else {
         return false;

@@ -32,6 +32,9 @@ TX_TIMER ptp_switch_sync_timer;
 
 
 static void ptp_init_switch_sync_controllers(ptp_controller_t *controllers, uint32_t time, int32_t *corrections) {
+
+    corrections[SWITCH0] = 0;
+
     for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
         ptp_pi_controller_init(&controllers[i - 1],
                                PTP_SWITCH_SYNC_CONTROLLER_KP,
@@ -152,7 +155,11 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
                     VAL_COVER(PTP_CLOCK, QUEUE_FULL);
 
-                    /* If adjustments have built up then flush them because only the most recent one is valid */
+                    /* If adjustments have built up then flush them because
+                     * only the most recent one is valid.
+                     * Note: Only the PTP client connected to the master can
+                     *       put stuff in the clock queue, so it won't be full
+                     *       the second time */
                     tx_status = tx_queue_flush(&ptp_clock_queue);
                     TX_CHECK(tx_status);
                     tx_status = tx_queue_send(&ptp_clock_queue, &event_info, TX_NO_WAIT);
@@ -326,7 +333,14 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 /* For small offsets use a PI controller */
                 else {
 
-                    assert(clock_controller.initialised);
+                    /* Initialise if not already done */
+                    if (!clock_controller.initialised) {
+                        ptp_pi_controller_init(&clock_controller,
+                                               PTP_CLOCK_CONTROLLER_KP,
+                                               PTP_CLOCK_CONTROLLER_KI,
+                                               PTP_CLOCK_CONTROLLER_INTEGRAL_MAX,
+                                               tx_time_get_ms());
+                    }
 
                     /* Compute the controller output */
                     controller_output = ptp_pi_controller_compute(&clock_controller, event_info.time.nanosecond, tx_time_get_ms());
@@ -374,7 +388,7 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 if ((offset.second_high != 0) || (offset.second_low != 0)) {
                     switch_status = SJA1105_SyncTimestamps(&switch_handles[SWITCH0], &switch_handles[SWITCH1]);
                     SWITCH_CHECK(switch_status);
-                    tx_status = tx_event_flags_set(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_RESET, TX_OR);
+                    tx_status = tx_event_flags_set(&ptp_clock_events_group, PTP_CLOCK_EVENT_RESET, TX_OR);
                     TX_CHECK(tx_status);
                     continue;
                 }

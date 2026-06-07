@@ -26,16 +26,63 @@ const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
 
 
 void ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, const NX_PTP_TIME *time) {
-    ((uint32_t *) packet_ptr->nx_packet_data_start)[0] = time->nanosecond;
-    ((uint32_t *) packet_ptr->nx_packet_data_start)[1] = time->second_low;
-    ((uint32_t *) packet_ptr->nx_packet_data_start)[2] = time->second_high;
+    memcpy(packet_ptr->nx_packet_data_start, &time->nanosecond, 4);
+    memcpy(packet_ptr->nx_packet_data_start + 4, &time->second_low, 4);
+    memcpy(packet_ptr->nx_packet_data_start + 8, &time->second_high, 4);
 }
 
 
 void ptp_packet_extract_timestamp(const NX_PACKET *packet_ptr, NX_PTP_TIME *time) {
-    time->nanosecond  = ((uint32_t *) packet_ptr->nx_packet_data_start)[0];
-    time->second_low  = ((uint32_t *) packet_ptr->nx_packet_data_start)[1];
-    time->second_high = ((uint32_t *) packet_ptr->nx_packet_data_start)[2];
+    memcpy(&time->nanosecond, packet_ptr->nx_packet_data_start, 4);
+    memcpy(&time->second_low, packet_ptr->nx_packet_data_start + 4, 4);
+    memcpy(&time->second_high, packet_ptr->nx_packet_data_start + 8, 4);
+}
+
+
+nx_status_t ptp_packet_extract_port(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *port) {
+
+    nx_status_t status = NX_SUCCESS;
+    uint8_t     port_idx;
+
+    /* Check the packet is long enough to contain the port */
+    if ((packet_ptr->nx_packet_length - header_size) < (PTP_HEADER_PORT_OFFSET + 2)) {
+        status = NX_SIZE_ERROR;
+        return status;
+    };
+
+    /* Extract the port
+     * Note: The port is 1-indexed */
+    port_idx = header_size + PTP_HEADER_PORT_OFFSET;
+    *port    = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[port_idx] << 8) |
+                        packet_ptr->nx_packet_prepend_ptr[port_idx + 1]);
+    if (*port == 0) {
+        status = NX_SIZE_ERROR;
+        return status;
+    } else {
+        *port -= 1;
+    }
+
+    return status;
+}
+
+
+nx_status_t ptp_packet_extract_sequence_id(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *sequence_id) {
+
+    nx_status_t status = NX_SUCCESS;
+    uint8_t     sequence_id_idx;
+
+    /* Check the packet is long enough to contain the port */
+    if ((packet_ptr->nx_packet_length - header_size) < (PTP_HEADER_SEQUENCE_ID_OFFSET + 2)) {
+        status = NX_SIZE_ERROR;
+        return status;
+    };
+
+    /* Extract the sequence ID */
+    sequence_id_idx = header_size + PTP_HEADER_SEQUENCE_ID_OFFSET;
+    *sequence_id    = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[sequence_id_idx] << 8) |
+                               packet_ptr->nx_packet_prepend_ptr[sequence_id_idx + 1]);
+
+    return status;
 }
 
 

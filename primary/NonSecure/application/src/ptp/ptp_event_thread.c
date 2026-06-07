@@ -115,14 +115,16 @@ void ptp_sync_timeout_timer_callback(uint32_t id) {
 
     /* No SYNC received after timeout */
     if (new_master_waiting_for_sync) {
-
         new_master_waiting_for_sync = false;
-        master_is_capable           = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond <= NX_PTP_CLIENT_DELAY_THRESH;
 
-        /* Master is_capable so sync should have been received but wasn't */
-        if ((ptp_port_connected_to_master != PORT_HOST) && master_is_capable) {
-            status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
-            TX_CHECK(status);
+        if (ptp_port_connected_to_master != PORT_HOST) {
+
+            /* Master is_capable so sync should have been received but wasn't */
+            master_is_capable = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond <= NX_PTP_CLIENT_DELAY_THRESH;
+            if (master_is_capable) {
+                status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
+                TX_CHECK(status);
+            }
         }
     }
 }
@@ -203,11 +205,19 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
         /* Receive events from the event queue */
         if (event_flags & PTP_EVENT_CLIENT) {
-            do {
+            while (1) {
 
                 /* Receive event */
                 tx_status = tx_queue_receive(&ptp_event_queue, &event_info, TX_NO_WAIT);
-                if (tx_status == TX_SUCCESS) {
+
+                /* No more events */
+                if (tx_status == TX_QUEUE_EMPTY) {
+                    break;
+                }
+
+                /* More events */
+                else if (tx_status == TX_SUCCESS) {
+
                     switch (event_info.event) {
 
                         case PTP_CLIENT_EVENT_MASTER: {
@@ -308,6 +318,11 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                 NX_CHECK(nx_status);
                             }
 
+                            /* Print info about the new master
+                             * Note: The grandmaster identity is a 64-bit clock
+                             *       identity, made from the MAC address with
+                             *       0xff and 0xfe inserted at indexes 3 & 4.
+                             *       Bytes 9 & 10 are the port number. */
                             LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x (port %d), %d steps removed",
                                      event_info.port,
                                      grandmaster_identity[0],
@@ -317,7 +332,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                      grandmaster_identity[6],
                                      grandmaster_identity[7],
                                      ((uint16_t) grandmaster_identity[8] << 8) | grandmaster_identity[9],
-                                     master.nx_ptp_client_master_steps_removed + 1);
+                                     master.nx_ptp_client_master_steps_removed);
 
                             break;
                         }
@@ -356,17 +371,13 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             error_handler();
                         }
                     }
-                    queue_empty = false;
                 }
 
-                else if (tx_status != TX_STATUS_QUEUE_EMPTY) {
+                /* Queue error */
+                else {
                     error_handler();
                 }
-
-                else {
-                    queue_empty = true;
-                }
-            } while (!queue_empty);
+            }
         }
 
         /* Sync missed */

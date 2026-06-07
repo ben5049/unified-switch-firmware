@@ -5,6 +5,8 @@
  *      Author: bens1
  */
 
+#include "stdint.h"
+#include "stdatomic.h"
 #include "assert.h"
 
 #include "nx_stm32_eth_driver.h"
@@ -24,8 +26,8 @@ uint8_t   ptp_rx_thread_stack[PTP_RX_THREAD_STACK_SIZE];
 TX_QUEUE ptp_rx_queue;
 uint32_t ptp_rx_queue_stack[PTP_RX_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
-static volatile uint32_t meta_debt          = 0;
-static volatile uint32_t delayed_by_1_count = 0;
+static volatile atomic_uint_fast32_t meta_debt          = 0;
+static volatile atomic_uint_fast32_t delayed_by_1_count = 0;
 
 
 static inline bool ptp_is_event_packet(const uint8_t *payload) {
@@ -210,16 +212,20 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         SWITCH_CHECK(switch_status);
         VAL_COVER_ARRAY(PTP_RX, PORT, port);
 
-        /* Packet was sent by us to synchronise switch clock with
-         * STM32 MAC clock */
+        /* Packet was sent by us to synchronise the main switch's clock with
+         * the STM32's MAC clock */
         if (port == PORT_HOST) {
 
+            /* Add common info */
             event_info.port = PORT_HOST;
+            nx_status       = ptp_packet_extract_sequence_id(ptp_packet, header_size, &event_info.sequence_id);
+            NX_CHECK(nx_status);
 
             /* Send switch timestamp */
             event_info.event = PTP_CLOCK_EVENT_RX_SWITCH_TIMESTAMP;
             event_info.time  = timestamp;
-            tx_status        = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
+
+            tx_status = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
             TX_CHECK(tx_status);
 
             /* Send MAC timestamp */

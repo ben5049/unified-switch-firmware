@@ -97,8 +97,11 @@ typedef struct {
     ptp_event_t  event;
     port_index_t port;
     union {
-        NX_PACKET  *packet_ptr;
-        NX_PTP_TIME time;
+        NX_PACKET *packet_ptr;
+        struct {
+            uint16_t    sequence_id;
+            NX_PTP_TIME time;
+        };
     };
 } ptp_packet_event_info_t;
 

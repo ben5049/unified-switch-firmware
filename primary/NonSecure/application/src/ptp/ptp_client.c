@@ -15,7 +15,8 @@ static uint8_t nx_internal_ptp_stack[NUM_PHYS][NX_INTERNAL_PTP_THREAD_STACK_SIZE
 TX_MUTEX ptp_client_event_queue_mutex_handle;
 
 
-/* Note: This function should only be called by the thread that solely consumes this queue. Keep takes priority over remove */
+/* Note: This function should only be called by the thread that solely consumes
+ *       this queue. Keep takes priority over remove */
 tx_status_t ptp_client_filter_event_queue(port_bitset_t keep_ports, port_bitset_t remove_ports) {
 
     tx_status_t             status = TX_SUCCESS;

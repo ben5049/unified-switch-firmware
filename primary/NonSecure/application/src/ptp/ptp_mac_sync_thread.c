@@ -62,7 +62,7 @@ void ptp_mac_sync_timer_callback(uint32_t id) {
 }
 
 
-static nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr) {
+static nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr, uint8_t sequence_id) {
 
     nx_status_t status = NX_SUCCESS;
     NX_PACKET  *packet_ptr;
@@ -74,7 +74,8 @@ static nx_status_t ptp_create_dummy_sync(NX_PACKET **packet_ptr_ptr) {
     packet_ptr = *packet_ptr_ptr;
 
     /* Append dummy payload to make the MAC see it as a PTP packet and timestamp it */
-    status = nx_packet_data_append(packet_ptr, dummy_sync_payload, sizeof(dummy_sync_payload), &nx_small_packet_pool, NX_NO_WAIT);
+    dummy_sync_payload[PTP_HEADER_SEQUENCE_ID_OFFSET + 1] = sequence_id; /* Only the LSB */
+    status                                                = nx_packet_data_append(packet_ptr, dummy_sync_payload, sizeof(dummy_sync_payload), &nx_small_packet_pool, NX_NO_WAIT);
     if (status != NX_SUCCESS) goto cleanup;
 
     /* Add Ethernet header */
@@ -113,6 +114,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
     NX_PACKET *packet_ptr;
     uint16_t   dummy_sync_packet_length;
+    uint8_t    sequence_id = 0;
 
     uint32_t                event_flags;
     ptp_packet_event_info_t event_info;
@@ -170,12 +172,13 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
             /* Create a dummy sync packet that will look convincing enough to make
              * the STM32's MAC timestamp it */
-            nx_status = ptp_create_dummy_sync(&packet_ptr);
+            sequence_id++;
+            nx_status = ptp_create_dummy_sync(&packet_ptr, sequence_id);
             NX_CHECK(nx_status);
 
             /* Save packet pointer for callback filtering and length for timestamp corrections */
             dummy_sync_packet_ptr    = packet_ptr;
-            dummy_sync_packet_length = packet_ptr->nx_packet_length;
+            dummy_sync_packet_length = packet_ptr->nx_packet_length + SJA1105_FCS; /* Length doesn't include 4-byte FCS */
 
             /* Flush the timestamp queue so we don't receive any from previous failed syncs */
             tx_status = tx_queue_flush(&ptp_mac_sync_queue);
@@ -218,6 +221,12 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
                     break;
                 }
 
+                /* Invalid sequence ID */
+                else if (event_info.sequence_id != sequence_id) {
+                    VAL_COVER(PTP_CLOCK, INVALID_SEQUENCE);
+                    continue;
+                }
+
                 switch (event_info.event) {
                     case PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP: {
                         assert(!(timestamps_received & MAC_SYNC_TIMESTAMP_T1_MAC_TX)); /* Timestamp shouldn't be received twice */
@@ -256,7 +265,6 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
             if (timestamps_received != MAC_SYNC_TIMESTAMP_ALL) {
                 VAL_COVER(PTP_CLOCK, MAC_SYNC_FAILED);
                 LOG_WARNING("PTP: MAC Sync failed, missing timestamps (received 0x%01x)", timestamps_received);
-                tx_thread_sleep_ms(100); /* Wait before trying again so packets can settle */
                 continue;
             }
 
@@ -268,7 +276,7 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
              */
             switch_status = switch_get_speed(PORT_HOST, &host_speed_mbps);
             SWITCH_CHECK(switch_status);
-            switch_tx_correction.nanosecond  = (MAX(dummy_sync_packet_length, 64) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
+            switch_tx_correction.nanosecond  = (CONSTRAIN(dummy_sync_packet_length, 64, SMALL_PACKET_SIZE) + SJA1105_IFG + SJA1105_PREAMBLE) * 8 * MHZ_TO_NS(host_speed_mbps);
             switch_tx_correction.second_low  = 0;
             switch_tx_correction.second_high = 0;
             _nx_ptp_client_utility_time_diff(&switch_tx_timestamp, &switch_tx_correction, &switch_tx_timestamp);
@@ -341,19 +349,29 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
 uint8_t ptp_tx_timestamp_filter_packet(const NX_PACKET *packet_ptr, NX_PTP_TIME *timestamp) {
 
-    tx_status_t             status = TX_SUCCESS;
-    bool                    filter = false;
+    tx_status_t             tx_status = TX_SUCCESS;
+    nx_status_t             nx_status = NX_SUCCESS;
+    bool                    filter    = false;
     ptp_packet_event_info_t event_info;
+    UINT                    header_size;
 
     if ((dummy_sync_packet_ptr != NULL) && (packet_ptr == dummy_sync_packet_ptr)) {
 
         filter = true;
 
+        /* Need to discard const because NetX doesn't use it, despite not modifying the packet */
+        nx_status = nx_link_ethernet_header_parse((NX_PACKET *) packet_ptr, NULL, NULL, NULL,
+                                                  NULL, NULL, NULL, NULL, &header_size);
+        NX_CHECK(nx_status);
+
+        /* Create the event */
         event_info.event = PTP_CLOCK_EVENT_TX_MAC_TIMESTAMP;
         event_info.time  = *timestamp;
         event_info.port  = PORT_HOST;
-        status           = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
-        TX_CHECK(status);
+        nx_status        = ptp_packet_extract_sequence_id(packet_ptr, header_size, &event_info.sequence_id);
+        NX_CHECK(nx_status);
+        tx_status = tx_queue_send(&ptp_mac_sync_queue, &event_info, TX_NO_WAIT);
+        TX_CHECK(tx_status);
     }
 
     return filter;
