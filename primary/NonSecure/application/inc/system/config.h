@@ -26,7 +26,7 @@ extern "C" {
 #define FEAT_DHCP_RESTORE         (1)
 #define FEAT_PHY_SELF_TEST        (1) // TODO: Use
 #define FEAT_PTP                  (1)
-#define FEAT_PTP_SWITCH_SYNC      (1) /* Actively synchronise the switches' clocks to each other */
+#define FEAT_PTP_SWITCH_SYNC      (1) /* Actively synchronise the switches' clocks to each other. Turning it off enables a PPS signal on the PTP_CLK pin instead */
 #define FEAT_PTP_ALLOW_META_DELAY (1) /* Allow META frames to have up to one packet between them and the PTP packet that generated them */
 #define FEAT_STP                  (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
 #define FEAT_COMMS                (0) /* TODO: re-enable */
@@ -67,7 +67,7 @@ extern "C" {
 #define MAC_ADDR_OCTET1                  (0x02)
 #define MAC_ADDR_OCTET2                  (0x00)
 #define MAC_ADDR_OCTET3                  (0x00)
-#define MAC_ADDR_OCTET4                  (0xd3)
+#define MAC_ADDR_OCTET4                  (HW_VERSION)
 #define MAC_ADDR_OCTET5                  (0x6a)
 #define MAC_ADDR_OCTET6                  (0x48)
 

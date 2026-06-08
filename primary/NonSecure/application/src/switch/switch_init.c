@@ -286,10 +286,20 @@ sja1105_status_t switch_init() {
 
 #if NUM_SWITCHES > 1
 
+    /* Synchronise switches to the master clock */
     for (switch_index_t i = SWITCH1; i < NUM_SWITCHES; i++) {
         status = SJA1105_SyncTimestamps(&switch_handles[SWITCH0], &switch_handles[i]);
         if (status != SJA1105_OK) return status;
     }
+
+#endif
+
+#if !FEAT_PTP_SWITCH_SYNC || (NUM_SWITCHES == 1)
+
+    /* Start toggling the PTP_CLK pin a 1Hz */
+    status = SJA1105_StartPPS(&switch_handles[SWITCH0]);
+    if (status != SJA1105_OK) return status;
+
 
 #endif
 

@@ -222,7 +222,7 @@ tx_status_t ptp_stop() {
     /* Stop timers */
     status = tx_timer_deactivate(&ptp_mac_sync_timer);
     TX_CHECK(status);
-#if NUM_SWITCHES > 1
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
     status = tx_timer_deactivate(&ptp_switch_sync_timer);
     TX_CHECK(status);
 #endif

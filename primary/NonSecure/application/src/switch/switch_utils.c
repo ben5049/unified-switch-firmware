@@ -288,6 +288,21 @@ sja1105_status_t switch_set_rate_all(uint32_t rate, const int32_t *corrections) 
         return status;
     }
 
+#if !FEAT_PTP_SWITCH_SYNC || (NUM_SWITCHES == 1)
+
+    /* Without switch syncing we must raise the priority of the current thread
+     * to prevent preemption and RTOS jitter causing clock drift. */
+    TX_THREAD *current_thread = tx_thread_identify();
+    UINT       old_priority;
+
+    /* Raise the priority of this thread to prevent interruptions */
+    if (current_thread != TX_NULL) {
+        tx_status = tx_thread_priority_change(current_thread, TX_TIMER_THREAD_PRIORITY + 1, &old_priority);
+        TX_CHECK(tx_status);
+    }
+
+#endif
+
     /* Apply the rate to all the switches */
     for (switch_index_t i = SWITCH0; i < NUM_SWITCHES; i++) {
 
@@ -311,11 +326,25 @@ sja1105_status_t switch_set_rate_all(uint32_t rate, const int32_t *corrections) 
             rates_previous[i] = rate_corrected;
         }
 
+#if FEAT_PTP_SWITCH_SYNC
+
         /* Inject delay to see if the switch sync thread can fix it */
         if (i != (NUM_SWITCHES - 1)) {
             VAL_FAULT_CHANCE(SWITCH_UTILS, RATE_SET_PREEMPT, VAL_1_IN_100, tx_thread_sleep_ms(10));
         }
     }
+
+#else
+    }
+
+    /* Reset the priority */
+    if (current_thread != TX_NULL) {
+        tx_status = tx_thread_priority_change(current_thread, old_priority, &old_priority);
+        TX_CHECK(tx_status);
+    }
+
+#endif
+
 
     /* Release the mutex */
     tx_status = tx_mutex_put(&switch_mutex_handle);

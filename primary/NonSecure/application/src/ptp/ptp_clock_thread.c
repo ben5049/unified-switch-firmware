@@ -27,8 +27,8 @@ TX_QUEUE ptp_clock_queue;
 uint32_t ptp_clock_queue_stack[PTP_CLOCK_QUEUE_SIZE * PTP_PACKET_MSG_SIZE_WORDS];
 
 #if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
+
 TX_TIMER ptp_switch_sync_timer;
-#endif
 
 
 static void ptp_init_switch_sync_controllers(ptp_controller_t *controllers, uint32_t time, int32_t *corrections) {
@@ -44,6 +44,8 @@ static void ptp_init_switch_sync_controllers(ptp_controller_t *controllers, uint
         corrections[i] = 0;
     }
 }
+
+#endif
 
 
 UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
@@ -232,9 +234,9 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     uint32_t         rate;
 
     uint32_t time_current;
-    uint32_t time_last_rate_write = 0;
 
 #if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
+    uint32_t         time_last_rate_write = 0;
     NX_PTP_TIME      offset;
     ptp_controller_t switch_sync_controllers[NUM_SWITCHES - 1];
     int32_t          rate_corrections[NUM_SWITCHES] = {[SWITCH0] = 0};
@@ -354,8 +356,9 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                     /* Apply the rate */
                     switch_status = switch_set_rate_all(rate, rate_corrections);
                     SWITCH_CHECK(switch_status);
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
                     time_last_rate_write = tx_time_get_ms();
-
+#endif
                     VAL_COVER(PTP_CLOCK, SWITCH_ADJUST_FINE);
                 }
 
