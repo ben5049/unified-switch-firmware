@@ -125,7 +125,8 @@ extern phy_handle_lan867x_t hphy6;
 extern phy_handle_base_t *phy_handles[NUM_PHYS];
 extern float              phy_temperatures[NUM_PHYS];
 extern bool               phy_temperatures_valid[NUM_PHYS];
-
+extern uint16_t           phy_ingress_latencies[NUM_PHYS];
+extern uint16_t           phy_egress_latencies[NUM_PHYS];
 
 /* Exported functions*/
 phy_status_t phys_init(void);

@@ -2655,12 +2655,12 @@ NX_INTERFACE     *if_ptr;
     *ptr++ = (UCHAR)((client_ptr -> ptp_master).nx_ptp_client_master_offset_scaled_log_variance);
     /* grandmasterPriority2 */
     *ptr++ = (client_ptr -> ptp_master).nx_ptp_client_master_priority2;
-    /* grandmasterIdentity. Setting to client_port_identity because grandmaster */
-    memcpy(ptr, client_ptr -> nx_ptp_client_port_identity, NX_PTP_CLOCK_IDENTITY_SIZE); /* use case of memcpy is verified. */
+    /* grandmasterIdentity */
+    memcpy(ptr, (client_ptr -> ptp_master).nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_IDENTITY_SIZE);
     ptr += NX_PTP_CLOCK_IDENTITY_SIZE;
     /* stepsRemoved */
-    *ptr++ = 0;
-    *ptr++ = 0;
+    *ptr++ = (UCHAR)((client_ptr -> ptp_master).nx_ptp_client_master_steps_removed >> 8);
+    *ptr++ = (UCHAR)((client_ptr -> ptp_master).nx_ptp_client_master_steps_removed);
     /* timeSource */
     *ptr++ = (client_ptr -> ptp_master).nx_ptp_client_master_time_source;
 

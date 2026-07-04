@@ -24,7 +24,7 @@ static const phy_config_88q211x_t phy_config_0 = {
     .timeout               = PHY_TIMEOUT_MS,
     .interface             = PHY_INTERFACE_RGMII,
     .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS),
-    .default_role          = PHY_ROLE_SLAVE,
+    .default_role          = PHY_ROLE_MASTER,
     .tx_clk_internal_delay = true,
     .rx_clk_internal_delay = true,
     .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
@@ -54,11 +54,15 @@ static const phy_config_88q211x_t phy_config_1 = {
 #elif HW_VERSION == 5
     .phy_addr = 0x00,
 #endif
-    .c45_en                = true,
-    .timeout               = PHY_TIMEOUT_MS,
-    .interface             = PHY_INTERFACE_RGMII,
-    .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT1_SPEED_MBPS),
-    .default_role          = PHY_ROLE_MASTER,
+    .c45_en        = true,
+    .timeout       = PHY_TIMEOUT_MS,
+    .interface     = PHY_INTERFACE_RGMII,
+    .default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT1_SPEED_MBPS),
+#if HW_VERSION == 4
+    .default_role = PHY_ROLE_SLAVE,
+#elif HW_VERSION == 5
+    .default_role = PHY_ROLE_MASTER,
+#endif
     .tx_clk_internal_delay = true,
     .rx_clk_internal_delay = true,
     .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
@@ -197,6 +201,9 @@ const static phy_callbacks_t *phy_callbacks[NUM_PHYS] = {
 };
 
 static phy_info_t phy_info[NUM_PHYS];
+
+uint16_t phy_ingress_latencies[NUM_PHYS] = {0};
+uint16_t phy_egress_latencies[NUM_PHYS]  = {0};
 
 
 phy_status_t phys_init() {

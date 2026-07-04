@@ -32,7 +32,7 @@ TX_TIMER ptp_sync_timeout_timer;
 
 volatile atomic_uint_fast8_t ptp_port_connected_to_master = PORT_HOST;
 static volatile atomic_bool  new_master_waiting_for_sync  = false;
-static uint8_t               grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
+static uint8_t               grandmaster_identity[NX_PTP_CLOCK_IDENTITY_SIZE];
 
 
 /* Store master into event struct, including pointed to information so it can be reconstructed after being queued */
@@ -42,7 +42,7 @@ static inline void ptp_pack_master_message(ptp_client_event_info_t *event_info, 
 
     memcpy(event_info->_grandmaster_identity,
            master->nx_ptp_client_master_grandmaster_identity,
-           NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
+           NX_PTP_CLOCK_IDENTITY_SIZE);
 }
 
 
@@ -170,7 +170,6 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
     uint32_t                event_flags;
     ptp_client_event_info_t event_info;
-    bool                    queue_empty;
 
     uint8_t port_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE]; /* 64-bit EUI + port */
 
@@ -273,7 +272,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             /* Save the new master */
                             ptp_port_connected_to_master = event_info.port;
                             master                       = event_info.master;
-                            memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_PORT_IDENTITY_SIZE);
+                            memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_IDENTITY_SIZE);
                             master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity;
                             ptp_client[event_info.port].ptp_master.nx_ptp_client_master_grandmaster_identity = ptp_client[event_info.port].nx_ptp_client_port_identity;
                             VAL_COVER(PTP_EVENT, MASTER_NEW);
@@ -322,8 +321,9 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                              * Note: The grandmaster identity is a 64-bit clock
                              *       identity, made from the MAC address with
                              *       0xff and 0xfe inserted at indexes 3 & 4.
-                             *       Bytes 9 & 10 are the port number. */
-                            LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x (port %d), %d steps removed",
+                             *       Client master port identity is the same
+                             *       but with bytes 9 & 10 as the port number. */
+                            LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x (%d steps removed), connected via %02x:%02x:%02x:%02x:%02x:%02x (port %d)",
                                      event_info.port,
                                      grandmaster_identity[0],
                                      grandmaster_identity[1],
@@ -331,8 +331,17 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                      grandmaster_identity[5],
                                      grandmaster_identity[6],
                                      grandmaster_identity[7],
-                                     ((uint16_t) grandmaster_identity[8] << 8) | grandmaster_identity[9],
-                                     master.nx_ptp_client_master_steps_removed);
+                                     master.nx_ptp_client_master_steps_removed,
+                                     master.nx_ptp_client_master_port_identity[0],
+                                     master.nx_ptp_client_master_port_identity[1],
+                                     master.nx_ptp_client_master_port_identity[2],
+                                     master.nx_ptp_client_master_port_identity[5],
+                                     master.nx_ptp_client_master_port_identity[6],
+                                     master.nx_ptp_client_master_port_identity[7],
+                                     (((uint16_t) master.nx_ptp_client_master_port_identity[8] << 8) |
+                                      master.nx_ptp_client_master_port_identity[9]) -
+                                         1 /* Subtract 1 because ports are 1-indexed */
+                            );
 
                             break;
                         }
@@ -394,7 +403,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
             /* Check the delay to the master */
             master_delay = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond;
-            if (master_delay > NX_PTP_CLIENT_DELAY_THRESH) {
+            if (ABS(master_delay) > NX_PTP_CLIENT_DELAY_THRESH) {
                 LOG_WARNING("PTP: Delay to master is %li ns (larger than %d ns threshold)",
                             master_delay, NX_PTP_CLIENT_DELAY_THRESH);
             }

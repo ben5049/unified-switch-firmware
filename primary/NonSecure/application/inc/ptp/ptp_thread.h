@@ -86,7 +86,7 @@ typedef struct {
     union {
         struct {
             NX_PTP_CLIENT_MASTER master;
-            uint8_t              _grandmaster_identity[NX_PTP_CLOCK_PORT_IDENTITY_SIZE];
+            uint8_t              _grandmaster_identity[NX_PTP_CLOCK_IDENTITY_SIZE];
         };
         NX_PTP_CLIENT_SYNC sync;
     };

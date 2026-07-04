@@ -13,6 +13,7 @@
 #include "nx_app.h"
 #include "ptp.h"
 #include "utils.h"
+#include "validation.h"
 
 
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
@@ -248,6 +249,56 @@ nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr) {
              date.hour, date.minute, date.second, date.nanosecond);
 
     return status;
+}
+
+
+nx_status_t ptp_get_ingress_latency(port_index_t port, NX_PTP_TIME *latency) {
+
+    latency->second_high = 0;
+    latency->second_low  = 0;
+
+    /* Get latency from PHY */
+    if (port < NUM_PHYS) {
+        latency->nanosecond = phy_ingress_latencies[port];
+    }
+
+    /* Host port */
+    else if (port == PORT_HOST) {
+        latency->nanosecond = 0;
+    }
+
+    /* Error */
+    else {
+        VAL_TERMINATE();
+        latency->nanosecond = 0;
+    }
+
+    return NX_SUCCESS;
+}
+
+
+nx_status_t ptp_get_egress_latency(port_index_t port, NX_PTP_TIME *latency) {
+
+    latency->second_high = 0;
+    latency->second_low  = 0;
+
+    /* Get latency from PHY */
+    if (port < NUM_PHYS) {
+        latency->nanosecond = phy_egress_latencies[port];
+    }
+
+    /* Host port */
+    else if (port == PORT_HOST) {
+        latency->nanosecond = 0;
+    }
+
+    /* Error */
+    else {
+        VAL_TERMINATE();
+        latency->nanosecond = 0;
+    }
+
+    return NX_SUCCESS;
 }
 
 

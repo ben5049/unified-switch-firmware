@@ -44,6 +44,9 @@ void        ptp_mac_set_time(const NX_PTP_TIME *time_ptr);
 void        ptp_mac_get_time(NX_PTP_TIME *time_ptr);
 nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr);
 
+nx_status_t ptp_get_ingress_latency(port_index_t port, NX_PTP_TIME *latency);
+nx_status_t ptp_get_egress_latency(port_index_t port, NX_PTP_TIME *latency);
+
 tx_status_t ptp_flush_packet_queue(TX_QUEUE *queue_ptr);
 
 void ptp_notify_port_down(port_index_t port);

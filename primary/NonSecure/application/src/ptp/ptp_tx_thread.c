@@ -78,6 +78,13 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                     LOG_WARNING("PTP: TX Missed a timestamp on port %d", port);
                 } else {
                     VAL_COVER_ARRAY(PTP_TX, TS_RECEIVED, port);
+
+                    /* Get and subtract the egress latency */
+                    NX_PTP_TIME egress_latency;
+                    nx_status = ptp_get_egress_latency(port, &egress_latency);
+                    NX_CHECK(nx_status);
+                    nx_status = _nx_ptp_client_utility_time_diff(&timestamp, &egress_latency, &timestamp);
+                    NX_CHECK(nx_status);
                 }
             }
 

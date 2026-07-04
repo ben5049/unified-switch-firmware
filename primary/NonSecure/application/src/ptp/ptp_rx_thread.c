@@ -212,6 +212,13 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
         SWITCH_CHECK(switch_status);
         VAL_COVER_ARRAY(PTP_RX, PORT, port);
 
+        /* Subtract the ingress latency */
+        NX_PTP_TIME ingress_latency;
+        nx_status = ptp_get_ingress_latency(port, &ingress_latency);
+        NX_CHECK(nx_status);
+        nx_status = _nx_ptp_client_utility_time_diff(&timestamp, &ingress_latency, &timestamp);
+        NX_CHECK(nx_status);
+
         /* Packet was sent by us to synchronise the main switch's clock with
          * the STM32's MAC clock */
         if (port == PORT_HOST) {
