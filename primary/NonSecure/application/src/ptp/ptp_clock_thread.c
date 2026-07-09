@@ -229,7 +229,8 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
     uint32_t                event_flags;
     ptp_packet_event_info_t event_info;
 
-    ptp_controller_t clock_controller = {.initialised = false};
+    ptp_controller_t clock_controller          = {.initialised = false};
+    uint8_t          clock_controller_cooldown = 0;
     int32_t          controller_output;
     uint32_t         rate;
 
@@ -319,15 +320,39 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
                 /* Inject 500ms of lag to test queue overflow handling */
                 VAL_FAULT_CHANCE(PTP_CLOCK, THREAD_LAG, VAL_1_IN_100, tx_thread_sleep_ms(500));
 
+                /* Discard adjustments after a step */
+                if (clock_controller_cooldown > 0) {
+                    clock_controller_cooldown--;
+                    continue;
+                }
+
                 /* For large offsets simply add/subtract */
                 if (ABS(event_info.time.nanosecond) > MS_TO_NS(PTP_CLOCK_FINE_ADJUST_THRESHOLD)) {
 
-                    /* Add/sub */
+                    /* Notify the MAC sync thread to reset and ignore the next
+                     * few sync timestamps since they could be corrupted by
+                     * the switch time step. Do this before stepping the time
+                     * so in flight syncs can be invalidated. */
+                    tx_status = tx_event_flags_set(&ptp_mac_sync_events_group, PTP_CLOCK_EVENT_RESET, TX_OR);
+                    TX_CHECK(tx_status);
+
+                    /* Switch clock(s) add/sub */
                     switch_status = switch_add_ns_all(event_info.time.nanosecond);
                     SWITCH_CHECK(switch_status);
 
+                    /* MAC clock add/sub */
+                    NX_PTP_TIME mac_offset = event_info.time;
+                    mac_offset.nanosecond  = -mac_offset.nanosecond;
+                    ptp_mac_adjust_time_coarse(&mac_offset);
+
                     /* Clear the integral */
                     ptp_pi_controller_clear(&clock_controller, tx_time_get_ms());
+
+                    /* Clear the rates */
+                    switch_status = switch_set_rate_all(SJA1105_PTP_CLK_RATE_DEFAULT, rate_corrections);
+                    SWITCH_CHECK(switch_status);
+
+                    clock_controller_cooldown = 1;
 
                     VAL_COVER(PTP_CLOCK, SWITCH_ADJUST_COARSE);
                 }
@@ -346,12 +371,13 @@ void ptp_clock_thread_entry(uint32_t initial_input) {
 
                     /* Compute the controller output */
                     controller_output = ptp_pi_controller_compute(&clock_controller, event_info.time.nanosecond, tx_time_get_ms());
+                    controller_output = CONSTRAIN(controller_output,
+                                                  SJA1105_PTP_RATE_TO_I32(PTP_CLOCK_CONTROLLER_MIN_RATE),
+                                                  SJA1105_PTP_RATE_TO_I32(PTP_CLOCK_CONTROLLER_MAX_RATE));
 
                     /* Convert to fixed point rate */
                     rate = SJA1105_PTP_I32_TO_RATE(controller_output);
-                    rate = CONSTRAIN(rate,
-                                     PTP_CLOCK_CONTROLLER_MIN_RATE,
-                                     PTP_CLOCK_CONTROLLER_MAX_RATE);
+                    assert((rate >= PTP_CLOCK_CONTROLLER_MIN_RATE) && (rate <= PTP_CLOCK_CONTROLLER_MAX_RATE));
 
                     /* Apply the rate */
                     switch_status = switch_set_rate_all(rate, rate_corrections);

@@ -173,7 +173,7 @@ extern "C" {
 #define PTP_MAC_SYNC_QUEUE_SIZE              (4)                              /* 4 timestamps for offset calculation: MAC TX/RX and switch TX/RX */
 
 #define PTP_MAC_SYNC_PRINT_OFFSET            (0)
-#define PTP_MAC_SYNC_FINE_ADJUST_THRESHOLD   (1)          /* ms, the PI controller will be used for errors less than this */
+#define PTP_MAC_SYNC_FINE_ADJUST_THRESHOLD   (10)         /* ms, the PI controller will be used for errors less than this */
 #define PTP_MAC_SYNC_CONTROLLER_KP           (20.0f)      /* Proportional gain */
 #define PTP_MAC_SYNC_CONTROLLER_KI           (20.0f)      /* Integral gain */
 #define PTP_MAC_SYNC_CONTROLLER_INTEGRAL_MAX (1000000LL)  /* Integral saturation */
@@ -304,6 +304,7 @@ extern "C" {
 #define VALIDATION_PTP_EVENT    1
 #define VALIDATION_PTP_CLOCK    1
 #define VALIDATION_SWITCH_UTILS 1
+#define VALIDATION_PHY          1
 
 
 #ifdef __cplusplus

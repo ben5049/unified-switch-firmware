@@ -70,13 +70,26 @@ extern uint32_t __TRACE_SIZE__;
 /* Switch */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_SWITCHES ((HW_VERSION == 4) ? 1 : 2)
+#if HW_VERSION == 4
+#define NUM_SWITCHES (1)
+#elif HW_VERSION == 5
+#define NUM_SWITCHES (2)
+#else
+#error "Unknown hardware version"
+#endif
 
 /* ---------------------------------------------------------------------------- */
 /* PHY */
 /* ---------------------------------------------------------------------------- */
 
-#define NUM_PHYS              ((HW_VERSION == 4) ? 4 : 7)
+#if HW_VERSION == 4
+#define NUM_PHYS (4)
+#elif HW_VERSION == 5
+#define NUM_PHYS (7)
+#else
+#error "Unknown hardware version"
+#endif
+
 #define NUM_PORTS             (NUM_PHYS + 1)                                     /* Count the host as a port */
 
 #define PHY_POLL_PERIOD       ((PHY_WAITING_FOR_LINK_TIME) + PHY_SLEEP_INTERVAL) /* The time spent for a full loop of waiting for link -> sleep -> waiting for link */

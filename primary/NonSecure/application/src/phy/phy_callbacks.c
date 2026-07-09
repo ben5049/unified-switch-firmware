@@ -18,6 +18,7 @@
 #include "nx_app.h"
 #include "phy.h"
 #include "utils.h"
+#include "validation.h"
 
 
 TX_MUTEX             phy_mutex_handle;
@@ -255,6 +256,19 @@ const phy_callbacks_t phy_callbacks_dp83867 = {
 #endif
 
 
+static const uint16_t phy_interrupt_pins[NUM_PHYS] = {
+    PHY0_INT_Pin,
+    PHY1_INT_Pin,
+    PHY2_INT_Pin,
+    PHY3_INT_Pin,
+#if HW_VERSION == 5
+    PHY4_INT_Pin,
+    PHY5_INT_Pin,
+    PHY6_INT_Pin,
+#endif
+};
+
+
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 
     tx_status_t status       = TX_SUCCESS;
@@ -263,51 +277,17 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
     /* Return if the kernel hasn't started */
     if (tx_thread_identify() == TX_NULL) return;
 
-    switch (GPIO_Pin) {
-
-#if NUM_PHYS > 0
-        case (PHY0_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ0;
+    /* Find the PHY that caused the interrupt */
+    for (phy_index_t i = 0; i < NUM_PHYS; i++) {
+        if (GPIO_Pin == phy_interrupt_pins[i]) {
+            flags_to_set |= PHY_EVENT_IRQ0 << i;
+            VAL_COVER_ARRAY(PHY, PIN_INT, i);
             break;
-#endif
-#if NUM_PHYS > 1
-        case (PHY1_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ1;
-            break;
-#endif
-#if NUM_PHYS > 2
-        case (PHY2_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ2;
-            break;
-#endif
-#if NUM_PHYS > 3
-        case (PHY3_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ3;
-            break;
-#endif
-#if NUM_PHYS > 4
-        case (PHY4_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ4;
-            break;
-#endif
-#if NUM_PHYS > 5
-        case (PHY5_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ5;
-            break;
-#endif
-#if NUM_PHYS > 6
-        case (PHY6_INT_Pin):
-            flags_to_set |= PHY_EVENT_IRQ6;
-            break;
-#endif
-#if NUM_PHYS > 7
-#error "Unsupported number of PHYs"
-#endif
-
-        default:
-            error_handler();
-            break;
+        }
     }
+
+    /* Interrupt pin not found */
+    if (flags_to_set == 0) VAL_TERMINATE();
 
     /* Set the flag */
     status = tx_event_flags_set(&phy_events_handle, flags_to_set, TX_OR);

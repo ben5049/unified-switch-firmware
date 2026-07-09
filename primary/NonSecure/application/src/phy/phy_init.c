@@ -24,7 +24,7 @@ static const phy_config_88q211x_t phy_config_0 = {
     .timeout               = PHY_TIMEOUT_MS,
     .interface             = PHY_INTERFACE_RGMII,
     .default_speed         = PHY_SPEED_MBPS_TO_ENUM(PORT0_SPEED_MBPS),
-    .default_role          = PHY_ROLE_MASTER,
+    .default_role          = PHY_ROLE_SLAVE,
     .tx_clk_internal_delay = true,
     .rx_clk_internal_delay = true,
     .fifo_size             = PHY_FIFO_SIZE_88Q211X_15KB,
@@ -59,9 +59,9 @@ static const phy_config_88q211x_t phy_config_1 = {
     .interface     = PHY_INTERFACE_RGMII,
     .default_speed = PHY_SPEED_MBPS_TO_ENUM(PORT1_SPEED_MBPS),
 #if HW_VERSION == 4
-    .default_role = PHY_ROLE_SLAVE,
-#elif HW_VERSION == 5
     .default_role = PHY_ROLE_MASTER,
+#elif HW_VERSION == 5
+    .default_role = PHY_ROLE_SLAVE,
 #endif
     .tx_clk_internal_delay = true,
     .rx_clk_internal_delay = true,

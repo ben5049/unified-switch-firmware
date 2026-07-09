@@ -16,6 +16,8 @@
 #include "validation.h"
 
 
+const uint8_t ptp_clock_identity[NX_PTP_CLOCK_IDENTITY_SIZE] = {PTP_CLOCK_IDENTITY};
+
 const uint8_t ptp_dst_addr[MAC_ADDR_SIZE] = {
     (uint8_t) (PTP_ETHERNET_ADDR_LSW),       /* Index 0: 0x0E */
     (uint8_t) (PTP_ETHERNET_ADDR_LSW >> 8),  /* Index 1: 0x00 */
@@ -89,14 +91,7 @@ nx_status_t ptp_packet_extract_sequence_id(const NX_PACKET *packet_ptr, uint32_t
 
 /* Convert 48-bit MAC address to 64-bit EUI */
 void write_port_identity_eui(uint8_t *port_identity) {
-    port_identity[0] = MAC_ADDR_OCTET1;
-    port_identity[1] = MAC_ADDR_OCTET2;
-    port_identity[2] = MAC_ADDR_OCTET3;
-    port_identity[3] = 0xff;
-    port_identity[4] = 0xfe;
-    port_identity[5] = MAC_ADDR_OCTET4;
-    port_identity[6] = MAC_ADDR_OCTET5;
-    port_identity[7] = MAC_ADDR_OCTET6;
+    memcpy(port_identity, ptp_clock_identity, NX_PTP_CLOCK_IDENTITY_SIZE);
 }
 
 

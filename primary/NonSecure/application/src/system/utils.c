@@ -166,11 +166,40 @@ log_handle_t* get_logger() {
 void log_info(const char* format, ...) {
 
     log_status_t status = LOGGING_OK;
+    va_list      args;
+    uint16_t     exact_size = 128;
 
-    va_list args;
     va_start(args, format);
 
-    status = log_vwrite(get_logger(), LOG_TYPE_INFO, 128, format, args);
+    if (UART_LOGGING_ENABLE) {
+        printf("(NS) %10lu: ", (unsigned long) HAL_GetTick());
+
+        va_list args_copy;
+        va_copy(args_copy, args);
+
+        /* vprintf returns the number of characters printed (excluding null terminator) */
+        int chars_written = vprintf(format, args_copy);
+        if (chars_written >= 0) {
+            exact_size = (uint16_t) (chars_written + 1); /* +1 for the null terminator */
+        }
+
+        va_end(args_copy);
+        printf("\n");
+
+    } else {
+
+        va_list args_copy;
+        va_copy(args_copy, args);
+
+        int required_size = vsnprintf(NULL, 0, format, args_copy);
+        if (required_size >= 0) {
+            exact_size = (uint16_t) (required_size + 1); /* +1 for the null terminator */
+        }
+
+        va_end(args_copy);
+    }
+
+    status = log_vwrite(get_logger(), LOG_TYPE_INFO, exact_size, format, args);
     LOG_CHECK(status);
 
     va_end(args);

@@ -185,7 +185,7 @@ nx_status_t ptp_client_restart_all() {
     }
 
     /* Reset other state */
-    ptp_port_connected_to_master = PORT_HOST;
+    ptp_port_connected_to_master = PORT_INVALID;
     if (ptp_client_filter_event_queue(PORT_BITS_NONE, PORT_BITS_ALL) != TX_SUCCESS) {
         status = NX_TX_ERROR;
         if (status != NX_SUCCESS) return status;

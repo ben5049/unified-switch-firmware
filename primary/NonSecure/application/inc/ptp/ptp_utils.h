@@ -24,7 +24,16 @@ extern "C" {
 #define PTP_HEADER_PORT_OFFSET        (28)
 #define PTP_HEADER_SEQUENCE_ID_OFFSET (30)
 
+#define PTP_CLOCK_IDENTITY            MAC_ADDR_OCTET1, \
+                           MAC_ADDR_OCTET2,            \
+                           MAC_ADDR_OCTET3,            \
+                           0xff,                       \
+                           0xfe,                       \
+                           MAC_ADDR_OCTET4,            \
+                           MAC_ADDR_OCTET5,            \
+                           MAC_ADDR_OCTET6
 
+extern const uint8_t ptp_clock_identity[NX_PTP_CLOCK_IDENTITY_SIZE];
 extern const uint8_t ptp_dst_addr[MAC_ADDR_SIZE];
 
 

@@ -98,6 +98,35 @@ extern "C" {
     })
 
 
+#define FMT_1           "%u"
+#define FMT_2           FMT_1 ",%u"
+#define FMT_3           FMT_2 ",%u"
+#define FMT_4           FMT_3 ",%u"
+#define FMT_5           FMT_4 ",%u"
+#define FMT_6           FMT_5 ",%u"
+#define FMT_7           FMT_6 ",%u"
+#define FMT_8           FMT_7 ",%u"
+
+#define ARG_1(arr)      arr[0]
+#define ARG_2(arr)      ARG_1(arr), arr[1]
+#define ARG_3(arr)      ARG_2(arr), arr[2]
+#define ARG_4(arr)      ARG_3(arr), arr[3]
+#define ARG_5(arr)      ARG_4(arr), arr[4]
+#define ARG_6(arr)      ARG_5(arr), arr[5]
+#define ARG_7(arr)      ARG_6(arr), arr[6]
+#define ARG_8(arr)      ARG_7(arr), arr[7]
+
+#define EXTRACT(...)    __VA_ARGS__
+#define STRIP_PARENS(x) EXTRACT x
+#define CLEAN_NUM_PHYS  STRIP_PARENS(NUM_PHYS)
+
+#define CONCAT(a, b)    a##b
+#define XCONCAT(a, b)   CONCAT(a, b)
+
+#define PHY_FMT         XCONCAT(FMT_, CLEAN_NUM_PHYS)
+#define PHY_ARGS(arr)   XCONCAT(ARG_, CLEAN_NUM_PHYS)(arr)
+
+
 void write_mac_addr(uint8_t *buf);
 bool compare_mac_addrs_with_mask(const uint8_t *addr1, const uint8_t *addr2, const uint8_t *mask);
 

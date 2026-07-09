@@ -30,7 +30,7 @@ TX_TIMER ptp_events_print_time_timer;
 #endif
 TX_TIMER ptp_sync_timeout_timer;
 
-volatile atomic_uint_fast8_t ptp_port_connected_to_master = PORT_HOST;
+volatile atomic_uint_fast8_t ptp_port_connected_to_master = PORT_INVALID; /* Intentionally invalid to force accepting the first master (internal or external) */
 static volatile atomic_bool  new_master_waiting_for_sync  = false;
 static uint8_t               grandmaster_identity[NX_PTP_CLOCK_IDENTITY_SIZE];
 
@@ -70,7 +70,15 @@ UINT ptp_event_callback(NX_PTP_CLIENT *ptp_client_ptr, UINT event, VOID *event_d
     switch (event_info.event) {
 
         case PTP_CLIENT_EVENT_MASTER: {
-            ptp_pack_master_message(&event_info, (NX_PTP_CLIENT_MASTER *) event_data);
+
+            NX_PTP_CLIENT_MASTER *master = event_data;
+
+            /* Check if the new master is us */
+            if (memcmp(master->nx_ptp_client_master_port_identity, ptp_clock_identity, NX_PTP_CLOCK_IDENTITY_SIZE) == 0) {
+                event_info.port = PORT_HOST;
+            }
+
+            ptp_pack_master_message(&event_info, master);
             break;
         }
 
@@ -120,6 +128,7 @@ void ptp_sync_timeout_timer_callback(uint32_t id) {
         if (ptp_port_connected_to_master != PORT_HOST) {
 
             /* Master is_capable so sync should have been received but wasn't */
+            assert(ptp_port_connected_to_master < PORT_HOST);
             master_is_capable = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond <= NX_PTP_CLIENT_DELAY_THRESH;
             if (master_is_capable) {
                 status = tx_event_flags_set(&ptp_events_group, PTP_EVENT_MASTER_SYNC_TIMEOUT, TX_OR);
@@ -181,7 +190,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
 
     /* Reset variables */
-    ptp_port_connected_to_master = PORT_HOST;
+    ptp_port_connected_to_master = PORT_INVALID;
     new_master_waiting_for_sync  = false;
 
     /* Enable master mode initially on all ports with the lowest priority so
@@ -226,12 +235,17 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             new_master = false;
 
                             /* No master assigned, take the first one to appear */
-                            if (ptp_port_connected_to_master == PORT_HOST) {
+                            if (ptp_port_connected_to_master == PORT_INVALID) {
                                 new_master = true;
 
                                 /* Ensure there is a corresponding sync event */
                                 tx_status = ptp_sync_timeout_start();
                                 TX_CHECK(tx_status);
+                            }
+
+                            /* New master is ourself again, ignore */
+                            else if ((ptp_port_connected_to_master == PORT_HOST) && (event_info.port == PORT_HOST)) {
+                                new_master = false;
                             }
 
                             /* There is a master assigned, need to compare clocks */
@@ -266,6 +280,8 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
                             /* Nothing to do */
                             if (!new_master) break;
+
+                            assert((event_info.port != PORT_HOST) || (event_info.master.nx_ptp_client_master_steps_removed == 0));
 
                             TX_DISABLE
 
@@ -331,7 +347,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                      grandmaster_identity[5],
                                      grandmaster_identity[6],
                                      grandmaster_identity[7],
-                                     master.nx_ptp_client_master_steps_removed,
+                                     (ptp_port_connected_to_master == PORT_HOST) ? 0 : master.nx_ptp_client_master_steps_removed + 1,
                                      master.nx_ptp_client_master_port_identity[0],
                                      master.nx_ptp_client_master_port_identity[1],
                                      master.nx_ptp_client_master_port_identity[2],
@@ -365,7 +381,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                 break;
                             }
 
-                            ptp_port_connected_to_master = PORT_HOST;
+                            ptp_port_connected_to_master = PORT_INVALID;
                             VAL_COVER(PTP_EVENT, MASTER_TIMEOUT);
 
                             /* Restart all clients to begin looking for a new master */
@@ -398,32 +414,38 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 
 #if PTP_PRINT_TIME_INTERVAL
 
-        /* Get, convert, and print the PTP time */
+        /* Get, convert, and print the PTP time and other info */
         if (event_flags & PTP_EVENT_PRINT_TIME) {
 
-            /* Check the delay to the master */
-            master_delay = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond;
-            if (ABS(master_delay) > NX_PTP_CLIENT_DELAY_THRESH) {
-                LOG_WARNING("PTP: Delay to master is %li ns (larger than %d ns threshold)",
-                            master_delay, NX_PTP_CLIENT_DELAY_THRESH);
-            }
-
-            /* Only print the time if its valid */
-            else {
-
-                /* Ignore exactly 800ns since that is the default value when
-                 * nothing is connected */
-                if (master_delay != NX_PTP_CLIENT_DELAY_THRESH) {
-                    LOG_INFO("PTP: Delay to master is %li ns", master_delay);
+            /* Check the delay to the master if connected externally */
+            if (ptp_port_connected_to_master < NUM_PHYS) {
+                master_delay = ptp_client[ptp_port_connected_to_master].nx_ptp_client_delay.nanosecond;
+                if (ABS(master_delay) > NX_PTP_CLIENT_DELAY_THRESH) {
+                    LOG_WARNING("PTP: Delay to master is %li ns (larger than %d ns threshold)",
+                                master_delay, NX_PTP_CLIENT_DELAY_THRESH);
                 }
 
-                /* Get time from the STM32's MAC */
-                ptp_mac_get_time(&time);
+                /* Only print the time if its valid */
+                else {
 
-                /* Convert and print the time */
-                nx_status = ptp_print_date(&time);
-                NX_CHECK(nx_status);
+                    /* Ignore exactly 800ns since that is the default value when
+                     * nothing is connected */
+                    if (master_delay != NX_PTP_CLIENT_DELAY_THRESH) {
+                        LOG_INFO("PTP: Delay to master is %li ns", master_delay);
+                    }
+
+                    /* Get time from the STM32's MAC */
+                    ptp_mac_get_time(&time);
+
+                    /* Convert and print the time */
+                    nx_status = ptp_print_date(&time);
+                    NX_CHECK(nx_status);
+                }
             }
+
+            LOG_INFO("PTP: Master port = %d", ptp_port_connected_to_master);
+            LOG_INFO("PTP: Ingress latencies = [" PHY_FMT "]", PHY_ARGS(phy_ingress_latencies));
+            LOG_INFO("PTP: Egress latencies  = [" PHY_FMT "]", PHY_ARGS(phy_egress_latencies));
         }
 
 #endif

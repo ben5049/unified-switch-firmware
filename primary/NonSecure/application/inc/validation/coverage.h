@@ -87,6 +87,12 @@ struct coverage_s {
     VAL_FAULT_DECLARE(SWITCH_UTILS, RATE_SET_PREEMPT);
 
 #endif
+
+#if VALIDATION_PHY
+
+    VAL_COVER_ARRAY_DECLARE(PHY, PIN_INT, NUM_PHYS);
+
+#endif
 };
 
 

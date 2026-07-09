@@ -40,19 +40,18 @@ atomic_bool mac_synced = false;
 static volatile NX_PACKET *dummy_sync_packet_ptr = NULL; /* Packet pointer of dummy packet */
 
 static uint8_t dummy_sync_payload[PTP_SYNC_PAYLOAD_LENGTH] = {
-    PTP_MESSAGE_TYPE_SYNC | (NX_PTP_TRANSPORT_SPECIFIC_802 << 4),           /* 0: MsgType = 0 (Sync), transport specific = 1 (gPTP) */
-    0x02,                                                                   /* 1: Version = 2 */
-    0x00, PTP_SYNC_PAYLOAD_LENGTH,                                          /* 2-3: Message Length = 44 bytes */
-    0x00, 0x00,                                                             /* 4-5: Domain Number = 0, Reserved */
-    0x02, 0x00,                                                             /* 6-7: Flags (0x02 = Two-Step flag set) */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,                         /* 8-15: Correction Field */
-    0x00, 0x00, 0x00, 0x00,                                                 /* 16-19: Reserved */
-    MAC_ADDR_OCTET1, MAC_ADDR_OCTET2, MAC_ADDR_OCTET3, 0xff, 0xfe,
-    MAC_ADDR_OCTET4, MAC_ADDR_OCTET5, MAC_ADDR_OCTET6, 0x00, PORT_HOST + 1, /* 20-29: Port Identity (port indexed from 1) */
-    0x00, 0x01,                                                             /* 30-31: Sequence ID */
-    0x00,                                                                   /* 32: Control Field (0x00 for Sync) */
-    0x00,                                                                   /* 33: Log Message Interval */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00              /* Sync-specific payload: Origin Timestamp (10 bytes) */
+    PTP_MESSAGE_TYPE_SYNC | (NX_PTP_TRANSPORT_SPECIFIC_802 << 4), /* 0: MsgType = 0 (Sync), transport specific = 1 (gPTP) */
+    0x02,                                                         /* 1: Version = 2 */
+    0x00, PTP_SYNC_PAYLOAD_LENGTH,                                /* 2-3: Message Length = 44 bytes */
+    0x00, 0x00,                                                   /* 4-5: Domain Number = 0, Reserved */
+    0x02, 0x00,                                                   /* 6-7: Flags (0x02 = Two-Step flag set) */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,               /* 8-15: Correction Field */
+    0x00, 0x00, 0x00, 0x00,                                       /* 16-19: Reserved */
+    PTP_CLOCK_IDENTITY, 0x00, PORT_HOST + 1,                      /* 20-29: Port Identity (clock identity + 16-bit port indexed from 1) */
+    0x00, 0x01,                                                   /* 30-31: Sequence ID */
+    0x00,                                                         /* 32: Control Field (0x00 for Sync) */
+    0x00,                                                         /* 33: Log Message Interval */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00    /* Sync-specific payload: Origin Timestamp (10 bytes) */
 };
 
 
@@ -131,7 +130,8 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
     uint16_t host_speed_mbps;
 
-    ptp_controller_t mac_sync_controller = {.initialised = false};
+    ptp_controller_t mac_sync_controller          = {.initialised = false};
+    uint8_t          mac_sync_controller_cooldown = 0;
     int32_t          controller_output;
     uint32_t         addend;
     int64_t          addend_adjustment;
@@ -162,6 +162,8 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
         if (event_flags & PTP_CLOCK_EVENT_RESET) {
             ptp_pi_controller_clear(&mac_sync_controller, tx_time_get_ms());
             ptp_mac_set_addend(PTP_COUNTER_ADDEND_DEFAULT);
+
+            mac_sync_controller_cooldown = 1;
         }
 
         /* Sync the MAC */
@@ -169,6 +171,11 @@ void ptp_mac_sync_thread_entry(uint32_t initial_input) {
 
             /* If PTP hasn't been started don't send a packet */
             if (!ptp_initialised) continue;
+
+            if (mac_sync_controller_cooldown > 0) {
+                mac_sync_controller_cooldown--;
+                continue;
+            }
 
             /* Create a dummy sync packet that will look convincing enough to make
              * the STM32's MAC timestamp it */

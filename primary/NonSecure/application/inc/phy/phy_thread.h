@@ -54,7 +54,8 @@ typedef enum {
     PORT5 = PHY5_88Q2112,
     PORT6 = PHY6_LAN8671,
 #endif
-    PORT_HOST = NUM_PHYS,
+    PORT_HOST    = NUM_PHYS,
+    PORT_INVALID = PORT_HOST + 1,
 } port_index_t;
 
 typedef enum {
