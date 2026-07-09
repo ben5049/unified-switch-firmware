@@ -125,9 +125,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 }
 
                 /* Get latencies */
-                status = PHY_GetIngressLatency(hphy, &phy_ingress_latencies[phy]);
-                if (status != PHY_OK) goto end;
-                status = PHY_GetEgressLatency(hphy, &phy_egress_latencies[phy]);
+                status = update_phy_latencies(phy);
                 if (status != PHY_OK) goto end;
 
                 next_state = PHY_STATE_LINKUP;
@@ -158,9 +156,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                     }
 
                     /* Keep latencies up to date */
-                    status = PHY_GetIngressLatency(hphy, &phy_ingress_latencies[phy]);
-                    if (status != PHY_OK) goto end;
-                    status = PHY_GetEgressLatency(hphy, &phy_egress_latencies[phy]);
+                    status = update_phy_latencies(phy);
                     if (status != PHY_OK) goto end;
 
                     /* Get the signal quality index (0-100) */

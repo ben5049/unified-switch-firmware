@@ -13,6 +13,53 @@
 #include "utils.h"
 
 
+#define NUM_LATENCY_CORRECTIONS (3)
+#define UNR                     (UINT16_MAX) /* Unreachable */
+
+
+/* clang-format off */
+static const uint16_t ingress_latency_corrections[NUM_PHYS][NUM_LATENCY_CORRECTIONS] = {
+
+    /* Speed (mbps)
+     * 10   100  1000 */
+#if HW_VERSION == 4
+    { UNR,  750,    0}, /* PHY0: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY1: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY2: 1000BASE-T1 */
+    {   0,  UNR,  UNR}, /* PHY3: 10BASE-T1S  */
+#elif HW_VERSION == 5
+    { 275,  275,  275}, /* PHY0: 1000BASE-T  */
+    { UNR,  750,    0}, /* PHY1: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY2: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY3: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY4: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY5: 1000BASE-T1 */
+    {   0,  UNR,  UNR}, /* PHY6: 10BASE-T1S  */
+#endif
+};
+
+static const uint16_t egress_latency_corrections[NUM_PHYS][NUM_LATENCY_CORRECTIONS] = {
+
+    /* Speed (mbps)
+     * 10   100  1000 */
+#if HW_VERSION == 4
+    { UNR,  750,    0}, /* PHY0: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY1: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY2: 1000BASE-T1 */
+    {   0,  UNR,  UNR}, /* PHY3: 10BASE-T1S  */
+#elif HW_VERSION == 5
+    { 275,  275,  275}, /* PHY0: 1000BASE-T  */
+    { UNR,  750,    0}, /* PHY1: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY2: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY3: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY4: 1000BASE-T1 */
+    { UNR,  750,    0}, /* PHY5: 1000BASE-T1 */
+    {   0,  UNR,  UNR}, /* PHY6: 10BASE-T1S  */
+#endif
+};
+/* clang-format on */
+
+
 /* 88Q2112 PHY MDIO lines are selected by an external mux */
 #if HW_VERSION == 5
 phy_status_t select_phy(phy_index_t phy_num, bool *switchover) {
@@ -78,3 +125,35 @@ phy_status_t select_phy(phy_index_t phy_num, bool *switchover) {
     return status;
 }
 #endif
+
+
+phy_status_t update_phy_latencies(phy_index_t phy) {
+
+    assert(phy < NUM_PHYS);
+
+    phy_status_t       status = PHY_OK;
+    phy_handle_base_t *hphy   = phy_handles[phy];
+    uint16_t           ingress_latency, egress_latency;
+    uint16_t           ingress_correction, egress_correction;
+
+    /* Get raw latencies */
+    status = PHY_GetIngressLatency(hphy, &ingress_latency);
+    if (status != PHY_OK) return status;
+    status = PHY_GetEgressLatency(hphy, &egress_latency);
+    if (status != PHY_OK) return status;
+
+    /* Get corrections */
+    assert(hphy->speed - PHY_SPEED_10M < NUM_LATENCY_CORRECTIONS);
+    ingress_correction = ingress_latency_corrections[phy][hphy->speed - PHY_SPEED_10M];
+    if (ingress_correction == UNR) status = PHY_INVALID_SPEED_ERROR;
+    if (status != PHY_OK) return status;
+    egress_correction = egress_latency_corrections[phy][hphy->speed - PHY_SPEED_10M];
+    if (egress_correction == UNR) status = PHY_INVALID_SPEED_ERROR;
+    if (status != PHY_OK) return status;
+
+    /* Apply corrections */
+    phy_ingress_latencies[phy] = ingress_latency + ingress_correction;
+    phy_egress_latencies[phy]  = egress_latency + egress_correction;
+
+    return status;
+}

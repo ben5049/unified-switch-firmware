@@ -27,6 +27,7 @@ extern "C" {
 #if HW_VERSION == 5
 phy_status_t select_phy(phy_index_t phy_num, bool *switchover);
 #endif
+phy_status_t update_phy_latencies(phy_index_t phy);
 
 
 #ifdef __cplusplus
