@@ -30,12 +30,9 @@ static volatile atomic_uint_fast32_t meta_debt          = 0;
 static volatile atomic_uint_fast32_t delayed_by_1_count = 0;
 
 
-static inline bool ptp_is_event_packet(const uint8_t *payload) {
-
-    /* First byte contains the message type and transport specific */
-    ptp_message_type_t message_type = payload[0] & PTP_MESSAGE_TYPE_MASK;
-
+static inline bool ptp_is_event_packet(ptp_message_type_t message_type) {
     return ((message_type == PTP_MESSAGE_TYPE_SYNC) ||
+            (message_type == PTP_MESSAGE_TYPE_DELAY_REQ) ||
             (message_type == PTP_MESSAGE_TYPE_PDELAY_REQ) ||
             (message_type == PTP_MESSAGE_TYPE_PDELAY_RESP));
 }
@@ -66,11 +63,12 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
     ptp_packet_event_info_t event_info_temp;
     ptp_event_t             event;
 
-    NX_PACKET   *ptp_packet;
-    NX_PTP_TIME  timestamp;
-    port_index_t port;
-    UINT         header_size;
-    bool         event_packet;
+    NX_PACKET         *ptp_packet;
+    ptp_message_type_t ptp_packet_type;
+    NX_PTP_TIME        timestamp;
+    port_index_t       port;
+    UINT               header_size;
+    bool               event_packet;
 
 #if DEBUG
     uint32_t enqueued;
@@ -196,7 +194,9 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
          *       timestamps. */
         nx_status = nx_link_ethernet_header_parse(ptp_packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
         NX_CHECK(nx_status);
-        event_packet = ptp_is_event_packet(ptp_packet->nx_packet_prepend_ptr + header_size);
+        nx_status = ptp_packet_extract_type(ptp_packet, header_size, &ptp_packet_type);
+        NX_CHECK(nx_status);
+        event_packet = ptp_is_event_packet(ptp_packet_type);
         if (event_packet) {
             VAL_COVER(PTP_RX, EVENT);
         } else {
@@ -267,6 +267,26 @@ void ptp_rx_thread_entry(uint32_t initial_input) {
                 header_size,
                 &ptp_client[port], NULL);
             NX_CHECK(nx_status);
+
+            /* Log stats for external packets */
+#if VALIDATION_PTP_RX
+            switch (ptp_packet_type) {
+                case PTP_MESSAGE_TYPE_SYNC:
+                    VAL_COVER(PTP_RX, SYNC);
+                    break;
+                case PTP_MESSAGE_TYPE_PDELAY_REQ:
+                    VAL_COVER(PTP_RX, PDELAY_REQ);
+                    break;
+                case PTP_MESSAGE_TYPE_PDELAY_RESP:
+                    VAL_COVER(PTP_RX, PDELAY_RESP);
+                    break;
+                case PTP_MESSAGE_TYPE_ANNOUNCE:
+                    VAL_COVER(PTP_RX, ANNOUNCE);
+                    break;
+                default:
+                    break;
+            }
+#endif
         }
 
         else {

@@ -21,6 +21,7 @@ extern "C" {
 
 #define PTP_ETHERNET_ADDR_MSW         (0x0180)
 #define PTP_ETHERNET_ADDR_LSW         (0xc200000e)
+#define PTP_HEADER_TYPE_OFFSET        (0)
 #define PTP_HEADER_PORT_OFFSET        (28)
 #define PTP_HEADER_SEQUENCE_ID_OFFSET (30)
 
@@ -39,6 +40,7 @@ extern const uint8_t ptp_dst_addr[MAC_ADDR_SIZE];
 
 void        ptp_packet_insert_timestamp(NX_PACKET *packet_ptr, const NX_PTP_TIME *time);
 void        ptp_packet_extract_timestamp(const NX_PACKET *packet_ptr, NX_PTP_TIME *time);
+nx_status_t ptp_packet_extract_type(const NX_PACKET *packet_ptr, uint32_t header_size, ptp_message_type_t *type);
 nx_status_t ptp_packet_extract_port(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *port);
 nx_status_t ptp_packet_extract_sequence_id(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *sequence_id);
 

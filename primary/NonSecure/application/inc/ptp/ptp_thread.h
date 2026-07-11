@@ -26,10 +26,14 @@ extern "C" {
 
 
 typedef enum {
-    PTP_MESSAGE_TYPE_SYNC                  = 0x0, /* RX Event message */
-    PTP_MESSAGE_TYPE_DELAY_REQ             = 0x1,
-    PTP_MESSAGE_TYPE_PDELAY_REQ            = 0x2, /* RX Event message */
-    PTP_MESSAGE_TYPE_PDELAY_RESP           = 0x3, /* RX Event message */
+
+    /* Event messages, timestamped */
+    PTP_MESSAGE_TYPE_SYNC        = 0x0,
+    PTP_MESSAGE_TYPE_DELAY_REQ   = 0x1,
+    PTP_MESSAGE_TYPE_PDELAY_REQ  = 0x2,
+    PTP_MESSAGE_TYPE_PDELAY_RESP = 0x3,
+
+    /* General messages, not timestamped */
     PTP_MESSAGE_TYPE_FOLLOW_UP             = 0x8,
     PTP_MESSAGE_TYPE_DELAY_RESP            = 0x9,
     PTP_MESSAGE_TYPE_PDELAY_RESP_FOLLOW_UP = 0xa,
@@ -37,7 +41,10 @@ typedef enum {
     PTP_MESSAGE_TYPE_SIGNALLING            = 0xc,
     PTP_MESSAGE_TYPE_MANAGEMENT            = 0xd,
 
+    /* 0x4 - 0x7 and 0xE - 0xF are reserved */
+
     PTP_MESSAGE_TYPE_MASK = 0x0f,
+
 } ptp_message_type_t;
 
 

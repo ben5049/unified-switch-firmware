@@ -42,12 +42,33 @@ void ptp_packet_extract_timestamp(const NX_PACKET *packet_ptr, NX_PTP_TIME *time
 }
 
 
+nx_status_t ptp_packet_extract_type(const NX_PACKET *packet_ptr, uint32_t header_size, ptp_message_type_t *type) {
+
+    nx_status_t status = NX_SUCCESS;
+    uint8_t     type_idx;
+
+    /* Check the packet is long enough to contain the message type */
+    if ((packet_ptr->nx_packet_length - header_size) < (PTP_HEADER_TYPE_OFFSET + 1)) {
+        status = NX_SIZE_ERROR;
+        return status;
+    };
+
+    /* Extract the message type
+     * Note: messageType is the low nibble of the first header byte
+     *       the high nibble is transportSpecific */
+    type_idx = header_size + PTP_HEADER_TYPE_OFFSET;
+    *type    = (ptp_message_type_t) (packet_ptr->nx_packet_prepend_ptr[type_idx] & PTP_MESSAGE_TYPE_MASK);
+
+    return status;
+}
+
+
 nx_status_t ptp_packet_extract_port(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *port) {
 
     nx_status_t status = NX_SUCCESS;
     uint8_t     port_idx;
 
-    /* Check the packet is long enough to contain the port */
+    /* Check the packet is long enough to contain the 2-byte port */
     if ((packet_ptr->nx_packet_length - header_size) < (PTP_HEADER_PORT_OFFSET + 2)) {
         status = NX_SIZE_ERROR;
         return status;

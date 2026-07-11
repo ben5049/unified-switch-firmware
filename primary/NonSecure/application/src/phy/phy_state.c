@@ -273,6 +273,7 @@ static phy_status_t phy_state_update(phy_handle_base_t *hphy, uint32_t current_t
                 }
 
                 next_state = PHY_STATE_WAIT_FOR_LINK;
+                interval   = PHY_WAIT_INTERVAL(hphy);
                 break;
             }
 

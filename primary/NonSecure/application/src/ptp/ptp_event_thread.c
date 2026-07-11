@@ -186,6 +186,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     int32_t              clock_comparison;
     int32_t              master_delay;
     NX_PTP_CLIENT_MASTER master; /* Note: the nx_ptp_client_master_address and nx_ptp_client_master_port_identity fields are ALWAYS INVALID (due to copying struct with pointers) */
+    uint16_t             steps_removed;
 
     static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
 
@@ -281,19 +282,27 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             /* Nothing to do */
                             if (!new_master) break;
 
-                            assert((event_info.port != PORT_HOST) || (event_info.master.nx_ptp_client_master_steps_removed == 0));
+                            assert((event_info.port != PORT_HOST) ||
+                                   (event_info.master.nx_ptp_client_master_steps_removed == 0));
 
                             TX_DISABLE
 
                             /* Save the new master */
                             ptp_port_connected_to_master = event_info.port;
                             master                       = event_info.master;
-                            memcpy(grandmaster_identity, event_info.master.nx_ptp_client_master_grandmaster_identity, NX_PTP_CLOCK_IDENTITY_SIZE);
-                            master.nx_ptp_client_master_grandmaster_identity                                 = grandmaster_identity;
-                            ptp_client[event_info.port].ptp_master.nx_ptp_client_master_grandmaster_identity = ptp_client[event_info.port].nx_ptp_client_port_identity;
-                            VAL_COVER(PTP_EVENT, MASTER_NEW);
+                            memcpy(grandmaster_identity,
+                                   event_info.master.nx_ptp_client_master_grandmaster_identity,
+                                   NX_PTP_CLOCK_IDENTITY_SIZE);
+                            master.nx_ptp_client_master_grandmaster_identity = grandmaster_identity;
+                            ptp_client[event_info.port].ptp_master.nx_ptp_client_master_grandmaster_identity =
+                                ptp_client[event_info.port].nx_ptp_client_port_identity;
 
                             TX_RESTORE
+
+                            VAL_COVER(PTP_EVENT, MASTER_NEW);
+                            steps_removed = (ptp_port_connected_to_master == PORT_HOST)
+                                                ? 0
+                                                : master.nx_ptp_client_master_steps_removed + 1;
 
                             /* Flush events from the non-master port */
                             tx_status = ptp_client_filter_event_queue(1UL << event_info.port, PORT_BITS_ALL);
@@ -321,7 +330,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                     master.nx_ptp_client_master_clock_class,
                                     master.nx_ptp_client_master_clock_accuracy,
                                     master.nx_ptp_client_master_offset_scaled_log_variance,
-                                    master.nx_ptp_client_master_steps_removed + 1,
+                                    steps_removed,
                                     NX_PTP_MASTER_TIME_SRC_PTP);
                                 NX_CHECK(nx_status);
 
@@ -347,7 +356,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                      grandmaster_identity[5],
                                      grandmaster_identity[6],
                                      grandmaster_identity[7],
-                                     (ptp_port_connected_to_master == PORT_HOST) ? 0 : master.nx_ptp_client_master_steps_removed + 1,
+                                     steps_removed,
                                      master.nx_ptp_client_master_port_identity[0],
                                      master.nx_ptp_client_master_port_identity[1],
                                      master.nx_ptp_client_master_port_identity[2],

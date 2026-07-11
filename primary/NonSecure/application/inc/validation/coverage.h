@@ -38,6 +38,10 @@ struct coverage_s {
     VAL_COVER_DECLARE(PTP_RX, PACKET);                  /* Number of PTP packets filtered */
     VAL_COVER_DECLARE(PTP_RX, EVENT);                   /* Number of event PTP packets received (SYNC, PDELAY_REQ, PDELAY_RESP) */
     VAL_COVER_DECLARE(PTP_RX, GENERAL);                 /* Number of general PTP packets received */
+    VAL_COVER_DECLARE(PTP_RX, SYNC);                    /* Number of external SYNC PTP packets received */
+    VAL_COVER_DECLARE(PTP_RX, PDELAY_REQ);              /* Number of external PDELAY_REQ PTP packets received */
+    VAL_COVER_DECLARE(PTP_RX, PDELAY_RESP);             /* Number of external PDELAY_RESP PTP packets received */
+    VAL_COVER_DECLARE(PTP_RX, ANNOUNCE);                /* Number of external ANNOUNCE PTP packets received */
     VAL_COVER_ARRAY_DECLARE(PTP_RX, PORT, NUM_PORTS);   /* Number of packets received on each port */
     VAL_COVER_DECLARE(PTP_RX, NO_META);                 /* Expected a META frame but didn't get one */
     VAL_COVER_DECLARE(PTP_RX, META_DELAYED_BY_1);       /* Number of META frames that had 1 frame between them and the packets that generated them */
