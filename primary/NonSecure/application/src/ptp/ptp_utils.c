@@ -95,7 +95,7 @@ nx_status_t ptp_packet_extract_sequence_id(const NX_PACKET *packet_ptr, uint32_t
     nx_status_t status = NX_SUCCESS;
     uint8_t     sequence_id_idx;
 
-    /* Check the packet is long enough to contain the port */
+    /* Check the packet is long enough to contain the 2-byte sequence ID */
     if ((packet_ptr->nx_packet_length - header_size) < (PTP_HEADER_SEQUENCE_ID_OFFSET + 2)) {
         status = NX_SIZE_ERROR;
         return status;
@@ -105,6 +105,42 @@ nx_status_t ptp_packet_extract_sequence_id(const NX_PACKET *packet_ptr, uint32_t
     sequence_id_idx = header_size + PTP_HEADER_SEQUENCE_ID_OFFSET;
     *sequence_id    = (uint16_t) ((packet_ptr->nx_packet_prepend_ptr[sequence_id_idx] << 8) |
                                packet_ptr->nx_packet_prepend_ptr[sequence_id_idx + 1]);
+
+    return status;
+}
+
+
+nx_status_t ptp_packet_insert_utc_offset(NX_PACKET *packet_ptr, int16_t utc_offset) {
+
+    nx_status_t status = NX_SUCCESS;
+    nx_status_t nx_status;
+    UINT        header_size;
+    uint32_t    utc_offset_idx;
+    uint16_t    raw;
+    uint8_t     msg_type;
+
+    /* Extract the header size so the start of the PTP payload can be determined */
+    nx_status = nx_link_ethernet_header_parse(packet_ptr, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &header_size);
+    if (nx_status != NX_SUCCESS) {
+        return nx_status;
+    }
+
+    /* Check this is an announce packet */
+    status = ptp_packet_extract_type(packet_ptr, header_size, &msg_type);
+    if (status != NX_SUCCESS) return status;
+    if (msg_type != PTP_MESSAGE_TYPE_ANNOUNCE) return status;
+
+    /* Check the packet is long enough to contain the 2-byte UTC offset */
+    if ((packet_ptr->nx_packet_length - header_size) < (PTP_ANNOUNCE_UTC_OFFSET_OFFSET + 2)) {
+        status = NX_SIZE_ERROR;
+        return status;
+    }
+
+    /* Insert the UTC offset */
+    raw                                                   = (uint16_t) utc_offset;
+    utc_offset_idx                                        = header_size + PTP_ANNOUNCE_UTC_OFFSET_OFFSET;
+    packet_ptr->nx_packet_prepend_ptr[utc_offset_idx]     = (uint8_t) (raw >> 8);
+    packet_ptr->nx_packet_prepend_ptr[utc_offset_idx + 1] = (uint8_t) (raw & 0xff);
 
     return status;
 }
@@ -251,12 +287,13 @@ nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr) {
 
     nx_status_t      status = NX_SUCCESS;
     NX_PTP_DATE_TIME date;
+    int16_t          utc_offset_local = ptp_utc_offset;
 
     status = nx_ptp_client_utility_convert_time_to_date(
         time_ptr,
         (time_ptr->second_high == 0)
-            ? -CONSTRAIN(ptp_utc_offset, 0, time_ptr->second_low)
-            : -ptp_utc_offset, /* Prevent the offset from making the time negative */
+            ? -CONSTRAIN(utc_offset_local, 0, time_ptr->second_low)
+            : -utc_offset_local, /* Prevent the offset from making the time negative */
         &date);
     if (status != NX_SUCCESS) return status;
 

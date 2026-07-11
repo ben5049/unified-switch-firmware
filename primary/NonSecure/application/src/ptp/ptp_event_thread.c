@@ -15,7 +15,7 @@
 #include "validation.h"
 
 
-SHORT ptp_utc_offset = 0;
+atomic_int_fast16_t ptp_utc_offset = 0;
 
 TX_THREAD ptp_event_thread;
 uint8_t   ptp_event_thread_stack[PTP_EVENT_THREAD_STACK_SIZE];
@@ -187,6 +187,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
     int32_t              master_delay;
     NX_PTP_CLIENT_MASTER master; /* Note: the nx_ptp_client_master_address and nx_ptp_client_master_port_identity fields are ALWAYS INVALID (due to copying struct with pointers) */
     uint16_t             steps_removed;
+    SHORT                utc_offset_local;
 
     static_assert(PTP_VLAN == 0, "PTP Currently only supported on VLAN 0");
 
@@ -348,7 +349,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                              *       0xff and 0xfe inserted at indexes 3 & 4.
                              *       Client master port identity is the same
                              *       but with bytes 9 & 10 as the port number. */
-                            LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x (%d steps removed), connected via %02x:%02x:%02x:%02x:%02x:%02x (port %d)",
+                            LOG_INFO("PTP: New master clock on port %d, grandmaster = %02x:%02x:%02x:%02x:%02x:%02x (%d step%s removed), connected via %02x:%02x:%02x:%02x:%02x:%02x (port %d)",
                                      event_info.port,
                                      grandmaster_identity[0],
                                      grandmaster_identity[1],
@@ -356,7 +357,7 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                                      grandmaster_identity[5],
                                      grandmaster_identity[6],
                                      grandmaster_identity[7],
-                                     steps_removed,
+                                     steps_removed, (steps_removed == 1) ? "" : "s",
                                      master.nx_ptp_client_master_port_identity[0],
                                      master.nx_ptp_client_master_port_identity[1],
                                      master.nx_ptp_client_master_port_identity[2],
@@ -378,8 +379,9 @@ void ptp_event_thread_entry(uint32_t initial_input) {
                             VAL_COVER(PTP_EVENT, SYNC);
 
                             new_master_waiting_for_sync = false;
-                            nx_ptp_client_sync_info_get(&event_info.sync, NX_NULL, &ptp_utc_offset);
-                            LOG_INFO("PTP: SYNC event, utc offset=%d", ptp_utc_offset);
+                            nx_ptp_client_sync_info_get(&event_info.sync, NX_NULL, &utc_offset_local);
+                            ptp_utc_offset = utc_offset_local;
+                            LOG_INFO("PTP: SYNC event, utc offset=%d", utc_offset_local);
                             break;
                         }
 

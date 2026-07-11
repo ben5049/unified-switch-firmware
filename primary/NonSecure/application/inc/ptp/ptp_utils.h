@@ -19,19 +19,20 @@ extern "C" {
 #include "nx_app.h"
 
 
-#define PTP_ETHERNET_ADDR_MSW         (0x0180)
-#define PTP_ETHERNET_ADDR_LSW         (0xc200000e)
-#define PTP_HEADER_TYPE_OFFSET        (0)
-#define PTP_HEADER_PORT_OFFSET        (28)
-#define PTP_HEADER_SEQUENCE_ID_OFFSET (30)
+#define PTP_ETHERNET_ADDR_MSW          (0x0180)
+#define PTP_ETHERNET_ADDR_LSW          (0xc200000e)
+#define PTP_HEADER_TYPE_OFFSET         (0)
+#define PTP_HEADER_PORT_OFFSET         (28)
+#define PTP_HEADER_SEQUENCE_ID_OFFSET  (30)
+#define PTP_ANNOUNCE_UTC_OFFSET_OFFSET (44)
 
-#define PTP_CLOCK_IDENTITY            MAC_ADDR_OCTET1, \
-                           MAC_ADDR_OCTET2,            \
-                           MAC_ADDR_OCTET3,            \
-                           0xff,                       \
-                           0xfe,                       \
-                           MAC_ADDR_OCTET4,            \
-                           MAC_ADDR_OCTET5,            \
+#define PTP_CLOCK_IDENTITY             MAC_ADDR_OCTET1, \
+                           MAC_ADDR_OCTET2,             \
+                           MAC_ADDR_OCTET3,             \
+                           0xff,                        \
+                           0xfe,                        \
+                           MAC_ADDR_OCTET4,             \
+                           MAC_ADDR_OCTET5,             \
                            MAC_ADDR_OCTET6
 
 extern const uint8_t ptp_clock_identity[NX_PTP_CLOCK_IDENTITY_SIZE];
@@ -43,6 +44,7 @@ void        ptp_packet_extract_timestamp(const NX_PACKET *packet_ptr, NX_PTP_TIM
 nx_status_t ptp_packet_extract_type(const NX_PACKET *packet_ptr, uint32_t header_size, ptp_message_type_t *type);
 nx_status_t ptp_packet_extract_port(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *port);
 nx_status_t ptp_packet_extract_sequence_id(const NX_PACKET *packet_ptr, uint32_t header_size, uint16_t *sequence_id);
+nx_status_t ptp_packet_insert_utc_offset(NX_PACKET *packet_ptr, int16_t utc_offset);
 
 void write_port_identity_eui(uint8_t *port_identity);
 void write_port_identity_number(uint8_t *port_identity, uint16_t number);

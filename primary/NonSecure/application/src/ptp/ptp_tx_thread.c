@@ -187,6 +187,10 @@ void ptp_tx_thread_entry(uint32_t initial_input) {
                 SWITCH_CHECK(switch_status);
                 ptp_tx_send_count = depth;
 
+                /* Insert the UTC offset into announce messages */
+                nx_status = ptp_packet_insert_utc_offset(event_info.packet_ptr, ptp_utc_offset);
+                NX_CHECK(nx_status);
+
                 /* Send the packet */
                 nx_status = nx_link_raw_packet_send(&nx_ip_instance,
                                                     PRIMARY_INTERFACE,

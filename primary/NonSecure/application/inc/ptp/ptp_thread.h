@@ -151,7 +151,7 @@ extern TX_TIMER ptp_mac_sync_timer;
 extern TX_TIMER ptp_switch_sync_timer;
 #endif
 
-extern SHORT                        ptp_utc_offset;
+extern atomic_int_fast16_t          ptp_utc_offset;
 extern volatile atomic_uint_fast8_t ptp_port_connected_to_master;
 
 
