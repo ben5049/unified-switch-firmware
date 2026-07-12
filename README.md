@@ -73,3 +73,25 @@ No-delay loops shouldn't be possible, but there is a limit to the number of tran
 The purpose of the state machine is to allow the PHY to sleep when there is no link, as well as controlling the polling rate. Interrupts are also used to asynchronously update the state. The figure below shows the timings when 5 ports are unconnected:
 
 ![phy-state-timing](/docs/images/phy-state-timing.drawio.png)
+
+### gPTP Subsystem
+
+This subsystem uses NetX Duo PTP clients to keep track of the state of each port and to receive and transmit packets. These packets are then intercepted, edited and sent out of whichever switch port the client corresponds to. All the clients are managed by the event thread, which takes care of which client instance is the master, and propagating that information to the slave clients. A simplified view of the transmit and receive paths is shown below.
+
+![ptp-rx-tx](/docs/images/ptp-rx-tx.drawio-dark.png)
+
+There are several controllers needed to keep the various clocks on the boards synchronised. The main clock on each board is in the switch 0 clock (which is in an SJA1105 chip). The control loops are shown below.
+
+![ptp-control-scheme](/docs/images/ptp-control-scheme-dark.png)
+
+The firmware has been tested with a Raspberry Pi 5 acting as the grand master, with a switch v5, and then a switch v4 in a chain. The switch v5 is connected to the rest of the LAN to allow SSH access to the Pi.
+
+![setup](/docs/images/setup.png)
+
+Each switch generates a PPS (pulse per second) signal on a GPIO pin. Feeding both of these PPS signals into an oscilloscope shows that the error between the two switches is around +-100ns. There is some jitter because this uses an ISR to toggle a GPIO (I forgot to breakout the PPS pin on the switch v5).
+
+![sync](/docs/images/sync.png)
+
+And a video showing the jitter:
+
+![sync-video](/docs/images/sync-video.mp4)
