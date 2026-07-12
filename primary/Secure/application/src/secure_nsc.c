@@ -67,7 +67,6 @@ CMSE_NS_ENTRY bool s_cold_boot(void) {
 }
 
 
-
 /* Called by the application when it reaches an unrecoverable state */
 CMSE_NS_ENTRY void s_error_handler() {
 
@@ -116,3 +115,17 @@ CMSE_NS_ENTRY int s_write(int file, char *ptr, int len) {
 CMSE_NS_ENTRY bool s_uart_logging_enabled(void) {
     return UART_LOGGING_ENABLE;
 }
+
+
+#if DEBUG
+
+CMSE_NS_ENTRY void s_set_status_led(bool status) {
+
+    enable_tick();
+
+    set_status_led(status);
+
+    disable_tick();
+}
+
+#endif

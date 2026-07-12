@@ -28,6 +28,7 @@ extern "C" {
 #define FEAT_PTP                  (1)
 #define FEAT_PTP_SWITCH_SYNC      (1) /* Actively synchronise the switches' clocks to each other. Turning it off enables a PPS signal on the PTP_CLK pin instead */
 #define FEAT_PTP_ALLOW_META_DELAY (1) /* Allow META frames to have up to one packet between them and the PTP packet that generated them */
+#define FEAT_PTP_PPS_SOFT         (1) /* Trigger a software callback once per second */
 #define FEAT_STP                  (0) /* More important TODO: replace with custom implementation, MSTP is too heavy. TODO: fix this thread. Each time it calls for a flush the 50MHz REF_CLK is reset which is probably very bad */
 #define FEAT_COMMS                (0) /* TODO: re-enable */
 
@@ -134,6 +135,8 @@ extern "C" {
 #define PTP_EVENT_QUEUE_SIZE                  (10)
 #define PTP_PRINT_TIME_INTERVAL               (10000) /* Time interval between printing the PTP time in ms. Must be >= 100ms. Set to 0 to disable printing */
 #define PTP_SYNC_TIMEOUT                      (10000) /* A SYNC event should generated within this amount of time after connecting to a master */
+
+#define PTP_PPS_SOFT_PULSE_DURATION           (100)
 
 #define PTP_TX_THREAD_STACK_SIZE              (1024 * 2)
 #define PTP_TX_THREAD_PRIORITY                (4)

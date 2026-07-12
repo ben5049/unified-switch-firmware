@@ -102,6 +102,21 @@ UINT MX_NetXDuo_Init(VOID *memory_ptr) {
 }
 ```
 
+### Interrupt handlers
+
+`stm32h5xx_it.c`
+
+```C
+#include "ptp.h"
+
+...
+
+  /* USER CODE BEGIN ETH_IRQn 0 */
+#if FEAT_PTP && FEAT_PTP_PPS_SOFT
+  ptp_mac_pps_interrupt_handle();
+#endif
+  /* USER CODE END ETH_IRQn 0 */
+```
 
 ## Secure
 

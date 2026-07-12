@@ -126,7 +126,7 @@ UINT ptp_clock_callback(NX_PTP_CLIENT *client_ptr, UINT operation,
 
             VAL_COVER(PTP_CLOCK, CB_TS_EXTRACT);
 
-            /* Return timestamp stored at the beginning of the packet.  */
+            /* Return timestamp stored at the beginning of the packet */
             ptp_packet_extract_timestamp(packet_ptr, time_ptr);
             break;
 

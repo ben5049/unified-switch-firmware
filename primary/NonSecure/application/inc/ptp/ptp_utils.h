@@ -55,6 +55,8 @@ void        ptp_mac_adjust_time_coarse(const NX_PTP_TIME *offset_time);
 void        ptp_mac_set_addend(uint32_t addend);
 void        ptp_mac_set_time(const NX_PTP_TIME *time_ptr);
 void        ptp_mac_get_time(NX_PTP_TIME *time_ptr);
+void        ptp_mac_pps_interrupt_enable(void);
+void        ptp_mac_pps_interrupt_handle(void);
 nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr);
 
 nx_status_t ptp_get_ingress_latency(port_index_t port, NX_PTP_TIME *latency);

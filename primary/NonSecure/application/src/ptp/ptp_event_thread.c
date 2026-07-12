@@ -29,6 +29,9 @@ TX_EVENT_FLAGS_GROUP ptp_events_group;
 TX_TIMER ptp_events_print_time_timer;
 #endif
 TX_TIMER ptp_sync_timeout_timer;
+#if FEAT_PTP_PPS_SOFT
+TX_TIMER ptp_pps_pulse_timer;
+#endif
 
 volatile atomic_uint_fast8_t ptp_port_connected_to_master = PORT_INVALID; /* Intentionally invalid to force accepting the first master (internal or external) */
 static volatile atomic_bool  new_master_waiting_for_sync  = false;
@@ -462,3 +465,36 @@ void ptp_event_thread_entry(uint32_t initial_input) {
 #endif
     }
 }
+
+
+#if FEAT_PTP_PPS_SOFT
+
+void ptp_pps_pulse_start_callback() {
+
+    tx_status_t status;
+
+    /* Turn on the LED (in non-debug builds the secure firmware has full
+     * control of the LED) */
+#if DEBUG
+    s_set_status_led(true);
+#endif
+
+    /* Start a timer to turn off the LED after a delay */
+    status = tx_timer_activate(&ptp_pps_pulse_timer);
+    TX_CHECK(status);
+}
+
+
+void ptp_pps_pulse_end_callback(uint32_t id) {
+
+    tx_status_t status;
+
+#if DEBUG
+    s_set_status_led(false);
+#endif
+
+    status = tx_timer_deactivate(&ptp_pps_pulse_timer);
+    TX_CHECK(status);
+}
+
+#endif

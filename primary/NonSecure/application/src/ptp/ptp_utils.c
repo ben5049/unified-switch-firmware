@@ -283,6 +283,85 @@ void ptp_mac_get_time(NX_PTP_TIME *time_ptr) {
 }
 
 
+static void ptp_mac_set_target_time(uint32_t seconds, uint32_t nanoseconds) {
+
+    uint32_t tickstart;
+
+    /* Wait for the MAC to finish synchronising any previous target time */
+    tickstart = HAL_GetTick();
+    while (READ_BIT(heth.Instance->MACPPSTTNR, ETH_MACPPSTTNR_TRGTBUSY0) != 0) {
+        if ((HAL_GetTick() - tickstart) > 100) {
+            error_handler();
+            return;
+        }
+    }
+
+    /* Set the target time (TRGTBUSY0 must be written as 0) */
+    WRITE_REG(heth.Instance->MACPPSTTSR, seconds);
+    WRITE_REG(heth.Instance->MACPPSTTNR, nanoseconds & ETH_MACPPSTTNR_TTSL0);
+}
+
+
+void ptp_mac_pps_interrupt_enable() {
+
+    TX_INTERRUPT_SAVE_AREA
+
+    NX_PTP_TIME time;
+
+    TX_DISABLE
+
+    /* Target time is used for the interrupt event only (no PPS output signal) */
+    MODIFY_REG(heth.Instance->MACPPSCR,
+               (ETH_MACPPSCR_TRGTMODSEL0 | ETH_MACPPSCR_PPSEN0),
+               0);
+
+    /* Arm the first target
+     * Note: the target must be in the future, so doesn't elapse before being latched */
+    ptp_mac_get_time(&time);
+    ptp_mac_set_target_time(time.second_low + 1, 0);
+
+    /* Enable the MAC timestamp interrupt */
+    SET_BIT(heth.Instance->MACIER, ETH_MACIER_TSIE);
+
+    TX_RESTORE
+}
+
+
+void ptp_mac_pps_interrupt_handle() {
+
+    TX_INTERRUPT_SAVE_AREA
+
+    /* Check a timestamp interrupt has occured */
+    if (READ_BIT(heth.Instance->MACISR, ETH_MACISR_TSIS) == 0) {
+        return;
+    }
+
+    NX_PTP_TIME time;
+    uint32_t    status;
+    bool        pps = false;
+
+    TX_DISABLE
+
+    /* Read the timestamp status register (clearing interrupt bits) */
+    status = READ_REG(heth.Instance->MACTSSR);
+
+    /* Target time reached or error */
+    if ((status & (ETH_MACTSSR_TSTARGT0 | ETH_MACTSSR_TSTRGTERR0)) != 0) {
+
+        /* Re-arm from the current time rather than the previous target, so a
+         * single late interrupt does not cause every subsequent one to be missed */
+        ptp_mac_get_time(&time);
+        ptp_mac_set_target_time(time.second_low + 1, 0);
+
+        pps = true;
+    }
+
+    TX_RESTORE
+
+    if (pps) ptp_pps_pulse_start_callback();
+}
+
+
 nx_status_t ptp_print_date(NX_PTP_TIME *time_ptr) {
 
     nx_status_t      status = NX_SUCCESS;

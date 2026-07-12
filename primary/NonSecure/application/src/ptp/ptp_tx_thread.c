@@ -79,7 +79,7 @@ static sja1105_status_t ptp_tx_mgmt_route_freed(sja1105_handle_t *dev, sja1105_m
                 } else {
                     VAL_COVER_ARRAY(PTP_TX, TS_RECEIVED, port);
 
-                    /* Get and subtract the egress latency */
+                    /* Get and add the egress latency */
                     NX_PTP_TIME egress_latency;
                     nx_status = ptp_get_egress_latency(port, &egress_latency);
                     NX_CHECK(nx_status);

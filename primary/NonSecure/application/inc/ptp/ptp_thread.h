@@ -150,6 +150,9 @@ extern TX_TIMER ptp_mac_sync_timer;
 #if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
 extern TX_TIMER ptp_switch_sync_timer;
 #endif
+#if FEAT_PTP_PPS_SOFT
+extern TX_TIMER ptp_pps_pulse_timer;
+#endif
 
 extern atomic_int_fast16_t          ptp_utc_offset;
 extern volatile atomic_uint_fast8_t ptp_port_connected_to_master;
@@ -168,8 +171,12 @@ void ptp_events_print_time_timer_callback(uint32_t id);
 #endif
 void ptp_sync_timeout_timer_callback(uint32_t id);
 void ptp_mac_sync_timer_callback(uint32_t id);
-#if NUM_SWITCHES > 1
+#if FEAT_PTP_SWITCH_SYNC && (NUM_SWITCHES > 1)
 void ptp_switch_sync_timer_callback(uint32_t id);
+#endif
+#if FEAT_PTP_PPS_SOFT
+void ptp_pps_pulse_start_callback(void); /* Hardware timer callback */
+void ptp_pps_pulse_end_callback(uint32_t id);
 #endif
 
 /* Filtering functions to place in Ethernet driver to intercept packets */

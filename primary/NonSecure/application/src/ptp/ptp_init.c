@@ -209,6 +209,11 @@ tx_status_t ptp_start() {
     /* Set the flag to enable callback processing */
     ptp_initialised = true;
 
+    /* Start the software PPS callback */
+#if FEAT_PTP_PPS_SOFT
+    ptp_mac_pps_interrupt_enable();
+#endif
+
     return status;
 }
 

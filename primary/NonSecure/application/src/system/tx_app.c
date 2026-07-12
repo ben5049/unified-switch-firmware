@@ -199,6 +199,10 @@ void tx_setup(void *memory_ptr) {
     status = tx_timer_create(&ptp_switch_sync_timer,       "ptp_switch_sync_timer",       ptp_switch_sync_timer_callback,       0, PTP_SWITCH_SYNC_INTERVAL,             PTP_SWITCH_SYNC_INTERVAL,             TX_NO_ACTIVATE);
     TX_CHECK(status);
 #endif
+#if FEAT_PTP_PPS_SOFT
+    status = tx_timer_create(&ptp_pps_pulse_timer,         "ptp_pps_pulse_timer",         ptp_pps_pulse_end_callback,           0, PTP_PPS_SOFT_PULSE_DURATION,          PTP_PPS_SOFT_PULSE_DURATION,          TX_NO_ACTIVATE);
+    TX_CHECK(status);
+#endif
 #endif
     status = tx_timer_create(&background_thread_timer,     "background_thread_timer",     background_thread_timer_callback,     0, BACKGROUND_THREAD_INTERVAL,           BACKGROUND_THREAD_INTERVAL,           TX_NO_ACTIVATE);
     TX_CHECK(status);
