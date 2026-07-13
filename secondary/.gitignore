@@ -1,0 +1,8 @@
+build
+mx.scratch
+!.settings
+.cache
+MXTmpFiles
+
+.vscode/c_cpp_properties.json
+.clangd

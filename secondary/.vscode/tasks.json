@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "cmake",
+            "command": "build",
+            "targets": [
+                "all"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "upload",
+            "type": "shell",
+            "group": "test",
+            "command": "STM32_Programmer_CLI",
+            "args": [
+                "-c",
+                "port=SWD",
+                "-w",
+                "${workspaceFolder}/build/secondary.elf",
+                "-v",
+                "-rst"
+            ],
+            "problemMatcher": [],
+            "dependsOn": [
+                "build"
+            ]
+        }
+    ]
+}
