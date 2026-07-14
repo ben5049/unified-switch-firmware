@@ -22,7 +22,7 @@ To build the firmware:
 1. Clone this repo and open the `primary` folder in VS Code.
 2. Install the [STM32CubeIDE for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension) extension.
 3. You should be prompted to configure the project (may need to reload window). Follow the configuration steps.
-4. Select a preset in the command palette (`ctrl` + `shift` + `p`) > `CMake: Select Configure Preset` > select an option. These options are from [CMakePresets.json](CMakePresets.json).
+4. Select a preset in the command palette (`ctrl` + `shift` + `p`) > `CMake: Select Configure Preset` > select an option. These options are from [CMakePresets.json](primary/CMakePresets.json).
 5. To build the firmware go to the command palette and go to `Tasks: Run Task` > `build` (note you can select `upload` here to upload the firmware via an STLink).
 
 ## Debugging
