@@ -31,7 +31,7 @@ To debug the firmware:
 - Follow the [building](#building) guide above up to step 4.
 - Go to the `Run and Debug` menu in the side bar
 - Make sure you have an STLink plugged in
-- Click the green play button at the top to start a debugging session. (this is configured in [.vscode/launch.json](.vscode/launch.json))
+- Click the green play button at the top to start a debugging session. (this is configured in [launch.json](primary/.vscode/launch.json))
 
 ## Primary MCU Firmware
 
@@ -43,9 +43,8 @@ The non-secure firmware is responsible for the following:
 - Running the networking stack
 - Publishing diagnostic information with Zenoh Pico
 - Switch and PHY maintenance
+- Running gPTP
 - Firmware updates (WIP)
-- Running PTP (WIP)
-- Running STP (WIP)
 
 ## Dependencies
 
@@ -55,7 +54,6 @@ The non-secure firmware is responsible for the following:
 - [PHY Drivers](https://github.com/ben5049/phy-drivers) (by me)
 - [Zenoh Pico](https://github.com/eclipse-zenoh/zenoh-pico)
 - [Nanopb](https://github.com/nanopb/nanopb)
-- ~~[mstp-lib](https://github.com/adigostin/mstp-lib)~~
 - [Logging](https://github.com/ben5049/logging) (by me)
 - [Bootloader](https://github.com/ben5049/bootloader) (by me)
 
