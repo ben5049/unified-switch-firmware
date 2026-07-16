@@ -57,8 +57,8 @@ extern "C" {
 /* State Machine Config */
 /* ---------------------------------------------------------------------------- */
 
-#define STATE_MACHINE_THREAD_STACK_SIZE (1024)
-#define STATE_MACHINE_THREAD_PRIORITY   (9)
+#define SEQUENCER_THREAD_STACK_SIZE   (1024)
+#define STATE_MACHINE_THREAD_PRIORITY (9)
 
 /* ---------------------------------------------------------------------------- */
 /* Networking Common Config */

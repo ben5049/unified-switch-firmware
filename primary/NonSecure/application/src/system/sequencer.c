@@ -1,5 +1,5 @@
 /*
- * state_machine.c
+ * sequencer.c
  *
  *  Created on: Sep 3, 2025
  *      Author: bens1
@@ -10,21 +10,22 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "state_machine.h"
+#include "sequencer.h"
 #include "switch.h"
 #include "phy.h"
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp.h"
+#include "podl.h"
 #include "utils.h"
 
 
-TX_THREAD            state_machine_thread_handle;
-uint8_t              state_machine_thread_stack[STATE_MACHINE_THREAD_STACK_SIZE];
-TX_EVENT_FLAGS_GROUP state_machine_events_handle;
+TX_THREAD            sequencer_thread_handle;
+uint8_t              sequencer_thread_stack[SEQUENCER_THREAD_STACK_SIZE];
+TX_EVENT_FLAGS_GROUP sequencer_events_handle;
 
 
-void state_machine_thread_entry(uint32_t initial_input) {
+void sequencer_thread_entry(uint32_t initial_input) {
 
     tx_status_t tx_status   = TX_SUCCESS;
     nx_status_t nx_status   = NX_SUCCESS;
@@ -46,11 +47,13 @@ void state_machine_thread_entry(uint32_t initial_input) {
     TX_CHECK(tx_status);
     LOG_INFO("Switch thread started");
 
+    podl_enable();
+
     /* -------------------- Link Up -------------------- */
 
     /* Wait for the link to be up (from nx_link_thread_entry) */
     LOG_INFO("Waiting for link up");
-    tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_NX_LINK_UP, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
+    tx_status = tx_event_flags_get(&sequencer_events_handle, STATE_MACHINE_NX_LINK_UP, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
     TX_CHECK(tx_status);
     LOG_INFO("Link is up");
 
@@ -71,7 +74,7 @@ void state_machine_thread_entry(uint32_t initial_input) {
 
     /* Wait for the network to be initialised and an IP address assigned */
     LOG_INFO("Waiting for network up");
-    tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
+    tx_status = tx_event_flags_get(&sequencer_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_OR_CLEAR, &event_flags, TX_WAIT_FOREVER);
     TX_CHECK(tx_status);
 
     /* Print the IP address */
@@ -90,6 +93,6 @@ void state_machine_thread_entry(uint32_t initial_input) {
     LOG_INFO("Comms thread started");
 #endif
 
-    tx_status = tx_thread_terminate(&state_machine_thread_handle);
+    tx_status = tx_thread_terminate(&sequencer_thread_handle);
     TX_CHECK(tx_status);
 }

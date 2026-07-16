@@ -1,12 +1,12 @@
 /*
- * state_machine.h
+ * sequencer.h
  *
  *  Created on: Sep 3, 2025
  *      Author: bens1
  */
 
-#ifndef INC_STATE_MACHINE_H_
-#define INC_STATE_MACHINE_H_
+#ifndef INC_SEQUENCER_H_
+#define INC_SEQUENCER_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,16 +29,16 @@ typedef enum {
 } state_machine_event_t;
 
 
-extern TX_THREAD            state_machine_thread_handle;
-extern uint8_t              state_machine_thread_stack[STATE_MACHINE_THREAD_STACK_SIZE];
-extern TX_EVENT_FLAGS_GROUP state_machine_events_handle;
+extern TX_THREAD            sequencer_thread_handle;
+extern uint8_t              sequencer_thread_stack[SEQUENCER_THREAD_STACK_SIZE];
+extern TX_EVENT_FLAGS_GROUP sequencer_events_handle;
 
 
-void state_machine_thread_entry(uint32_t initial_input);
+void sequencer_thread_entry(uint32_t initial_input);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* INC_STATE_MACHINE_H_ */
+#endif /* INC_SEQUENCER_H_ */

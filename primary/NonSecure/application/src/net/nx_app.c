@@ -17,7 +17,7 @@
 #include "tx_app.h"
 #include "ptp.h"
 #include "comms_thread.h"
-#include "state_machine.h"
+#include "sequencer.h"
 
 
 NX_IP nx_ip_instance __attribute__((section(".ETH")));

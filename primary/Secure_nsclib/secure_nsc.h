@@ -53,6 +53,7 @@ void     s_error_handler(void);
 uint32_t s_random_u32(void);
 int      s_write(int file, char *ptr, int len);
 bool     s_uart_logging_enabled(void);
+bool     s_start_podl_controller(void);
 
 #if DEBUG
 void s_set_status_led(bool status);

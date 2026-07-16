@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "stlinkgdbtarget",
+            "request": "launch",
+            "name": "Debug",
+            "cwd": "${workspaceFolder}",
+            "deviceCore": "Cortex-M33",
+            "preLaunchTask": "build", // From tasks.json
+            "imagesAndSymbols": [
+                {
+                    // Secure firmware (must be first)
+                    "imageFileName": "${workspaceFolder}/build/Debug/secondary.elf",
+                    "loadSymbols": true,
+                    "loadFormat": "elf"
+                }
+            ],
+            "runEntry": "main"
+        }
+    ]
+}

@@ -112,8 +112,15 @@ CMSE_NS_ENTRY int s_write(int file, char *ptr, int len) {
 }
 
 
-CMSE_NS_ENTRY bool s_uart_logging_enabled(void) {
+CMSE_NS_ENTRY bool s_uart_logging_enabled() {
     return UART_LOGGING_ENABLE;
+}
+
+
+CMSE_NS_ENTRY bool s_start_podl_controller() {
+    HAL_GPIO_WritePin(PODL_BOOT_GPIO_Port, PODL_BOOT_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(PODL_RST_GPIO_Port, PODL_RST_Pin, GPIO_PIN_SET);
+    return true;
 }
 
 

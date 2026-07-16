@@ -12,7 +12,7 @@
 #include "app.h"
 #include "switch.h"
 #include "encodings.h"
-#include "state_machine.h"
+#include "sequencer.h"
 #include "comms_thread.h"
 #include "phy.h"
 
@@ -86,7 +86,7 @@ sja1105_status_t publish_switch_diagnostics(uint32_t current_time) {
     uint32_t         flags;
 
     /* Check if publishing stats is allowed */
-    tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR, &flags, TX_NO_WAIT);
+    tx_status = tx_event_flags_get(&sequencer_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR, &flags, TX_NO_WAIT);
     if (tx_status == TX_SUCCESS) {
 
         /* Reset variables */
@@ -113,7 +113,7 @@ sja1105_status_t publish_switch_diagnostics(uint32_t current_time) {
         TX_CHECK(tx_status);
 
         /* Check if publishing stats is still allowed */
-        tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR, &flags, TX_NO_WAIT);
+        tx_status = tx_event_flags_get(&sequencer_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR, &flags, TX_NO_WAIT);
         if (tx_status == TX_SUCCESS) {
 
             /* Publish the message */

@@ -12,7 +12,7 @@
 #include "app.h"
 #include "tx_app.h"
 #include "nx_app.h"
-#include "state_machine.h"
+#include "sequencer.h"
 #include "utils.h"
 
 
@@ -103,7 +103,7 @@ void nx_link_thread_entry(uint32_t thread_input) {
                     if ((nx_status != NX_SUCCESS) && (nx_status != NX_ALREADY_ENABLED)) error_handler();
 
                     /* Notify the state machine that the link is up */
-                    tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_LINK_UP, TX_OR);
+                    tx_status = tx_event_flags_set(&sequencer_events_handle, STATE_MACHINE_NX_LINK_UP, TX_OR);
                     TX_CHECK(tx_status);
 
                     /* Send request to check if an address is resolved */
@@ -197,7 +197,7 @@ static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
     if (ip_address != NULL_ADDRESS) {
 
         /* Notify the state machine */
-        tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_OR);
+        tx_status = tx_event_flags_set(&sequencer_events_handle, STATE_MACHINE_NX_IP_ADDRESS_ASSIGNED, TX_OR);
         TX_CHECK(tx_status);
     }
 
@@ -205,7 +205,7 @@ static void ip_address_change_notify_callback(NX_IP *ip_instance, void *ptr) {
     else {
 
         /* Notify the state machine */
-        tx_status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_NX_IP_ADDRESS_UNASSIGNED, TX_OR);
+        tx_status = tx_event_flags_set(&sequencer_events_handle, STATE_MACHINE_NX_IP_ADDRESS_UNASSIGNED, TX_OR);
         TX_CHECK(tx_status);
     }
 }

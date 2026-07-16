@@ -23,7 +23,7 @@
                 "-c",
                 "port=SWD",
                 "-w",
-                "${workspaceFolder}/build/secondary.elf",
+                "${workspaceFolder}/build/Debug/secondary.elf",
                 "-v",
                 "-rst"
             ],

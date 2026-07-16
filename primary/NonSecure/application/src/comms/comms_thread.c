@@ -22,7 +22,7 @@
 #include "zenoh_cleanup.h"
 #include "comms_thread.h"
 #include "switch_thread.h"
-#include "state_machine.h"
+#include "sequencer.h"
 
 
 #define Z_CHECK(status)                \
@@ -68,7 +68,7 @@ tx_status_t zenoh_connected() {
 
     tx_status_t status = TX_SUCCESS;
 
-    status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR);
+    status = tx_event_flags_set(&sequencer_events_handle, STATE_MACHINE_ZENOH_CONNECTED, TX_OR);
     if (status != TX_SUCCESS) return status;
 
     zenoh_events.connections++;
@@ -81,7 +81,7 @@ tx_status_t zenoh_disconnected() {
 
     tx_status_t status = TX_SUCCESS;
 
-    status = tx_event_flags_set(&state_machine_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR);
+    status = tx_event_flags_set(&sequencer_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR);
     if (status != TX_SUCCESS) return status;
 
     return status;
@@ -278,7 +278,7 @@ void comms_thread_entry(uint32_t initial_input) {
              * is set then immediately wake up and try to reconnect.
              */
             _Static_assert(HEARTBEAT_INTERVAL > 0, "Heartbeat interval should be > 0");
-            tx_status = tx_event_flags_get(&state_machine_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR, &flags, HEARTBEAT_INTERVAL);
+            tx_status = tx_event_flags_get(&sequencer_events_handle, STATE_MACHINE_ZENOH_DISCONNECTED, TX_OR, &flags, HEARTBEAT_INTERVAL);
             if (tx_status == TX_SUCCESS) {
                 LOG_INFO("Received disconnect event");
                 goto restart;

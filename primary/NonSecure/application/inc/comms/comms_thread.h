@@ -21,7 +21,7 @@ extern "C" {
 
 #include "config.h"
 #include "tx_app.h"
-#include "state_machine.h"
+#include "sequencer.h"
 
 
 typedef struct {

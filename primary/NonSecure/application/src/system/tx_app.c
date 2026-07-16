@@ -13,7 +13,7 @@
 #include "stp_thread.h"
 #include "comms_thread.h"
 #include "ptp.h"
-#include "state_machine.h"
+#include "sequencer.h"
 #include "background_thread.h"
 #include "utils.h"
 
@@ -48,7 +48,7 @@ void tx_setup(void *memory_ptr) {
     /* Create semaphores */
 
     /* Create event flags */
-    status = tx_event_flags_create(&state_machine_events_handle,     "state_machine_events_handle");
+    status = tx_event_flags_create(&sequencer_events_handle,         "sequencer_events_handle");
     TX_CHECK(status);
     status = tx_event_flags_create(&switch_events_handle,            "switch_events_handle");
     TX_CHECK(status);
@@ -88,7 +88,7 @@ void tx_setup(void *memory_ptr) {
 #endif
 
     /* Create threads */
-    status = tx_thread_create(&state_machine_thread_handle,   "state_machine_thread",   (void (*)(ULONG)) state_machine_thread_entry,   thread_number++, state_machine_thread_stack,   STATE_MACHINE_THREAD_STACK_SIZE,   STATE_MACHINE_THREAD_PRIORITY,   STATE_MACHINE_THREAD_PRIORITY,    TX_NO_TIME_SLICE, TX_AUTO_START);
+    status = tx_thread_create(&sequencer_thread_handle,       "state_machine_thread",   (void (*)(ULONG)) sequencer_thread_entry,       thread_number++, sequencer_thread_stack,       SEQUENCER_THREAD_STACK_SIZE,       STATE_MACHINE_THREAD_PRIORITY,   STATE_MACHINE_THREAD_PRIORITY,    TX_NO_TIME_SLICE, TX_AUTO_START);
     TX_CHECK(status);
     status = tx_thread_create(&nx_link_thread_handle,         "nx_link_thread",         (void (*)(ULONG)) nx_link_thread_entry,         thread_number++, nx_link_thread_stack,         NX_LINK_THREAD_STACK_SIZE,         NX_LINK_THREAD_PRIORITY,         NX_LINK_THREAD_PRIORITY,          TX_NO_TIME_SLICE, TX_DONT_START);
     TX_CHECK(status);
@@ -120,7 +120,7 @@ void tx_setup(void *memory_ptr) {
     TX_CHECK(status);
 
     /* Any threads that call secure functions must allocate secure stack */
-    status = tx_thread_secure_stack_allocate(&state_machine_thread_handle,   MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
+    status = tx_thread_secure_stack_allocate(&sequencer_thread_handle,       MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
     status = tx_thread_secure_stack_allocate(&nx_link_thread_handle,         MIN(DEFAULT_SECURE_STACK_SIZE, TX_THREAD_SECURE_STACK_MAXIMUM));
     TX_CHECK(status);
@@ -156,7 +156,7 @@ void tx_setup(void *memory_ptr) {
     extern TX_THREAD _tx_timer_thread;
     _tx_timer_thread.logger            = &hlog_system;
 #endif
-    state_machine_thread_handle.logger = &hlog_generic;
+    sequencer_thread_handle.logger = &hlog_generic;
     nx_link_thread_handle.logger       = &hlog_network;
     switch_thread_handle.logger        = &hlog_sw;
     phy_thread_handle.logger           = &hlog_phy;
