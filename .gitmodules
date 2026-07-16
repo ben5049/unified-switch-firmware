@@ -26,3 +26,6 @@
 	path = scripts
 	url = https://github.com/ben5049/cubemx-scripts
     branch = main
+[submodule "primary/NonSecure/libraries/rrp"]
+	path = primary/NonSecure/libraries/rrp
+	url = https://www.github.com/ben5049/rrp

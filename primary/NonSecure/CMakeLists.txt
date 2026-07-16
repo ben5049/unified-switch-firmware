@@ -178,6 +178,7 @@ target_compile_definitions(stm32cubemx INTERFACE
 add_subdirectory(ports/nanopb)
 add_subdirectory(libraries/phy-drivers)
 add_subdirectory(libraries/sja1105)
+add_subdirectory(libraries/rrp)
 add_subdirectory(libraries/logging)
 
 ###############################################################
@@ -287,6 +288,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     nanopb
     sja1105
     phy_drivers
+    rrp
     logging
 )
 
