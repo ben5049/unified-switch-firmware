@@ -1,7 +1,7 @@
 /*
  * swv5_0_sja1105_static_config_default.h
  *
- *  Created on: May 26, 2026
+ *  Created on: Jul 17, 2026
  *      Author: SJA1105X_CONFIG-GENTOOL
  *
  */
@@ -40,8 +40,8 @@ static const uint32_t swv5_0_sja1105_static_config_default[SWV5_0_SJA1105_STATIC
     0x80000000, 0xfe000003, 0x00000001, 0x08fc0100, 0xbf404fe4, 0xe017fb02, 0x06ff40cf, 0xfff03bfc,
     0x80000000, 0xfe000003, 0x00000001, 0x08fc0106, 0xbf404fe4, 0xe017fb02, 0x06ff40cf, 0xfff03bfc,
     0x80000000, 0xfe000003, 0x00000001, 0x08fc0104, 0xbf404fe4, 0xe017fb02, 0x06ff40cf, 0xfff03bfc,
-    0x89983017, 0x0d000000, 0x00000004, 0x12d08c8f, 0x02000000, 0x00000020, 0x02004010, 0x00000410,
-    0x81b6cd97, 0x0e000000, 0x00000003, 0xc8a7cee6, 0x2c18c000, 0x0b02c0b0, 0x02c0b02c, 0xa07ddb76,
+    0x89983017, 0x0d000000, 0x00000004, 0x12d08c8f, 0x02000000, 0x00000700, 0x02004010, 0x00000410,
+    0xb0bc03ec, 0x0e000000, 0x00000003, 0xc8a7cee6, 0x2c18c000, 0x0b02c0b0, 0x02c0b02c, 0xa07ddb76,
     0x10000000, 0x00000004, 0x8aa0dfbc, 0x80000000, 0x0df03ffb, 0xb2b78098, 0x40980df7, 0xe6c9318c,
     0x11000000, 0x0000000b, 0xefa3e65a, 0x01800000, 0x42040000, 0xfffffc45, 0xffffffff, 0x00e137ff,
     0x00000000, 0x0000ff00, 0xffffffff, 0xffffffff, 0x00000eff, 0x460180c2, 0x60d42599, 0x4e000000,
@@ -990,7 +990,7 @@ Table ID: 13 #entries: 1
 |  MAXADDRP[1]   |  512  |  11 |   69   |
 |  MAXADDRP[0]   |  1024 |  11 |   58   |
 |     MAXAGE     |   0   |  15 |   43   |
-|  START_DYNSPC  |   16  |  10 |   33   |
+|  START_DYNSPC  |  896  |  10 |   33   |
 |   DRPNOLEARN   |   0   |  5  |   28   |
 |  SHARED_LEARN  |   0   |  1  |   27   |
 | NO_ENF_HOSTPRT |   0   |  1  |   26   |
